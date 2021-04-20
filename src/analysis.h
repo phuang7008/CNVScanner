@@ -52,7 +52,9 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
  * @param coverage: the total coverage of the bin to be inserted
  * @param binned_data_wraper: the viable that holding binned data sequentially
  */
-void insertBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper);
+void insertBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper, Chromosome_Tracking *chrom_tracking, FILE *fh_binned_coverage, int32_t chrom_idx, User_Input *user_inputs);
+
+void outputBinnedData(Binned_Data_Wrapper *binned_data_wraper, char* chrom_id);
 
 /*
  * The following method is for debugging only

@@ -54,7 +54,6 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
     for (i=begin; i<begin+length; i++) {
         uint32_t start=0, end=0;
         uint64_t cov_total=0;
-        double ave_coverage=0.0;
 
         // check if the size is approach the capacity
         //
@@ -86,16 +85,7 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
             stats_info->wgs_cov_stats->total_genome_coverage += cov_total;
 
             if (start <= end) {
-                ave_coverage = (double)cov_total / (double)(end - start);
-                if (user_inputs->debug_ON)
-                    fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n", 
-                            chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start, ave_coverage);
-                binned_data_wraper->data[binned_data_wraper->size].start  = start;
-                binned_data_wraper->data[binned_data_wraper->size].end    = end;
-                binned_data_wraper->data[binned_data_wraper->size].length = end - start;
-                binned_data_wraper->data[binned_data_wraper->size].ave_coverage = ave_coverage;
-                binned_data_wraper->size++;
-                fprintf(stderr, "Current size is %d\n", binned_data_wraper->size);
+                insertBinnedData(start, end, cov_total, binned_data_wraper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
             }
         } else if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] < dip_upper)) {
             start = i;
@@ -109,16 +99,7 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
             stats_info->wgs_cov_stats->total_genome_coverage += cov_total;
 
             if (start <= end) {
-                double ave_coverage = (double)cov_total / (double)(end - start);
-                if (user_inputs->debug_ON)
-                    fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n",
-                            chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start, ave_coverage);
-                binned_data_wraper->data[binned_data_wraper->size].start  = start;
-                binned_data_wraper->data[binned_data_wraper->size].end    = end;
-                binned_data_wraper->data[binned_data_wraper->size].length = end - start;
-                binned_data_wraper->data[binned_data_wraper->size].ave_coverage = ave_coverage;
-                binned_data_wraper->size++;
-                fprintf(stderr, "Current size is %d\n", binned_data_wraper->size);
+                insertBinnedData(start, end, cov_total, binned_data_wraper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
             }
         } else if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] < dup_upper)) {
             start = i;
@@ -132,16 +113,7 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
             stats_info->wgs_cov_stats->total_genome_coverage += cov_total;
 
             if (start <= end) {
-                double ave_coverage = (double)cov_total / (double)(end - start);
-                if (user_inputs->debug_ON)
-                    fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n",
-                            chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start, ave_coverage);
-                binned_data_wraper->data[binned_data_wraper->size].start  = start;
-                binned_data_wraper->data[binned_data_wraper->size].end    = end;
-                binned_data_wraper->data[binned_data_wraper->size].length = end - start;
-                binned_data_wraper->data[binned_data_wraper->size].ave_coverage = ave_coverage;
-                binned_data_wraper->size++;
-                fprintf(stderr, "Current size is %d\n", binned_data_wraper->size);
+                insertBinnedData(start, end, cov_total, binned_data_wraper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
             }
         } else {
             start = i;
@@ -154,16 +126,7 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
             stats_info->wgs_cov_stats->total_genome_coverage += cov_total;
 
             if (start <= end) {
-                double ave_coverage = (double)cov_total / (double)(end - start);
-                if (user_inputs->debug_ON)
-                    fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n",
-                            chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start, ave_coverage);
-                binned_data_wraper->data[binned_data_wraper->size].start  = start;
-                binned_data_wraper->data[binned_data_wraper->size].end    = end;
-                binned_data_wraper->data[binned_data_wraper->size].length = end - start;
-                binned_data_wraper->data[binned_data_wraper->size].ave_coverage = ave_coverage;
-                binned_data_wraper->size++;
-                fprintf(stderr, "Current size is %d\n", binned_data_wraper->size);
+                insertBinnedData(start, end, cov_total, binned_data_wraper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
             }
         }
 
@@ -171,19 +134,35 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
     }
 }
 
-void insertBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper) {
+void insertBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper, Chromosome_Tracking *chrom_tracking, FILE *fh_binned_coverage, int32_t chrom_idx, User_Input *user_inputs) {
     double ave_coverage = (double)coverage / (double)(end - start);
+    if (user_inputs->debug_ON)
+        fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n",
+                chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start, ave_coverage);
+
     binned_data_wraper->data[binned_data_wraper->size].start  = start;
     binned_data_wraper->data[binned_data_wraper->size].end    = end;
     binned_data_wraper->data[binned_data_wraper->size].length = end - start;
     binned_data_wraper->data[binned_data_wraper->size].ave_coverage = ave_coverage;
     binned_data_wraper->size++;
+    fprintf(stderr, "Current size is %d\n", binned_data_wraper->size);
 
     // here we need to check with the previous bin block,
     // if they are only 5x away, combined them together
     //
     if (binned_data_wraper->size > 1) {
 
+    }
+}
+
+void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, char* chrom_id) {
+    FILE *binned_coverage_fp = fopen("Binned_Data.txt", "w");
+
+    uint32_t i;
+    for (i=0; i<binned_data_wrapper->size; i++) {
+        fprintf(binned_coverage_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n", 
+                chrom_id, binned_data_wrapper->data[i].start, binned_data_wrapper->data[i].end,
+                binned_data_wrapper->data[i].length, binned_data_wrapper->data[i].ave_coverage);
     }
 }
 

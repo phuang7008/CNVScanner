@@ -288,6 +288,7 @@ int main(int argc, char *argv[]) {
                 //
                 int32_t chrom_idx = locateChromosomeIndexForChromTracking(chrom_tracking->chromosome_ids[i], chrom_tracking);
                 coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrapper[chrom_idx], chrom_idx);
+                if (user_inputs->debug_ON) outputBinnedData(binned_data_wrapper[chrom_idx], chrom_tracking->chromosome_ids[i]);
               }
             }
 
