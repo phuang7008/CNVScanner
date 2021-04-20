@@ -52,7 +52,13 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
  * @param coverage: the total coverage of the bin to be inserted
  * @param binned_data_wraper: the viable that holding binned data sequentially
  */
-void insertBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper, Chromosome_Tracking *chrom_tracking, FILE *fh_binned_coverage, int32_t chrom_idx, User_Input *user_inputs);
+void insertBinData(uint32_t start, uint32_t end, uint32_t length, double ave_coverage, Binned_Data_Wrapper *binned_data_wrapper);
+
+/*
+ * This function is used to process binned data and also insert data into bin
+ * It will handle edge effects by combining neighboring bins
+ */
+void processBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper, Chromosome_Tracking *chrom_tracking, FILE *fh_binned_coverage, int32_t chrom_idx, User_Input *user_inputs);
 
 void outputBinnedData(Binned_Data_Wrapper *binned_data_wraper, char* chrom_id);
 

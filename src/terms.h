@@ -41,6 +41,7 @@
 // The followings are defined as macro/constants. The program should never try to change their values
 #define VERSION_ "##WGS CNV v1.0.0"
 #define INIT_BIN_SIZE 100000
+#define DIFF_COV_TO_MERGE 5
 
 // We need to declared the followings as glabal since the program will change these values!!!
 // The naming convention for this type of data is CAPTICAL_WORD1_WORD2_WORD3...extern bool EXCLUDED_FILE_PROVIDED;
