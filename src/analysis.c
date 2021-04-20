@@ -141,6 +141,8 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
  *
  * Case 2: After binning, the neighboring bins' average coverage are less than 5x for the previous two bins
  * In this case, we will also merge them together
+ *
+ * Case 3: if the entry length is < 50; remove it!
  */
 void processBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper, Chromosome_Tracking *chrom_tracking, FILE *fh_binned_coverage, int32_t chrom_idx, User_Input *user_inputs) {
     double ave_coverage = (double)coverage / (double)(end - start);
@@ -179,7 +181,18 @@ void processBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_D
                     //
                     insertBinData(start, end, end-start, ave_coverage, binned_data_wraper);
                 } else {
+                    if (binned_data_wraper->data[pre_prev_index].length < SMALL_LENGTH_CUTOFF) {
+                        // if the length of the pre_prev_index entry is < 50 (SMALL_LENGTH_CUTOFF), remove it
+                        //
+                        binned_data_wraper->data[pre_prev_index].start  = binned_data_wraper->data[prev_index].start;
+                        binned_data_wraper->data[pre_prev_index].end    = binned_data_wraper->data[prev_index].end;
+                        binned_data_wraper->data[pre_prev_index].length = binned_data_wraper->data[prev_index].length;
+                        binned_data_wraper->data[pre_prev_index].ave_coverage = binned_data_wraper->data[prev_index].ave_coverage;
+                        binned_data_wraper->size--;
+                    }
+                        
                     insertBinData(start, end, end-start, ave_coverage, binned_data_wraper);
+
                 }
             } else {
                 insertBinData(start, end, end-start, ave_coverage, binned_data_wraper);
