@@ -40,6 +40,7 @@
 
 // The followings are defined as macro/constants. The program should never try to change their values
 #define VERSION_ "##WGS CNV v1.0.0"
+#define INIT_BIN_SIZE 100000
 
 // We need to declared the followings as glabal since the program will change these values!!!
 // The naming convention for this type of data is CAPTICAL_WORD1_WORD2_WORD3...extern bool EXCLUDED_FILE_PROVIDED;
@@ -81,6 +82,7 @@ typedef struct {
 
     // developer testing options
     bool non_MC_tag_ON;                 // use non_MC_tag approach for overlap base removal even though the bam file has MC_tags
+    bool debug_ON;                      // output debug information for developer
 } User_Input;
 
 /* here is the data structure for binned data
@@ -89,14 +91,19 @@ typedef struct {
     uint32_t start;
     uint32_t end;
     uint32_t length;
+    double   stdev;
+    double   z_score;
     double   ave_coverage;
+    double   num_of_reads;
+    double   num_of_reads_map_normalized;
+    double   num_of_reads_map_gc_normalized;
 } Binned_Data;
 
 typedef struct {
     char * chromosome_id;
     uint32_t size;
     uint32_t capacity;
-    Binned_Data * data;
+    Binned_Data * data;     // the order will be sequentially from the small positions to the large positions
 } Binned_Data_Wrapper;
 
 

@@ -382,3 +382,10 @@ void print_string_array(char** strings_in, size_t length_in) {
 
 	printf("\n");
 }
+
+void checkMemoryAllocation(void* newly_created_object, char* message) {
+    if (!newly_created_object) {
+        fprintf(stderr, "ERROR: Memory allocation for %s failed\n", message);
+        exit(EXIT_FAILURE);
+    }
+}

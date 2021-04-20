@@ -141,4 +141,5 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
  */
 void print_string_array(char** strings_in, size_t length_in);
 
+void checkMemoryAllocation(void* newly_created_object, char* message);
 #endif //UTILS_H

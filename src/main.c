@@ -142,17 +142,11 @@ int main(int argc, char *argv[]) {
     // need to setup data struture to store the binned regions
     //
     uint32_t i, j;
-    Binned_Data_Wrapper* binned_data_wrapper = calloc(chrom_tracking->number_of_chromosomes, sizeof(Binned_Data_Wrapper));
-    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        // here we will initialize each binned data array to be 50,000
-        // the size will dynamically expanded when there are more needed
-        //
-        binned_data_wrapper[i].chromosome_id = calloc(strlen(chrom_tracking->chromosome_ids[i])+1, sizeof(char*));
-        strcpy(binned_data_wrapper[i].chromosome_id, chrom_tracking->chromosome_ids[i]);
-        binned_data_wrapper[i].size = 0;
-        binned_data_wrapper[i].capacity = 50000;
-        binned_data_wrapper[i].data = calloc(50000, sizeof(Binned_Data));
-    }
+    Binned_Data_Wrapper **binned_data_wrapper = calloc(chrom_tracking->number_of_chromosomes, sizeof(Binned_Data_Wrapper*));
+    checkMemoryAllocation(binned_data_wrapper, "Binned_Data_Wrapper **binned_data_wrapper");
+    binnedDataWrapperInit(binned_data_wrapper, chrom_tracking);
+    //binnedDataWrapperInit(gc_binned_data_wrapper, chrom_tracking);
+    //binnedDataWrapperInit(mappability_gc_binned_data_wrapper, chrom_tracking);
 
     // can't set to be static as openmp won't be able to handle it
     // check the bam/cram file size first
@@ -290,7 +284,10 @@ int main(int argc, char *argv[]) {
                 printf("Thread %d is now producing coverage bins for chromosome %s\n", 
                         thread_id, chrom_tracking->chromosome_ids[i]);
                         
-                coverageBinningWrapper(chrom_tracking->chromosome_ids[i], chrom_tracking, user_inputs, stats_info);
+                // First, we need to find the index that is used to track current chromosome chrom_id
+                //
+                int32_t chrom_idx = locateChromosomeIndexForChromTracking(chrom_tracking->chromosome_ids[i], chrom_tracking);
+                coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrapper[chrom_idx], chrom_idx);
               }
             }
 

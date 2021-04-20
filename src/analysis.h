@@ -26,13 +26,11 @@
 /*
  * This is a wrapper function to help generate the coverage range info using writeCoverageRanges()
  * This will not generate annotation information for the speed reason
- * @param chrom_id: the chromosome id to be handed
  * @param chrom_tracking: contains the coverage information for the current chromosome
  * @param user_inputs: contains all the user_inputs options
  * @param stats_info: a variable that contains all reads and base information
  */
-void coverageBinningWrapper(char *chrom_id, Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info);
-
+void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wraper, int32_t chrom_idx);
 
 /*
  * This is used to generate average coverage information for a range of position based on different binning strategies
@@ -43,7 +41,18 @@ void coverageBinningWrapper(char *chrom_id, Chromosome_Tracking *chrom_tracking,
  * @param user_inputs: contains all the user_inputs options
  * @param wgs_binned_coverage_fp: the file handle for depositing the binned data
  * */
-void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, uint16_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage);
+void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage, Binned_Data_Wrapper *binned_data_wraper);
+
+/*
+ * This is the function used for insertion. But before doing any insertion, 
+ * it will try to eliminate the edge effect by checking the binned data in front of it
+ * if it is 5x apart, merge them
+ * @param start: the start position of the bin
+ * @param end: the end position of the bin
+ * @param coverage: the total coverage of the bin to be inserted
+ * @param binned_data_wraper: the viable that holding binned data sequentially
+ */
+void insertBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper);
 
 /*
  * The following method is for debugging only
@@ -51,5 +60,11 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
 void reportStatsForDebugging(Stats_Info *stats_info, User_Input *user_inputs);
 
 void outputGeneralInfo(FILE *fp, Stats_Info *stats_info, double average_coverage);
+
+void binnedDataWrapperInit(Binned_Data_Wrapper** binned_data_wrapper, Chromosome_Tracking *chrom_tracking);
+
+void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromosome_Tracking *chrom_tracking);
+
+void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper);
 
 #endif //UTILS_H

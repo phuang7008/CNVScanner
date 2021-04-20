@@ -102,13 +102,14 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             {"overlap",             no_argument,  0,  'O'},
             {"supplemental",        no_argument,  0,  's'},
             {"wgs_depth",           no_argument,  0,  'W'},
+            {"debug",               no_argument,  0,  'g'},
             {0,  0,  0,  0},
         };
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arg = getopt_long_only (argc, argv, "b:de:hi:m:o:p:Or:R:s:T:V:W", long_options, &option_index);
+        arg = getopt_long_only (argc, argv, "b:de:ghi:m:o:p:Or:R:s:T:V:W", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (arg == -1) break;
@@ -131,6 +132,9 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 EXCLUDED_FILE_PROVIDED = true;
                 user_inputs->excluded_region_file = malloc(strlen(optarg)+1 * sizeof(char));
                 strcpy(user_inputs->excluded_region_file, optarg);
+                break;
+            case 'g':
+                user_inputs->debug_ON = true;
                 break;
             case 'h': usage(); exit(EXIT_FAILURE);
             case 'i':
@@ -257,9 +261,9 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     sprintf(string_to_add, ".WGS_Coverage_Summary_Report.txt");
     createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_cov_report, string_to_add, VERSION_);
 
-    // output the uniformity data file for Uniformity Analysis
+    // output the binned data file for Uniformity Analysis
     //
-    sprintf(string_to_add, ".WGS_uniformity_REPORT.txt");
+    sprintf(string_to_add, ".WGS_binned_data_REPORT.txt");
     createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_binning_file, string_to_add, VERSION_);
 
     // for whole genome (wgs) file name
@@ -330,6 +334,11 @@ void outputUserInputOptions(User_Input *user_inputs) {
     } else {
         fprintf(stderr, "\tUse All chromosomes for the Uniformity calculation\n");
     }*/
+    if (user_inputs->debug_ON) {
+        fprintf(stderr, "\tThe developer debugging is ON\n");
+    } else {
+        fprintf(stderr, "\tThe developer debugging is OFF\n");
+    }
 
     fprintf(stderr, "User Input Options ===> DONE!\n\n");
     //printf("The  is: %d\n", user_inputs->);
@@ -370,6 +379,7 @@ User_Input * userInputInit() {
 
     // developer option for testing
     user_inputs->non_MC_tag_ON = false;
+    user_inputs->debug_ON = false;
     
     return user_inputs;
 }
