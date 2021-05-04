@@ -21,11 +21,11 @@ LFLAGS = -L$(HTSDIR) -L$(MYSQLLIB) -L$(MYLIB)
 LIBS =  $(HTSDIR)/libhts.a $(MYLIB)/libcov_tracking.a -lm -lz -lpthread -lmysqlclient_r -lrt -lssl -lcrypto -ldl -lcurl -llzma -lbz2
 
 # define dependent header files
-_DEPS = analysis.h excluded_regions.h stats.h terms.h user_inputs.h utility.h data_structure.h utils.h
+_DEPS = analysis.h excluded_regions.h stats.h terms.h user_inputs.h utility.h data_structure.h utils.h fileProcessing.h
 DEPS=$(patsubst %,$(CODEDIR)/%,$(_DEPS))
 
 # define the C ssource files
-SRCS = main.c analysis.c excluded_regions.c stats.c user_inputs.c utils.c
+SRCS = main.c analysis.c excluded_regions.c stats.c user_inputs.c utils.c fileProcessing.c
 
 # define the C object files 
 #

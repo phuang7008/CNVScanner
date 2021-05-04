@@ -96,6 +96,8 @@ typedef struct {
     double   stdev;
     double   z_score;
     double   ave_coverage;
+    double   mappability;
+    double   gc_ratio;
     double   num_of_reads;
     double   num_of_reads_map_normalized;
     double   num_of_reads_map_gc_normalized;
