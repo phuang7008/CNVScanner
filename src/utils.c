@@ -389,3 +389,16 @@ void checkMemoryAllocation(void* newly_created_object, char* message) {
         exit(EXIT_FAILURE);
     }
 }
+
+void cleanKhashIntStr(khash_t(khIntStr) * hash_to_clean) {
+    khint_t k;
+
+    for (k=kh_begin(hash_to_clean); k!=kh_end(hash_to_clean); ++k) {
+        if (kh_exist(hash_to_clean, k)) {
+            if (kh_value(hash_to_clean, k))
+                free(kh_value(hash_to_clean,k));
+        }
+    }
+
+    if (hash_to_clean) kh_destroy(khIntStr, hash_to_clean);
+}

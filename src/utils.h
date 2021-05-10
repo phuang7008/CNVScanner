@@ -142,4 +142,11 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
 void print_string_array(char** strings_in, size_t length_in);
 
 void checkMemoryAllocation(void* newly_created_object, char* message);
+
+/**
+ *  * This is used to free the memory used by the hash_to_clean
+ *   * @param hash_to_clean: a khash_t variable to be cleaned
+ *    */
+void cleanKhashIntStr(khash_t(khIntStr) * hash_to_clean);
+
 #endif //UTILS_H

@@ -25,6 +25,12 @@
 #include "terms.h"
 #include "utility.h"
 
-void processFile(char* chrom_id, char* file_name, Binned_Data_Wrapper* binned_data_wrapper);
+uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends);
+
+void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value, char *file_name);
+
+void outputHashTable(khash_t(khIntStr) *khash_in);
+
+void forDebug();
 
 #endif

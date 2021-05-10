@@ -92,6 +92,8 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             {"min_map_qual",      required_argument,  0,  'm'},
             {"output_dir",        required_argument,  0,  'o'},
             {"reference",         required_argument,  0,  'R'},
+            {"mappability_file",  required_argument,  0,  'M'},
+            {"gc_content_file",   required_argument,  0,  'G'},
             {"ref_version",       required_argument,  0,  'V'},
             {"percentage",        required_argument,  0,  'p'},
             {"excluded_regions",  required_argument,  0,  'e'},
@@ -109,7 +111,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arg = getopt_long_only (argc, argv, "b:de:ghi:m:o:p:Or:R:s:T:V:W", long_options, &option_index);
+        arg = getopt_long_only (argc, argv, "b:de:gG:hi:m:M:o:p:Or:R:s:T:V:W", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (arg == -1) break;
@@ -127,7 +129,8 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 user_inputs->min_base_quality = atoi(optarg);
                 break;
             case 'd': 
-                user_inputs->remove_duplicate = false; break;
+                user_inputs->remove_duplicate = false;
+                break;
             case 'e':
                 EXCLUDED_FILE_PROVIDED = true;
                 user_inputs->excluded_region_file = malloc(strlen(optarg)+1 * sizeof(char));
@@ -136,10 +139,13 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             case 'g':
                 user_inputs->debug_ON = true;
                 break;
+            case 'G':
+                user_inputs->gc_content_file = calloc(strlen(optarg)+1, sizeof(char));
+                strcpy(user_inputs->gc_content_file, optarg);
+                break;
             case 'h': usage(); exit(EXIT_FAILURE);
             case 'i':
                 user_inputs->bam_file = (char *) malloc((strlen(optarg)+1) * sizeof(char));
-
                 strcpy(user_inputs->bam_file, optarg);
                 break;
             case 'm':
@@ -148,6 +154,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                     exit(EXIT_FAILURE);
                 }
                 user_inputs->min_map_quality = atoi(optarg);
+                break;
+            case 'M':
+                user_inputs->mappability_file = calloc(strlen(optarg)+1, sizeof(char));
+                strcpy(user_inputs->mappability_file, optarg);
                 break;
             case 'o':
                 user_inputs->output_dir = (char *) malloc((strlen(optarg)+1) * sizeof(char));
@@ -180,12 +190,14 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 user_inputs->num_of_threads = atoi(optarg);
                 break;
             case 'V':
-                user_inputs->reference_version = optarg;
+                strcpy(user_inputs->reference_version, optarg);
                 break;
-            case 'W': user_inputs->Write_WGS_cov_fasta = true; break;
-            case '?':       //"b:de:hi:m:o:p:Or:R:s:T:W:"
-                if ( optopt == 'b' || optopt == 'i' || optopt == 'm' || optopt == 'e' 
-                        || optopt == 'o' || optopt == 'p' || optopt == 'r'
+            case 'W': 
+                user_inputs->Write_WGS_cov_fasta = true;
+                break;
+            case '?':       //"b:de:gG:hi:m:M:o:p:Or:R:s:T:W:"
+                if ( optopt == 'b' || optopt == 'e' || optopt == 'G' || optopt == 'i' 
+                        || optopt == 'm' || optopt == 'M' || optopt == 'o' || optopt == 'p' || optopt == 'r'
                         || optopt == 'R' || optopt == 's' || optopt == 'T' || optopt == 'V')
                     fprintf(stderr, "ERROR: Option -%c requires an argument.\n", optopt);
                 else if (isprint (optopt))
@@ -329,11 +341,12 @@ void outputUserInputOptions(User_Input *user_inputs) {
         fprintf(stderr, "\tRemove supplementary alignments is OFF\n");
     }
 
-    /*if (user_inputs->primary_chromosomes_only) {
-        fprintf(stderr, "\tUse primary chromosomes for the Uniformity calculation\n");
-    } else {
-        fprintf(stderr, "\tUse All chromosomes for the Uniformity calculation\n");
-    }*/
+    if (user_inputs->mappability_file)
+        fprintf(stderr, "\tThe mappability file used is %s\n", user_inputs->mappability_file);
+    
+    if (user_inputs->gc_content_file)
+        fprintf(stderr, "\tThe GC content file used is %s\n", user_inputs->gc_content_file);
+
     if (user_inputs->debug_ON) {
         fprintf(stderr, "\tThe developer debugging is ON\n");
     } else {
@@ -362,11 +375,13 @@ User_Input * userInputInit() {
     user_inputs->remove_duplicate = true;
     user_inputs->remove_supplementary_alignments = false;
 
-    user_inputs->excluded_region_file = NULL;
     user_inputs->bam_file = NULL;
     user_inputs->output_dir = NULL;
     user_inputs->reference_file = NULL;
-    user_inputs->chromosome_bed_file = NULL;
+    user_inputs->mappability_file = NULL;
+    user_inputs->gc_content_file  = NULL;
+    user_inputs->chromosome_bed_file  = NULL;
+    user_inputs->excluded_region_file = NULL;
 
     user_inputs->reference_version = calloc(10, sizeof(char));
     strcpy(user_inputs->reference_version, "hg38");
@@ -412,8 +427,14 @@ void userInputDestroy(User_Input *user_inputs) {
     if (user_inputs->reference_file)
         free(user_inputs->reference_file);
 
-    if (user_inputs->reference_file)
-        free(user_inputs->reference_file);
+    if (user_inputs->reference_version)
+        free(user_inputs->reference_version);
+
+    if (user_inputs->mappability_file)
+        free(user_inputs->mappability_file);
+
+    if (user_inputs->gc_content_file)
+        free(user_inputs->gc_content_file);
 
     if (user_inputs)
         free(user_inputs);

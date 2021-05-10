@@ -6,8 +6,12 @@ MYSQLLIB=/usr/lib64
 MYLIB=/stornext/snfs130/NGIRD/scratch/phuang/repo/common_libs
 CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
 #CC=/hgsc_software/gcc/gcc-7.3.0/bin/gcc
-#CFLAGS= -g -Wall -O2 -fopenmp
-CFLAGS= -g -Wall -Wextra -O0 -fopenmp
+
+# no compiler optimization
+CFLAGS= -g -Wall -Wextra -fopenmp
+
+# with compiler optimization
+#CFLAGS= -g -Wall -Wextra -O0 -fopenmp
 #CFLAGS= -g3 -gdwarf-2 -fvar-tracking -fvar-tracking-assignments -Wall -O0 -fopenmp
 
 # define any directories containing header files other than /usr/bin

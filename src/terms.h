@@ -73,6 +73,8 @@ typedef struct {
 
     //misc
     char * reference_version;
+    char * mappability_file;
+    char * gc_content_file;
     int8_t min_map_quality;
     int8_t min_base_quality;
     unsigned short num_of_threads;
@@ -97,19 +99,28 @@ typedef struct {
     double   z_score;
     double   ave_coverage;
     double   mappability;
+    double   ave_cov_mappability_normalized;
     double   gc_ratio;
-    double   num_of_reads;
-    double   num_of_reads_map_normalized;
-    double   num_of_reads_map_gc_normalized;
+    double   ave_cov_mappability_gc_normalized;
 } Binned_Data;
 
 typedef struct {
     char * chromosome_id;
+    uint32_t * starts;
+    uint32_t * ends;
     uint32_t size;
     uint32_t capacity;
     Binned_Data * data;     // the order will be sequentially from the small positions to the large positions
 } Binned_Data_Wrapper;
 
+/*typedef struct {
+    char * chrom_id;
+    uint32_t * start;       // array of starts
+    uint32_t * end;         // array of ends (note: start and end should be paired)
+    float * mappability;    // array of mappability
+    uint32_t size;          // array size
+} Raw_Mappability;
+*/
 
 /** define stringArray structure to store the annotation information
  * one for RefSeq, one for CCDS, one for VEGA and one for Gencode, one for miRNA
@@ -129,17 +140,21 @@ KHASH_MAP_INIT_INT(m32, uint32_t)
 KHASH_MAP_INIT_INT(m16, uint16_t)
 KHASH_MAP_INIT_INT(m8, uint16_t)
 
+// khIntStr: the key as 32 bit integer, while the value is the string
+KHASH_MAP_INIT_INT(khIntStr, char*)
+
 /**
  * define a khash like structure that has string as key and various structures as values
  * Note: name part of init must be unique for the key, value types.
  * In our case, 33/32/31 (defined in main.c) are arbitrary symbolic names for hashtables
- * that contains string keys and Low_Coverage_Genes* and int values.
+ * that contains string keys and Temp_Coverage_Array* and int values.
  */
 KHASH_MAP_INIT_STR(khStrStr, char*)
 
 KHASH_MAP_INIT_STR(khStrStrArray, stringArray*)
 
 KHASH_MAP_INIT_STR(str, Temp_Coverage_Array*)
+
 
 /**
  * define a coverage statistics structure for general read stats

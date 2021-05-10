@@ -191,7 +191,6 @@ void processBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_D
                     }
                         
                     insertBinData(start, end, end-start, ave_coverage, binned_data_wraper);
-
                 }
             } else {
                 insertBinData(start, end, end-start, ave_coverage, binned_data_wraper);
@@ -207,8 +206,11 @@ void insertBinData(uint32_t start, uint32_t end, uint32_t length, double ave_cov
     binned_data_wrapper->data[binned_data_wrapper->size].end    = end;
     binned_data_wrapper->data[binned_data_wrapper->size].length = length;
     binned_data_wrapper->data[binned_data_wrapper->size].ave_coverage = ave_coverage;
+    binned_data_wrapper->starts[binned_data_wrapper->size] = start;
+    binned_data_wrapper->ends[binned_data_wrapper->size]   = end;
+
     binned_data_wrapper->size++;
-    fprintf(stderr, "Current size is %d\n", binned_data_wrapper->size);
+    //fprintf(stderr, "Current size is %d\n", binned_data_wrapper->size);
 
 }
 
@@ -221,6 +223,8 @@ void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, char* chrom_id) 
                 chrom_id, binned_data_wrapper->data[i].start, binned_data_wrapper->data[i].end,
                 binned_data_wrapper->data[i].length, binned_data_wrapper->data[i].ave_coverage);
     }
+
+    free(binned_coverage_fp);
 }
 
 void reportStatsForDebugging(Stats_Info *stats_info, User_Input *user_inputs) {
@@ -378,19 +382,37 @@ void binnedDataWrapperInit(Binned_Data_Wrapper** binned_data_wrapper, Chromosome
         strcpy(binned_data_wrapper[i]->chromosome_id, chrom_tracking->chromosome_ids[i]);
         binned_data_wrapper[i]->size = 0;
         binned_data_wrapper[i]->capacity = INIT_BIN_SIZE;
-        binned_data_wrapper[i]->data = calloc(INIT_BIN_SIZE, sizeof(Binned_Data));
+        binned_data_wrapper[i]->data   = calloc(INIT_BIN_SIZE, sizeof(Binned_Data));
+        binned_data_wrapper[i]->starts = calloc(INIT_BIN_SIZE, sizeof(uint32_t));
+        binned_data_wrapper[i]->ends   = calloc(INIT_BIN_SIZE, sizeof(uint32_t));
     }
 }
 
 void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper) {
     if (!binned_data_wrapper) return;
 
-    binned_data_wrapper->data = 
-        realloc(binned_data_wrapper->data, (binned_data_wrapper->capacity + INIT_BIN_SIZE)*sizeof(Binned_Data));
     binned_data_wrapper->capacity += INIT_BIN_SIZE;
 
-    if (binned_data_wrapper->data == NULL) {
-        fprintf(stderr, "ERROR: Dynamic Memory allocation for Binned Blocks failed\n");
+    binned_data_wrapper->data = 
+        realloc(binned_data_wrapper->data, (binned_data_wrapper->capacity)*sizeof(Binned_Data));
+
+    exitWithFailure(binned_data_wrapper->data);
+
+    binned_data_wrapper->starts = 
+        realloc(binned_data_wrapper->starts, (binned_data_wrapper->capacity)*sizeof(uint32_t));
+
+    exitWithFailure(binned_data_wrapper->starts);
+
+    binned_data_wrapper->ends = 
+        realloc(binned_data_wrapper->ends, (binned_data_wrapper->capacity)*sizeof(uint32_t));
+
+    exitWithFailure(binned_data_wrapper->ends);
+
+}
+
+void exitWithFailure(void * data_point_in) {
+    if (data_point_in == NULL) {
+        fprintf(stderr, "ERROR: Dynamic Memory allocation for start positions array\n");
         exit(EXIT_FAILURE);
     }
 }
@@ -400,7 +422,9 @@ void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromos
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         free(binned_data_wrapper[i]->chromosome_id);
+        free(binned_data_wrapper[i]->starts);
         free(binned_data_wrapper[i]->data);
+        free(binned_data_wrapper[i]->ends);
         free(binned_data_wrapper[i]);
     }
     free(binned_data_wrapper);
