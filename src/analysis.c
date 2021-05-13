@@ -224,7 +224,7 @@ void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, char* chrom_id) 
                 binned_data_wrapper->data[i].length, binned_data_wrapper->data[i].ave_coverage);
     }
 
-    free(binned_coverage_fp);
+    if (binned_coverage_fp) fclose(binned_coverage_fp);
 }
 
 void reportStatsForDebugging(Stats_Info *stats_info, User_Input *user_inputs) {

@@ -21,22 +21,8 @@
 #include "fileProcessing.h"
 
 uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends) {
-    char* cmd = calloc(strlen(file_name) * 2, sizeof(char));
-    if (!cmd) { fprintf(stderr, "ERROR: char* memory allocation for cmd failed!"); exit(1); }
-
-    // check file extension
-    //
-    const char* file_extension = getFileExtension(file_name);
-    if (strcmp(file_extension, ".gz") == 0) {
-        sprintf(cmd, "zgrep '^%s' %s", chrom_id, file_name);
-    } else {
-        sprintf(cmd, "grep '^%s' %s", chrom_id, file_name);
-    }
-    fprintf(stderr, "\n%s\n", cmd);
-
-    FILE *fp = NULL;
-    fp = popen(cmd, "r");
-    if (!fp) {perror("popen failed:"); exit(1);}
+    FILE *fp = fopen(file_name, "r");
+    if (!fp) {perror("popen failed:"); exit(EXIT_FAILURE);}
 
     char *line = NULL;
     size_t len = 0;
@@ -55,13 +41,15 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
         line[strcspn(line, "\n")] = 0;
 
         char *savePtr = line;
-        fprintf(stderr, "%s", line);
+        //fprintf(stderr, "%s", line);
         char *dup_line = strdup(line);
 
         uint32_t i=0;
         while ((tokPtr = strtok_r(savePtr, "\t", &savePtr))) {
             if (i == 0) {
                 i++;
+                if (strcmp(chrom_id, tokPtr) != 0)
+                    break;
             } else if (i == 1) {
                 uint32_t start = (uint32_t) strtol(tokPtr, NULL, 10);
 
@@ -77,11 +65,9 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
         free(dup_line);
     }
 
-    if (pclose(fp) == -1)
+    if (fclose(fp) == -1)
         printf("feof=%d ferror=%d: %s\n", feof(fp), ferror(fp), strerror(errno));
-    if (cmd) free(cmd);
     if (line) free(line);
-    if (file_extension) free((void*) file_extension);
 
     return total_items;
 }
