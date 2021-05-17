@@ -217,6 +217,15 @@ int main(int argc, char *argv[]) {
             // now need to do the binning
             //
             printf("Thread %d is conducting binning for chr %s\n", thread_id, chrom_tracking->chromosome_ids[chrom_index]);
+
+            //AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
+            //all_starts_ends_array->capacity = 100000;
+            //all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
+            //all_starts_ends_array->size = 0;
+
+            //khash_t(khIntStr) *binned_starts  = kh_init(khIntStr);      // key: start, value: "start end length ave_cov"
+            //khash_t(khIntStr) *binned_ends    = kh_init(khIntStr);      // key: end,   value: "start end length ave_cov"
+
             coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrapper[chrom_index], chrom_index);
             if (user_inputs->debug_ON)
                 outputBinnedData(binned_data_wrapper[chrom_index], chrom_tracking->chromosome_ids[chrom_index]);
@@ -237,7 +246,9 @@ int main(int argc, char *argv[]) {
               uint32_t total_lines =
                       processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->mappability_file, map_starts, map_ends);
               printf("total lines is %i\n", total_lines);
-              outputHashTable(map_starts);
+              //outputHashTable(map_starts);
+
+              mappabilityNormalization(binned_data_wrapper[chrom_index], map_starts, map_ends, total_lines);
 
               // clean-up
               //

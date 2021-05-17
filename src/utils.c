@@ -27,18 +27,6 @@
 #include "user_inputs.h"
 
 
-void stringArrayDestroy(stringArray *arrayIn) {
-    uint16_t i;
-    for(i=0; i<arrayIn->size; i++) {
-        if (arrayIn->theArray[i]) {
-            free(arrayIn->theArray[i]);
-        }
-    }
-
-    if (arrayIn->theArray != NULL)
-        free(arrayIn->theArray);
-}
-
 void cleanKhashInt(khash_t(m32) *hash_to_clean) {
 	khint_t k;
 	for (k = kh_begin(hash_to_clean); k != kh_end(hash_to_clean); ++k)
@@ -116,6 +104,27 @@ void cleanKhashStrStr(khash_t(khStrStr) * hash_to_clean) {
     }
 
     if (hash_to_clean) kh_destroy(khStrStr, hash_to_clean);
+}
+
+bool checkKhashKey(khash_t(khIntStr) *hash_in, uint32_t key) {
+    khiter_t iter = kh_get(khIntStr, hash_in, key);
+
+    if (iter == kh_end(hash_in))
+        return false;
+
+    return true;
+}
+
+char* getKhashValue(khash_t(khIntStr) *hash_in, uint32_t key) {
+    khiter_t iter = kh_get(khIntStr, hash_in, key);
+
+    if (iter == kh_end(hash_in))
+        return NULL;
+
+    //return strdup(kh_value(hash_in, key));      // need to remember to free the char* in the caller's method
+    char *tmp_str = calloc(strlen(kh_value(hash_in, iter))+1, sizeof(char));
+    strcpy(tmp_str, kh_value(hash_in, iter));
+    return tmp_str;
 }
 
 void statsInfoInit(Stats_Info *stats_info) {
@@ -358,16 +367,28 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
 	fclose(out_fp);
 }
 
-// the following comparison is used to compare the uint32_t array
-//
-int compare(const void * val1, const void * val2) {
-	uint32_t tmp_val1 = *((uint32_t*) val1);
-	uint32_t tmp_val2 = *((uint32_t*) val2);
+void stringArrayInit(StringArray *string_array, uint32_t size_in) {
+    string_array->capacity = size_in;
+    string_array->size = 0;
+    string_array->theArray = calloc(size_in, sizeof(char));
+}
 
-	if (tmp_val1 == tmp_val2) return 0;
-	else if (tmp_val1 < tmp_val2) return -1;
-	else return 1;
-}	
+void splitStringToArray(char* string_to_split, StringArray *string_array) {
+    // since the strtok_r is destructive, so I have to use a copy for this
+    //
+    char *tmp_string = calloc(strlen(string_to_split)+1, sizeof(char));
+    strcpy(tmp_string, string_to_split);
+
+    char *tokPtr;
+    char *savePtr = tmp_string;
+
+    while ((tokPtr = strtok_r(savePtr, "\t", &savePtr))) {
+        string_array->theArray[string_array->size] = strdup(tokPtr);
+        string_array->size++;
+    }
+
+    //if (tmp_string!=NULL) free(tmp_string);
+}
 
 // To view/print the content of string array before OR after sorting
 // Note:  Any arrays will decay to a pointer to the first element when passing to a function.

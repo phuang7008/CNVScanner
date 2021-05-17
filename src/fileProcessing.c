@@ -54,11 +54,11 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
                 uint32_t start = (uint32_t) strtol(tokPtr, NULL, 10);
 
                 // since strtok_r is disruptive, need to use *savePtr instead
-                khashInsertion(starts, start, dup_line, file_name);
+                khashInsertion(starts, start, dup_line);
                 i++;
             } else if (i == 2) {
                 uint32_t end = (uint32_t) strtol(tokPtr, NULL, 10);
-                khashInsertion(ends, end, dup_line, file_name);
+                khashInsertion(ends, end, dup_line);
                 i++;
             }
         }
@@ -72,7 +72,7 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
     return total_items;
 }
 
-void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value, char *file_name) {
+void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value) {
     int absent=0;
     khiter_t iter = kh_put(khIntStr, khash_in, key, &absent);
     if (absent) {
@@ -80,7 +80,7 @@ void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value, char
         kh_value(khash_in, iter) = calloc(strlen(value)+1, sizeof(char));
         strcpy(kh_value(khash_in, iter), value);
     } else {
-        fprintf(stderr, "The file %s is not sorted or merged\n", file_name);
+        fprintf(stderr, "The key %"PRIu32" exist, maybe the input data is not sorted or merged?\n", key);
     }
 }
 

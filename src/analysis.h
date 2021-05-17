@@ -30,7 +30,7 @@
  * @param user_inputs: contains all the user_inputs options
  * @param stats_info: a variable that contains all reads and base information
  */
-void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wraper, int32_t chrom_idx);
+void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx);
 
 /*
  * This is used to generate average coverage information for a range of position based on different binning strategies
@@ -76,6 +76,26 @@ void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromos
 void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper);
 
 void exitWithFailure(void * data_point_in);
+
+/*
+ * This function performs mappability normalization
+ * @param binned_data_wraper: a variable stores the binned results including the normalized data
+ * @param map_starts, a hash table stores start as key, the mappability scale value as value
+ * @param map_ends,   a hash table stores end as key and the mappability as value
+ * @param total_map_line, the total number of entries in the mappability file for this chromosome
+ */ 
+void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *map_starts, khash_t(khIntStr) *map_ends, uint32_t total_map_lines);
+
+/*
+ * This function will generate all starts and ends array from dynamic bins.
+ * It will also also create two hash tables, one for all starts and one for all ends
+ * @param binned_data_wraper: a variable stores the binned results including the normalized data
+ */
+void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *binned_starts, khash_t(khIntStr) *binned_ends, AllStartsEndsArray *all_starts_ends, int type);
+
+void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, char *binned_string, char* map_string, uint32_t current_position, uint32_t prev_start);
+
+void combineAllStartsAndEndsFromOtherSource(AllStartsEndsArray *all_starts_ends_array, khash_t(khIntStr) *hash_in);
 
 
 #endif //UTILS_H

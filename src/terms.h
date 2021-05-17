@@ -95,13 +95,13 @@ typedef struct {
     uint32_t start;
     uint32_t end;
     uint32_t length;
-    double   stdev;
-    double   z_score;
+    //double   stdev;
+    //double   z_score;
     double   ave_coverage;
-    double   mappability;
-    double   ave_cov_mappability_normalized;
-    double   gc_ratio;
-    double   ave_cov_mappability_gc_normalized;
+    //double   mappability;
+    double   ave_cov_map_normalized;
+    //double   gc_ratio;
+    double   ave_cov_map_gc_normalized;
 } Binned_Data;
 
 typedef struct {
@@ -122,14 +122,11 @@ typedef struct {
 } Raw_Mappability;
 */
 
-/** define stringArray structure to store the annotation information
- * one for RefSeq, one for CCDS, one for VEGA and one for Gencode, one for miRNA
- */
 typedef struct {
-    char **theArray;
-    uint16_t capacity;
-    uint16_t size;
-} stringArray;
+    uint32_t * array;
+    uint32_t size;
+    uint32_t capacity;
+} AllStartsEndsArray;
 
 #include "htslib/khash.h"
 
@@ -151,7 +148,7 @@ KHASH_MAP_INIT_INT(khIntStr, char*)
  */
 KHASH_MAP_INIT_STR(khStrStr, char*)
 
-KHASH_MAP_INIT_STR(khStrStrArray, stringArray*)
+KHASH_MAP_INIT_STR(khStrStrArray, StringArray*)
 
 KHASH_MAP_INIT_STR(str, Temp_Coverage_Array*)
 

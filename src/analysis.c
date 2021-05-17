@@ -27,6 +27,7 @@
 #include "terms.h"
 #include "utils.h"
 #include "user_inputs.h"
+#include "fileProcessing.h"
 
 void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx) {
     FILE *wgs_binned_coverage_fp = fopen(user_inputs->wgs_binning_file, "a");
@@ -428,4 +429,146 @@ void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromos
         free(binned_data_wrapper[i]);
     }
     free(binned_data_wrapper);
+}
+
+void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *map_starts, khash_t(khIntStr) *map_ends, uint32_t total_map_lines) {
+    // create an all starts and ends array, the size will be dynamically increased later
+    //
+    AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
+    all_starts_ends_array->capacity = binned_data_wraper->size*2 + total_map_lines;
+    all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
+    all_starts_ends_array->size = 0;
+
+    khash_t(khIntStr) *binned_starts  = kh_init(khIntStr);      // key: start, value: "start end length ave_cov"
+    khash_t(khIntStr) *binned_ends    = kh_init(khIntStr);      // key: end,   value: "start end length ave_cov"
+
+    generateHashFromDynamicBins(binned_data_wraper, binned_starts, binned_ends, all_starts_ends_array, 1);
+    combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, map_starts);
+    combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, map_ends);
+
+    // sort the all_starts_ends_array
+    //
+    qsort(all_starts_ends_array->array, all_starts_ends_array->size, sizeof(uint32_t), compare);
+
+    // do intersect
+    //
+    uint32_t i=0, counter=0;
+    uint32_t prev_start0=0, prev_start1=0, map_position=0;
+
+    for (i=0; i<all_starts_ends_array->size; i++) {
+        if (checkKhashKey(map_ends, all_starts_ends_array->array[i]) || 
+                checkKhashKey(binned_ends, all_starts_ends_array->array[i])) {
+            counter--;
+
+            if (counter == 1) {
+                // the first part of the annotation should come from binned_starts or binned_ends
+                // the second part of the annotation should come from map_starts or map_ends
+                //
+                char *binned_string=NULL, *map_string=NULL;
+
+                if (checkKhashKey(binned_starts, prev_start0))
+                    binned_string = getKhashValue(binned_starts, prev_start0);
+
+                if (checkKhashKey(map_starts, map_position)) {
+                    map_string = getKhashValue(map_starts, map_position);
+                } else if (checkKhashKey(map_ends, map_position)) {
+                    map_string = getKhashValue(map_ends, map_position);
+                }
+
+                generateNormalizedMappabilityForCurrentBin(binned_data_wraper, 
+                        binned_string, map_string, all_starts_ends_array->array[i], prev_start1);
+
+                if (binned_string) free(binned_string);
+                if (map_string) free(map_string);
+            }
+
+            // because bed file starts with 0 (or 0-indxed), so one value will appear in both starts and ends hash-tables
+            // we have to remove those appeas in end position, so the next round, it will be the start position only
+            //
+            khiter_t iter;
+            if (checkKhashKey(map_ends, all_starts_ends_array->array[i])) {
+                iter = kh_get(khIntStr, map_ends, all_starts_ends_array->array[i]);
+                if (iter != kh_end(map_ends))
+                    kh_del(khIntStr, map_ends, iter);
+            } else if (checkKhashKey(binned_ends, all_starts_ends_array->array[i])) {
+                iter = kh_get(khIntStr, binned_ends, all_starts_ends_array->array[i]);
+                if (iter != kh_end(binned_ends))
+                    kh_del(khIntStr, binned_ends, iter);
+            }
+        } else {
+            // it should be in the start position
+            // need to record the start position of current intersect
+            //
+            if (checkKhashKey(binned_starts, all_starts_ends_array->array[i])) {
+                prev_start0 = all_starts_ends_array->array[i];      // this is needed for the dynamic bin annotation
+                counter++;
+                prev_start1 = all_starts_ends_array->array[i];      // this could be either from the dynamic binned or from map
+            } else if (checkKhashKey(map_starts, all_starts_ends_array->array[i])) {
+                counter++;
+                prev_start1 = all_starts_ends_array->array[i];
+            }
+        }
+
+        // need to record the map position of current intersect for the map annotation
+        //
+        if (checkKhashKey(map_ends, all_starts_ends_array->array[i]) || 
+                checkKhashKey(map_starts, all_starts_ends_array->array[i])) {
+            map_position = all_starts_ends_array->array[i];
+        }
+    }
+}
+
+void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, char *bin_string, char* map_string, uint32_t current_position, uint32_t prev_start) {
+    StringArray *binned_array = calloc(1, sizeof(StringArray));
+    stringArrayInit(binned_array, 10);
+    splitStringToArray(bin_string, binned_array);
+
+    StringArray *mapped_array = calloc(1, sizeof(StringArray));
+    stringArrayInit(mapped_array, 10);
+    splitStringToArray(map_string, mapped_array);
+
+    int length = current_position - prev_start;
+    double weighted_mappability = (double)length * strtod(mapped_array->theArray[3], NULL);
+    binned_data_wraper->data[strtoul(mapped_array->theArray[0], NULL, 10)].ave_cov_map_normalized += weighted_mappability;
+
+    // output for debugging
+    //
+    fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, weighted_mappability, bin_string, map_string, binned_data_wraper->data[strtoul(mapped_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
+}
+
+// type 1 is for mappability normalization, while type 2 is for gc normalization
+//
+void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wrapper, khash_t(khIntStr) *binned_starts, khash_t(khIntStr) *binned_ends, AllStartsEndsArray *all_starts_ends_array, int type) {
+    // create a string pointer to store values
+    //
+    char * insert_value = calloc(100, sizeof(char));
+
+    uint32_t i=0;
+    for (i = 0; i < binned_data_wrapper->size; i++) {
+        // Note here we need to store index i to the insert_value for later usage
+        //
+        if (type == 1) {
+            sprintf(insert_value, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f", i, binned_data_wrapper->starts[i], binned_data_wrapper->ends[i], binned_data_wrapper->data[i].ave_coverage);
+        } else {
+            sprintf(insert_value, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f", i, binned_data_wrapper->starts[i], binned_data_wrapper->ends[i], binned_data_wrapper->data[i].ave_cov_map_normalized);
+        }
+
+        khashInsertion(binned_starts, binned_data_wrapper->starts[i], insert_value);
+        khashInsertion(binned_ends, binned_data_wrapper->ends[i], insert_value);
+
+        all_starts_ends_array->array[all_starts_ends_array->size] = binned_data_wrapper->starts[i];
+        all_starts_ends_array->size++;
+        all_starts_ends_array->array[all_starts_ends_array->size] = binned_data_wrapper->ends[i];
+        all_starts_ends_array->size++;
+    }
+}
+
+void combineAllStartsAndEndsFromOtherSource(AllStartsEndsArray *all_starts_ends_array, khash_t(khIntStr) *hash_in) {
+    khiter_t iter;
+    for (iter=kh_begin(hash_in); iter!=kh_end(hash_in); ++iter) {
+        if (kh_exist(hash_in, iter)) {
+            all_starts_ends_array->array[all_starts_ends_array->size] = kh_key(hash_in, iter);
+            all_starts_ends_array->size++;
+        }
+    }
 }

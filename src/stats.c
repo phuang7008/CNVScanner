@@ -86,11 +86,11 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
         //continue;       // in hg37, it is also has supplementary flag set
     }
 
-    if (rec->core.flag & BAM_FSUPPLEMENTARY) {
+    /*if (rec->core.flag & BAM_FSUPPLEMENTARY) {
         tmp_stats_info->read_cov_stats->total_supplementary_reads++;
         //if (user_inputs->remove_supplementary_alignments)
         return;
-    }
+    }*/
 
     // skip if RNAME is "*"
     //

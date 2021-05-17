@@ -27,7 +27,7 @@
 
 uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends);
 
-void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value, char *file_name);
+void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value);
 
 void outputHashTable(khash_t(khIntStr) *khash_in);
 

@@ -23,8 +23,6 @@
 #include <errno.h>
 #include "terms.h"
 
-void stringArrayDestroy(stringArray *arrayIn);
-
 /*
  * it is used to calculation the size of low coverage regions from a StrInt Hash table
  * In addition, it will generate the low coverage regions in sorted order in string format
@@ -39,7 +37,7 @@ uint32_t processLowCovRegionFromKhash(khash_t(khStrInt) *low_cov_regions, char *
  * @param output: combined all low coverage regions
  * @return number of low coverage regions
  */
-uint32_t processLowCovRegionFromStrArray(stringArray *low_cov_regions, char *output);
+uint32_t processLowCovRegionFromStrArray(StringArray *low_cov_regions, char *output);
 
 /*
  * This function is used to clean the khash_t (uint32_t key) hash table used by the users
@@ -134,6 +132,10 @@ uint32_t getHashKey(uint32_t position_in);
 
 void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist);
 
+void splitStringToArray(char* string_to_split, StringArray *string_array);
+
+void stringArrayInit(StringArray *string_array, uint32_t size_in);
+
 /*
  * It is used to print a string array before (OR after sorting) for viewing and comparison.
  * @param strings_in: the string array to be printed!
@@ -142,6 +144,10 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
 void print_string_array(char** strings_in, size_t length_in);
 
 void checkMemoryAllocation(void* newly_created_object, char* message);
+
+bool checkKhashKey(khash_t(khIntStr) *hash_in, uint32_t key);
+
+char* getKhashValue(khash_t(khIntStr) *hash_in, uint32_t key);
 
 /**
  *  * This is used to free the memory used by the hash_to_clean
