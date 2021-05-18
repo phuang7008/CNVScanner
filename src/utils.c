@@ -424,3 +424,8 @@ void cleanKhashIntStr(khash_t(khIntStr) * hash_to_clean) {
 
     if (hash_to_clean) kh_destroy(khIntStr, hash_to_clean);
 }
+
+void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array) {
+    free(all_starts_ends_array->array);
+    free(all_starts_ends_array);
+}

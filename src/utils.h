@@ -155,4 +155,6 @@ char* getKhashValue(khash_t(khIntStr) *hash_in, uint32_t key);
  *    */
 void cleanKhashIntStr(khash_t(khIntStr) * hash_to_clean);
 
+void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array);
+
 #endif //UTILS_H

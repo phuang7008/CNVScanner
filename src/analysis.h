@@ -22,6 +22,7 @@
 #include <ctype.h>		// for isdigit()
 #include <errno.h>
 #include "terms.h"
+#include "utils.h"
 
 /*
  * This is a wrapper function to help generate the coverage range info using writeCoverageRanges()

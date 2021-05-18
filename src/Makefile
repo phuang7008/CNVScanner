@@ -1,5 +1,5 @@
 IDIR=/opt/rh/devtoolset-8/root/usr/include
-CODEDIR=/stornext/snfs130/NGIRD/scratch/phuang/repo/scandium/src/sequenceStats
+CODEDIR=/stornext/snfs130/NGIRD/scratch/phuang/repo/wgs_cnv/src
 HTSDIR=/stornext/snfs130/NGIRD/scratch/phuang/htslib/v1.10.2/htslib
 MYSQLDIR=/usr/include/mysql
 MYSQLLIB=/usr/lib64
@@ -15,21 +15,20 @@ CFLAGS= -g -Wall -Wextra -fopenmp
 #CFLAGS= -g3 -gdwarf-2 -fvar-tracking -fvar-tracking-assignments -Wall -O0 -fopenmp
 
 # define any directories containing header files other than /usr/bin
-INCLUDES= -I$(IDIR) -I$(HTSDIR) -I$(MYSQLDIR) -I$(MYLIB)
+INCLUDES = -I$(IDIR) -I$(HTSDIR) -I$(MYSQLDIR) -I$(MYLIB)
 
 # define library paths in addition to /usr/lib
 LFLAGS = -L$(HTSDIR) -L$(MYSQLLIB) -L$(MYLIB)
 
 # define any libraries to be link into executables:
-#LIBS =  $(HTSDIR)/libhts.a -lm -lz -lpthread -lmysqlclient -lrt -lssl -lcrypto -ldl
 LIBS =  $(HTSDIR)/libhts.a $(MYLIB)/libcov_tracking.a -lm -lz -lpthread -lmysqlclient_r -lrt -lssl -lcrypto -ldl -lcurl -llzma -lbz2
 
 # define dependent header files
-_DEPS = analysis.h excluded_regions.h stats.h terms.h user_inputs.h utility.h data_structure.h utils.h fileProcessing.h
+_DEPS = $(wildcard *.h)
 DEPS=$(patsubst %,$(CODEDIR)/%,$(_DEPS))
 
-# define the C ssource files
-SRCS = main.c analysis.c excluded_regions.c stats.c user_inputs.c utils.c fileProcessing.c
+# define the C source files
+SRCS = $(wildcard *.c)
 
 # define the C object files 
 #
@@ -61,10 +60,11 @@ $(MAIN): $(OBJS)
 # it uses automatic variables $<: the name of the prerequisite of
 # the rule(a .c file) and $@: the name of the target of the rule (a .o file) 
 # (see the gnu make manual section about automatic variables)
-#$(CODEDIR)/%.o: %.c $(DEPS)
-#.c.o:
-.c.o: $(DEPS)
-	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
+#.c.o:		this one will give me the warning: 
+#			ignoring prerequisites on suffix rule definition stackoverflow
+#.c.o: $(DEPS)
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
 
 clean:
 	$(RM) *.o *~ $(MAIN)

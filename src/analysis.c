@@ -516,6 +516,12 @@ void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(k
             map_position = all_starts_ends_array->array[i];
         }
     }
+
+    // clean-up
+    //
+    cleanAllStartsEndsArray(all_starts_ends_array);
+    cleanKhashIntStr(binned_starts);
+    cleanKhashIntStr(binned_ends);
 }
 
 void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, char *bin_string, char* map_string, uint32_t current_position, uint32_t prev_start) {
@@ -539,6 +545,11 @@ void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data
     // output for debugging
     //
     fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, weighted_mappability, bin_string, map_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
+
+    // clean up
+    //
+    stringArrayDestroy(binned_array);
+    stringArrayDestroy(mapped_array);
 }
 
 // type 1 is for mappability normalization, while type 2 is for gc normalization
