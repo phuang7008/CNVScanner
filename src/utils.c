@@ -387,7 +387,8 @@ void splitStringToArray(char* string_to_split, StringArray *string_array) {
         string_array->size++;
     }
 
-    //if (tmp_string!=NULL) free(tmp_string);
+    //if (tmp_string!=NULL)
+    //    free(tmp_string);
 }
 
 // To view/print the content of string array before OR after sorting

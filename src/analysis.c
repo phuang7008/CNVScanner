@@ -527,13 +527,18 @@ void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data
     stringArrayInit(mapped_array, 10);
     splitStringToArray(map_string, mapped_array);
 
+    // Note: the binned_array->theArray[0] is the index to the binned_array_wrapper->data
+    //
     int length = current_position - prev_start;
-    double weighted_mappability = (double)length * strtod(mapped_array->theArray[3], NULL);
-    binned_data_wraper->data[strtoul(mapped_array->theArray[0], NULL, 10)].ave_cov_map_normalized += weighted_mappability;
+    int orig_len = strtoul(binned_array->theArray[2], NULL, 10) - strtoul(binned_array->theArray[1], NULL, 10);
+    double ave = strtod(binned_array->theArray[3], NULL);
+    double map_ratio = strtod(mapped_array->theArray[3], NULL);
+    double weighted_mappability = ((double)length * ave) / (orig_len * map_ratio);
+    binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized += weighted_mappability;
 
     // output for debugging
     //
-    fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, weighted_mappability, bin_string, map_string, binned_data_wraper->data[strtoul(mapped_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
+    fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, weighted_mappability, bin_string, map_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
 }
 
 // type 1 is for mappability normalization, while type 2 is for gc normalization

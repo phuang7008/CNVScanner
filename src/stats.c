@@ -210,14 +210,21 @@ void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *
             //
             pos_r += cln;
 
-        } else if (cop == BAM_CPAD) {
+        } else if (cop == BAM_CPAD || cop == BAM_CHARD_CLIP) {
             // according to the https://www.biostars.org/p/4211/
             // BAM_CPAD shouldn't advance pos_r
             // but according to the samtools specs, it shouldn't consume query also
             //
+            // May 17th 2021, need to add BAM_CHARD_CLIP in for Supplementary Reads
+            // based on the sam.c, the BAM_CHARD_CLIP is handled the same as BAM_CPAD
+            // My own Note: hard clip means the part of the sequence that is hard clipped
+            // from the query sequence. Therefore, it is not part of query anymore
+            // So no need to advance on query sequence anymore
+            //
 
         } else {
-            fprintf(stderr, "bam case not handled: %s\n", rec->data);
+            if (user_inputs->debug_ON)
+                fprintf(stderr, "bam case not handled: %s\tcigar operation:\t%d\t%d\n", rec->data, cop, cln);
         }
     }
 }
