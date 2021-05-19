@@ -367,12 +367,6 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
 	fclose(out_fp);
 }
 
-void stringArrayInit(StringArray *string_array, uint32_t size_in) {
-    string_array->capacity = size_in;
-    string_array->size = 0;
-    string_array->theArray = calloc(size_in, sizeof(char));
-}
-
 void splitStringToArray(char* string_to_split, StringArray *string_array) {
     // since the strtok_r is destructive, so I have to use a copy for this
     //
@@ -426,6 +420,6 @@ void cleanKhashIntStr(khash_t(khIntStr) * hash_to_clean) {
 }
 
 void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array) {
-    free(all_starts_ends_array->array);
-    free(all_starts_ends_array);
+    if (all_starts_ends_array->array) free(all_starts_ends_array->array);
+    if (all_starts_ends_array) free(all_starts_ends_array);
 }

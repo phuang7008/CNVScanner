@@ -435,7 +435,7 @@ void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(k
     // create an all starts and ends array, the size will be dynamically increased later
     //
     AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
-    all_starts_ends_array->capacity = binned_data_wraper->size*2 + total_map_lines;
+    all_starts_ends_array->capacity = binned_data_wraper->size * 2 + total_map_lines * 2;
     all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
     all_starts_ends_array->size = 0;
 
@@ -550,6 +550,12 @@ void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data
     //
     stringArrayDestroy(binned_array);
     stringArrayDestroy(mapped_array);
+
+    if (binned_array)
+        free(binned_array);
+
+    if (mapped_array)
+        free(mapped_array);
 }
 
 // type 1 is for mappability normalization, while type 2 is for gc normalization

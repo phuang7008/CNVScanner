@@ -134,8 +134,6 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
 
 void splitStringToArray(char* string_to_split, StringArray *string_array);
 
-void stringArrayInit(StringArray *string_array, uint32_t size_in);
-
 /*
  * It is used to print a string array before (OR after sorting) for viewing and comparison.
  * @param strings_in: the string array to be printed!
