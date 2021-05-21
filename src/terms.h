@@ -75,6 +75,7 @@ typedef struct {
     char * reference_version;
     char * mappability_file;
     char * gc_content_file;
+    char * normalized_result_file;
     int8_t min_map_quality;
     int8_t min_base_quality;
     unsigned short num_of_threads;

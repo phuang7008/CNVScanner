@@ -148,11 +148,19 @@ bool checkKhashKey(khash_t(khIntStr) *hash_in, uint32_t key);
 char* getKhashValue(khash_t(khIntStr) *hash_in, uint32_t key);
 
 /**
- *  * This is used to free the memory used by the hash_to_clean
- *   * @param hash_to_clean: a khash_t variable to be cleaned
- *    */
+ * This is used to free the memory used by the hash_to_clean
+ * @param hash_to_clean: a khash_t variable to be cleaned
+ */
 void cleanKhashIntStr(khash_t(khIntStr) * hash_to_clean);
 
 void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array);
+
+/*
+ * This function will output final normalized data to the file
+ * @param binned_data_wrapper: a variable that contains the final normalized binned results
+ * @param user_inputs: a variable that contains the user provided options
+ * @param chrom_tracking: a variable that contains the chromosome informaiton to be processed
+ */
+void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input *user_inputs, Chromosome_Tracking *chrom_tracking);
 
 #endif //UTILS_H

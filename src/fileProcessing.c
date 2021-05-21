@@ -40,6 +40,8 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
         //
         line[strcspn(line, "\n")] = 0;
 
+        // since strtok_r is disruptive, need to use *savePtr instead
+        //
         char *savePtr = line;
         //fprintf(stderr, "%s", line);
         char *dup_line = strdup(line);
@@ -53,7 +55,6 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
             } else if (i == 1) {
                 uint32_t start = (uint32_t) strtol(tokPtr, NULL, 10);
 
-                // since strtok_r is disruptive, need to use *savePtr instead
                 khashInsertion(starts, start, dup_line);
                 i++;
             } else if (i == 2) {
@@ -62,7 +63,7 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
                 i++;
             }
         }
-        free(dup_line);
+        if (dup_line) free(dup_line);
     }
 
     if (fclose(fp) == -1)

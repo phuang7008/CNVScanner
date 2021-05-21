@@ -488,12 +488,18 @@ void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(k
             khiter_t iter;
             if (checkKhashKey(map_ends, all_starts_ends_array->array[i])) {
                 iter = kh_get(khIntStr, map_ends, all_starts_ends_array->array[i]);
-                if (iter != kh_end(map_ends))
+                if (iter != kh_end(map_ends)) {
+                    if (kh_value(map_ends, iter))
+                        free(kh_value(map_ends, iter));
                     kh_del(khIntStr, map_ends, iter);
+                }
             } else if (checkKhashKey(binned_ends, all_starts_ends_array->array[i])) {
                 iter = kh_get(khIntStr, binned_ends, all_starts_ends_array->array[i]);
-                if (iter != kh_end(binned_ends))
-                    kh_del(khIntStr, binned_ends, iter);
+                if (iter != kh_end(binned_ends)) {
+                    if (kh_value(binned_ends, iter))
+                        free(kh_value(binned_ends, iter));      // this deletes the value first
+                    kh_del(khIntStr, binned_ends, iter);        // this deletes the key second
+                }
             }
         } else {
             // it should be in the start position
@@ -535,8 +541,8 @@ void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data
 
     // Note: the binned_array->theArray[0] is the index to the binned_array_wrapper->data
     //
-    int length = current_position - prev_start;
-    int orig_len = strtoul(binned_array->theArray[2], NULL, 10) - strtoul(binned_array->theArray[1], NULL, 10);
+    uint32_t length = current_position - prev_start;
+    uint32_t orig_len = strtoul(binned_array->theArray[2], NULL, 10) - strtoul(binned_array->theArray[1], NULL, 10);
     double ave = strtod(binned_array->theArray[3], NULL);
     double map_ratio = strtod(mapped_array->theArray[3], NULL);
     double weighted_mappability = ((double)length * ave) / (orig_len * map_ratio);
@@ -544,7 +550,7 @@ void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data
 
     // output for debugging
     //
-    fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, weighted_mappability, bin_string, map_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
+    fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, length, weighted_mappability, bin_string, map_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
 
     // clean up
     //
@@ -583,6 +589,8 @@ void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wrapper, khash
         all_starts_ends_array->array[all_starts_ends_array->size] = binned_data_wrapper->ends[i];
         all_starts_ends_array->size++;
     }
+
+    if (insert_value) free(insert_value);
 }
 
 void combineAllStartsAndEndsFromOtherSource(AllStartsEndsArray *all_starts_ends_array, khash_t(khIntStr) *hash_in) {

@@ -273,6 +273,10 @@ int main(int argc, char *argv[]) {
     //
     reportStatsForDebugging(stats_info, user_inputs);
 
+    // output final normalized binned results
+    //
+    outputFinalBinnedData(binned_data_wrapper, user_inputs, chrom_tracking);
+
     // clean up
     //
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);

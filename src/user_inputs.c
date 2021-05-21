@@ -278,6 +278,11 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     sprintf(string_to_add, ".WGS_binned_data_REPORT.txt");
     createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_binning_file, string_to_add, VERSION_);
 
+    // output normalized binned result fil
+    //
+    sprintf(string_to_add, ".WGS_normalized_binned_results.txt");
+    createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->normalized_result_file, string_to_add, VERSION_);
+
     // for whole genome (wgs) file name
     if (user_inputs->Write_WGS_cov_fasta) {
         createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_cov_file, ".WGS_cov.fasta", VERSION_);
@@ -382,6 +387,7 @@ User_Input * userInputInit() {
     user_inputs->gc_content_file  = NULL;
     user_inputs->chromosome_bed_file  = NULL;
     user_inputs->excluded_region_file = NULL;
+    user_inputs->normalized_result_file = NULL;
 
     user_inputs->reference_version = calloc(10, sizeof(char));
     strcpy(user_inputs->reference_version, "hg38");
@@ -435,6 +441,9 @@ void userInputDestroy(User_Input *user_inputs) {
 
     if (user_inputs->gc_content_file)
         free(user_inputs->gc_content_file);
+
+    if (user_inputs->normalized_result_file)
+        free(user_inputs->normalized_result_file);
 
     if (user_inputs)
         free(user_inputs);

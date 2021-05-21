@@ -381,8 +381,8 @@ void splitStringToArray(char* string_to_split, StringArray *string_array) {
         string_array->size++;
     }
 
-    //if (tmp_string!=NULL)
-    //    free(tmp_string);
+    if (tmp_string!=NULL)
+        free(tmp_string);
 }
 
 // To view/print the content of string array before OR after sorting
@@ -422,4 +422,20 @@ void cleanKhashIntStr(khash_t(khIntStr) * hash_to_clean) {
 void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array) {
     if (all_starts_ends_array->array) free(all_starts_ends_array->array);
     if (all_starts_ends_array) free(all_starts_ends_array);
+}
+
+void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input *user_inputs, Chromosome_Tracking *chrom_tracking) {
+    FILE *fp = fopen(user_inputs->normalized_result_file, "w");
+    uint32_t i=0, j=0;
+
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        for (j=0; j<binned_data_wrapper[i]->size; j++) {
+            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%.2f\t%.2f\n", 
+                binned_data_wrapper[i]->chromosome_id, binned_data_wrapper[i]->data[j].start, 
+                binned_data_wrapper[i]->data[j].end, binned_data_wrapper[i]->data[j].length,
+                binned_data_wrapper[i]->data[j].ave_coverage,
+                binned_data_wrapper[i]->data[j].ave_cov_map_normalized,
+                binned_data_wrapper[i]->data[j].ave_cov_map_gc_normalized);
+        }
+    }
 }
