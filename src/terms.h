@@ -99,7 +99,7 @@ typedef struct {
     //double   stdev;
     //double   z_score;
     double   ave_coverage;
-    //double   mappability;
+    double   weighted_mappability;
     double   ave_cov_map_normalized;
     //double   gc_ratio;
     double   ave_cov_map_gc_normalized;
