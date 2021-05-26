@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
               printf("The total number of mappability lines is %i\n", total_lines);
               //outputHashTable(map_starts, 1);
 
-              mappabilityGcNormalization(binned_data_wrapper[chrom_index], map_starts, map_ends, total_lines, 1);
+              mappabilityGcNormalization(binned_data_wrapper[chrom_index], user_inputs, map_starts, map_ends, total_lines, 1);
 
               // clean-up
               //
@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) {
               printf("The total number of GC%% lines is %i\n", total_lines);
               outputHashTable(gc_starts, 2);
 
-              mappabilityGcNormalization(binned_data_wrapper[chrom_index], gc_starts, gc_ends, total_lines, 2);
+              mappabilityGcNormalization(binned_data_wrapper[chrom_index], user_inputs, gc_starts, gc_ends, total_lines, 2);
 
               // clean-up
               //

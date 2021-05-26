@@ -82,19 +82,21 @@ void exitWithFailure(void * data_point_in);
  * This function performs mappability or GC% normalization
  * @param binned_data_wraper: a variable stores the binned results including the normalized data
  * @param starts, a hash table stores start as key, the mappability/GC% scale value as value
+ * @param user_inputs, a variable to store all user's inputs
  * @param ends,   a hash table stores end as key and the mappability/GC% as value
  * @param totalline, the total number of entries in the mappability or GC% file for this chromosome
  */ 
-void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *starts, khash_t(khIntStr) *ends, uint32_t total_lines, int type);
+void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, khash_t(khIntStr) *starts, khash_t(khIntStr) *ends, uint32_t total_lines, int type);
 
 /*
  * This function will generate all starts and ends array from dynamic bins.
  * It will also also create two hash tables, one for all starts and one for all ends
  * @param binned_data_wraper: a variable stores the binned results including the normalized data
+ * @param user_inputs, a variable to store all user's inputs
  */
-void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *binned_starts, khash_t(khIntStr) *binned_ends, AllStartsEndsArray *all_starts_ends, int type);
+void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, char *bin_string, char* map_gc_string, uint32_t current_position, uint32_t prev_start, int type);
 
-void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, char *binned_string, char* map_string, uint32_t current_position, uint32_t prev_start, int type);
+void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wrapper, khash_t(khIntStr) *binned_starts, khash_t(khIntStr) *binned_ends, AllStartsEndsArray *all_starts_ends_array, int type);
 
 void combineAllStartsAndEndsFromOtherSource(AllStartsEndsArray *all_starts_ends_array, khash_t(khIntStr) *hash_in);
 

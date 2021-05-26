@@ -282,6 +282,7 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     char string_to_add[350];
 
     // output WGS coverage summary report
+    //
     sprintf(string_to_add, ".WGS_Coverage_Summary_Report.txt");
     createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_cov_report, string_to_add, VERSION_);
 
@@ -299,6 +300,12 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     if (user_inputs->Write_WGS_cov_fasta) {
         createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_cov_file, ".WGS_cov.fasta", VERSION_);
         //printf("Create wgs file name %s\n", user_inputs->wgs_file);
+    }
+
+    // output the mappability and gc% detailed calculation results
+    //
+    if (user_inputs->debug_ON) {
+        createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->map_gc_details_file, ".map_gc_calculation_details.txt", VERSION_);
     }
 
     // KEEP the following Please!
@@ -398,6 +405,7 @@ User_Input * userInputInit() {
     user_inputs->mappability_file = NULL;
     user_inputs->gc_content_file  = NULL;
     user_inputs->chromosome_bed_file  = NULL;
+    user_inputs->map_gc_details_file  = NULL;
     user_inputs->excluded_region_file = NULL;
     user_inputs->normalized_result_file = NULL;
 
@@ -453,6 +461,9 @@ void userInputDestroy(User_Input *user_inputs) {
 
     if (user_inputs->gc_content_file)
         free(user_inputs->gc_content_file);
+
+    if (user_inputs->map_gc_details_file)
+        free(user_inputs->map_gc_details_file);
 
     if (user_inputs->normalized_result_file)
         free(user_inputs->normalized_result_file);
