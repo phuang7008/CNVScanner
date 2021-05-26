@@ -79,13 +79,13 @@ void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper);
 void exitWithFailure(void * data_point_in);
 
 /*
- * This function performs mappability normalization
+ * This function performs mappability or GC% normalization
  * @param binned_data_wraper: a variable stores the binned results including the normalized data
- * @param map_starts, a hash table stores start as key, the mappability scale value as value
- * @param map_ends,   a hash table stores end as key and the mappability as value
- * @param total_map_line, the total number of entries in the mappability file for this chromosome
+ * @param starts, a hash table stores start as key, the mappability/GC% scale value as value
+ * @param ends,   a hash table stores end as key and the mappability/GC% as value
+ * @param totalline, the total number of entries in the mappability or GC% file for this chromosome
  */ 
-void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *map_starts, khash_t(khIntStr) *map_ends, uint32_t total_map_lines);
+void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *starts, khash_t(khIntStr) *ends, uint32_t total_lines, int type);
 
 /*
  * This function will generate all starts and ends array from dynamic bins.
@@ -94,7 +94,7 @@ void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(k
  */
 void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *binned_starts, khash_t(khIntStr) *binned_ends, AllStartsEndsArray *all_starts_ends, int type);
 
-void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, char *binned_string, char* map_string, uint32_t current_position, uint32_t prev_start);
+void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, char *binned_string, char* map_string, uint32_t current_position, uint32_t prev_start, int type);
 
 void combineAllStartsAndEndsFromOtherSource(AllStartsEndsArray *all_starts_ends_array, khash_t(khIntStr) *hash_in);
 

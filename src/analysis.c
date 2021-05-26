@@ -431,20 +431,20 @@ void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromos
     free(binned_data_wrapper);
 }
 
-void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *map_starts, khash_t(khIntStr) *map_ends, uint32_t total_map_lines) {
+void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(khIntStr) *starts, khash_t(khIntStr) *ends, uint32_t total_lines, int type) {
     // create an all starts and ends array, the size will be dynamically increased later
     //
     AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
-    all_starts_ends_array->capacity = binned_data_wraper->size * 2 + total_map_lines * 2;
+    all_starts_ends_array->capacity = binned_data_wraper->size * 2 + total_lines * 2;
     all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
     all_starts_ends_array->size = 0;
 
     khash_t(khIntStr) *binned_starts  = kh_init(khIntStr);      // key: start, value: "start end length ave_cov"
     khash_t(khIntStr) *binned_ends    = kh_init(khIntStr);      // key: end,   value: "start end length ave_cov"
 
-    generateHashFromDynamicBins(binned_data_wraper, binned_starts, binned_ends, all_starts_ends_array, 1);
-    combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, map_starts);
-    combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, map_ends);
+    generateHashFromDynamicBins(binned_data_wraper, binned_starts, binned_ends, all_starts_ends_array, type);
+    combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, starts);
+    combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, ends);
 
     // sort the all_starts_ends_array
     //
@@ -453,45 +453,45 @@ void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(k
     // do intersect
     //
     uint32_t i=0, counter=0;
-    uint32_t prev_start0=0, prev_start1=0, map_position=0;
+    uint32_t prev_start0=0, prev_start1=0, map_gc_position=0;
 
     for (i=0; i<all_starts_ends_array->size; i++) {
-        if (checkKhashKey(map_ends, all_starts_ends_array->array[i]) || 
+        if (checkKhashKey(ends, all_starts_ends_array->array[i]) || 
                 checkKhashKey(binned_ends, all_starts_ends_array->array[i])) {
             counter--;
 
             if (counter == 1) {
                 // the first part of the annotation should come from binned_starts or binned_ends
-                // the second part of the annotation should come from map_starts or map_ends
+                // the second part of the annotation should come from starts or ends
                 //
-                char *binned_string=NULL, *map_string=NULL;
+                char *binned_string=NULL, *map_gc_string=NULL;
 
                 if (checkKhashKey(binned_starts, prev_start0))
                     binned_string = getKhashValue(binned_starts, prev_start0);
 
-                if (checkKhashKey(map_starts, map_position)) {
-                    map_string = getKhashValue(map_starts, map_position);
-                } else if (checkKhashKey(map_ends, map_position)) {
-                    map_string = getKhashValue(map_ends, map_position);
+                if (checkKhashKey(starts, map_gc_position)) {
+                    map_gc_string = getKhashValue(starts, map_gc_position);
+                } else if (checkKhashKey(ends, map_gc_position)) {
+                    map_gc_string = getKhashValue(ends, map_gc_position);
                 }
 
                 generateNormalizedMappabilityForCurrentBin(binned_data_wraper, 
-                        binned_string, map_string, all_starts_ends_array->array[i], prev_start1);
+                        binned_string, map_gc_string, all_starts_ends_array->array[i], prev_start1, type);
 
                 if (binned_string) free(binned_string);
-                if (map_string) free(map_string);
+                if (map_gc_string) free(map_gc_string);
             }
 
             // because bed file starts with 0 (or 0-indxed), so one value will appear in both starts and ends hash-tables
             // we have to remove those appeas in end position, so the next round, it will be the start position only
             //
             khiter_t iter;
-            if (checkKhashKey(map_ends, all_starts_ends_array->array[i])) {
-                iter = kh_get(khIntStr, map_ends, all_starts_ends_array->array[i]);
-                if (iter != kh_end(map_ends)) {
-                    if (kh_value(map_ends, iter))
-                        free(kh_value(map_ends, iter));
-                    kh_del(khIntStr, map_ends, iter);
+            if (checkKhashKey(ends, all_starts_ends_array->array[i])) {
+                iter = kh_get(khIntStr, ends, all_starts_ends_array->array[i]);
+                if (iter != kh_end(ends)) {
+                    if (kh_value(ends, iter))
+                        free(kh_value(ends, iter));
+                    kh_del(khIntStr, ends, iter);
                 }
             } else if (checkKhashKey(binned_ends, all_starts_ends_array->array[i])) {
                 iter = kh_get(khIntStr, binned_ends, all_starts_ends_array->array[i]);
@@ -509,17 +509,17 @@ void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(k
                 prev_start0 = all_starts_ends_array->array[i];      // this is needed for the dynamic bin annotation
                 counter++;
                 prev_start1 = all_starts_ends_array->array[i];      // this could be either from the dynamic binned or from map
-            } else if (checkKhashKey(map_starts, all_starts_ends_array->array[i])) {
+            } else if (checkKhashKey(starts, all_starts_ends_array->array[i])) {
                 counter++;
                 prev_start1 = all_starts_ends_array->array[i];
             }
         }
 
-        // need to record the map position of current intersect for the map annotation
+        // need to record the map/gc% position of current intersect for the map annotation
         //
-        if (checkKhashKey(map_ends, all_starts_ends_array->array[i]) || 
-                checkKhashKey(map_starts, all_starts_ends_array->array[i])) {
-            map_position = all_starts_ends_array->array[i];
+        if (checkKhashKey(ends, all_starts_ends_array->array[i]) || 
+                checkKhashKey(starts, all_starts_ends_array->array[i])) {
+            map_gc_position = all_starts_ends_array->array[i];
         }
     }
 
@@ -530,39 +530,52 @@ void mappabilityNormalization(Binned_Data_Wrapper *binned_data_wraper, khash_t(k
     cleanKhashIntStr(binned_ends);
 }
 
-void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, char *bin_string, char* map_string, uint32_t current_position, uint32_t prev_start) {
+void generateNormalizedMappabilityForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, char *bin_string, char* map_gc_string, uint32_t current_position, uint32_t prev_start, int type) {
     StringArray *binned_array = calloc(1, sizeof(StringArray));
     stringArrayInit(binned_array, 10);
     splitStringToArray(bin_string, binned_array);
 
-    StringArray *mapped_array = calloc(1, sizeof(StringArray));
-    stringArrayInit(mapped_array, 10);
-    splitStringToArray(map_string, mapped_array);
+    StringArray *map_gc_array = calloc(1, sizeof(StringArray));
+    stringArrayInit(map_gc_array, 10);
+    splitStringToArray(map_gc_string, map_gc_array);
 
     // Note: the binned_array->theArray[0] is the index to the binned_array_wrapper->data
     //
     uint32_t length = current_position - prev_start;
     uint32_t orig_len = strtoul(binned_array->theArray[2], NULL, 10) - strtoul(binned_array->theArray[1], NULL, 10);
     double ave = strtod(binned_array->theArray[3], NULL);
-    double map_ratio = strtod(mapped_array->theArray[3], NULL);
-    binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += ((double) length / (double)orig_len) * map_ratio;
-    binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized = 
-        ave / binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability;
+    double scale_ratio = strtod(map_gc_array->theArray[3], NULL);
 
     // output for debugging
     //
-    fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, bin_string, map_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
+    if (type == 1) {
+        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += ((double) length / (double)orig_len) * scale_ratio;
+        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized = 
+            ave / binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability;
+
+        // output for debugging
+        //
+        fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
+    } else {
+        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale += ((double) length / (double)orig_len) * scale_ratio;
+        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized =
+            ave * binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale;
+
+        // output for debugging
+        //
+        fprintf(stderr, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized);
+    }
 
     // clean up
     //
     stringArrayDestroy(binned_array);
-    stringArrayDestroy(mapped_array);
+    stringArrayDestroy(map_gc_array);
 
     if (binned_array)
         free(binned_array);
 
-    if (mapped_array)
-        free(mapped_array);
+    if (map_gc_array)
+        free(map_gc_array);
 }
 
 // type 1 is for mappability normalization, while type 2 is for gc normalization

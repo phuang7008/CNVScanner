@@ -96,12 +96,10 @@ typedef struct {
     uint32_t start;
     uint32_t end;
     uint32_t length;
-    //double   stdev;
-    //double   z_score;
     double   ave_coverage;
     double   weighted_mappability;
     double   ave_cov_map_normalized;
-    //double   gc_ratio;
+    double   weighted_gc_scale;
     double   ave_cov_map_gc_normalized;
 } Binned_Data;
 
@@ -113,15 +111,6 @@ typedef struct {
     uint32_t capacity;
     Binned_Data * data;     // the order will be sequentially from the small positions to the large positions
 } Binned_Data_Wrapper;
-
-/*typedef struct {
-    char * chrom_id;
-    uint32_t * start;       // array of starts
-    uint32_t * end;         // array of ends (note: start and end should be paired)
-    float * mappability;    // array of mappability
-    uint32_t size;          // array size
-} Raw_Mappability;
-*/
 
 typedef struct {
     uint32_t * array;

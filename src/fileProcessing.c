@@ -22,7 +22,7 @@
 
 uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends) {
     FILE *fp = fopen(file_name, "r");
-    if (!fp) {perror("popen failed:"); exit(EXIT_FAILURE);}
+    if (!fp) { fprintf(stderr, "fopen failed:"); exit(EXIT_FAILURE); }
 
     char *line = NULL;
     size_t len = 0;
@@ -85,8 +85,14 @@ void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value) {
     }
 }
 
-void outputHashTable(khash_t(khIntStr) * khash_in) {
-    FILE *out_file = fopen("mappability_output_test.txt", "w");
+void outputHashTable(khash_t(khIntStr) * khash_in, int type) {
+    FILE *out_file;
+    if (type == 1) {
+        out_file = fopen("mappability_output_test.txt", "w");
+    } else {
+        out_file = fopen("gc_content_output_test.txt", "w");
+    }
+
     if (out_file == NULL) fprintf(stderr, "Open mappability file writing failed\n");
 
     fprintf(stderr, "start writing\n");

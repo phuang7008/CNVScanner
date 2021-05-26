@@ -239,16 +239,17 @@ int main(int argc, char *argv[]) {
 
             // now handling mappability normalization
             //
+            uint32_t total_lines;
             if (user_inputs->mappability_file) {
               khash_t(khIntStr) * map_starts = kh_init(khIntStr);
               khash_t(khIntStr) * map_ends   = kh_init(khIntStr);
 
-              uint32_t total_lines =
-                      processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->mappability_file, map_starts, map_ends);
-              printf("total lines is %i\n", total_lines);
-              //outputHashTable(map_starts);
+              total_lines =
+                    processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->mappability_file, map_starts, map_ends);
+              printf("The total number of mappability lines is %i\n", total_lines);
+              //outputHashTable(map_starts, 1);
 
-              mappabilityNormalization(binned_data_wrapper[chrom_index], map_starts, map_ends, total_lines);
+              mappabilityGcNormalization(binned_data_wrapper[chrom_index], map_starts, map_ends, total_lines, 1);
 
               // clean-up
               //
@@ -258,6 +259,23 @@ int main(int argc, char *argv[]) {
 
             // GC normalization section
             //
+            if (user_inputs->gc_content_file) {
+              khash_t(khIntStr) *gc_starts = kh_init(khIntStr);
+              khash_t(khIntStr) *gc_ends   = kh_init(khIntStr);
+
+              total_lines =
+                  processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->gc_content_file, gc_starts, gc_ends);
+
+              printf("The total number of GC%% lines is %i\n", total_lines);
+              outputHashTable(gc_starts, 2);
+
+              mappabilityGcNormalization(binned_data_wrapper[chrom_index], gc_starts, gc_ends, total_lines, 2);
+
+              // clean-up
+              //
+              cleanKhashIntStr(gc_starts);
+              cleanKhashIntStr(gc_ends);
+            }
           }
         }
         //printf("\n");

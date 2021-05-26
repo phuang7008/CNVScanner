@@ -430,9 +430,11 @@ void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input
 
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         for (j=0; j<binned_data_wrapper[i]->size; j++) {
-            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%.2f\t%.2f\n", 
+            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", 
                 binned_data_wrapper[i]->chromosome_id, binned_data_wrapper[i]->data[j].start, 
                 binned_data_wrapper[i]->data[j].end, binned_data_wrapper[i]->data[j].length,
+                binned_data_wrapper[i]->data[j].weighted_mappability,
+                binned_data_wrapper[i]->data[j].weighted_gc_scale,
                 binned_data_wrapper[i]->data[j].ave_coverage,
                 binned_data_wrapper[i]->data[j].ave_cov_map_normalized,
                 binned_data_wrapper[i]->data[j].ave_cov_map_gc_normalized);

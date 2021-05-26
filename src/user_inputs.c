@@ -43,6 +43,8 @@ void usage() {
     printf("                        It Is Mandatory\n");
     printf("--output_dir        -o  output directory. It Is Mandatory\n");
     printf("--average_coverage  -a  the average coverage of current sample. It Is Mandatory\n");
+    printf("--mappability_file  -M  the genomic mappability file. It Is Mandatory\n");
+    printf("--gc_content_file   -G  the genomic GC%% file. It Is Mandatory\n");
     printf("--reference         -R  the file path of the reference sequence. \n");
     printf("                        It is Mandatory for CRAM files\n\n");
 
@@ -222,6 +224,16 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
 
     if (user_inputs->average_coverage == -1) {
         fprintf(stderr, "ERROR: --average_coverage (or -a)\toption is mandatory!\n");
+        input_error_flag=true;
+    }
+
+    if (user_inputs->mappability_file == NULL) {
+        fprintf(stderr, "ERROR: --mappability_file (or -M)\toption is mandatory!\n");
+        input_error_flag=true;
+    }
+
+    if (user_inputs->mappability_file == NULL) {
+        fprintf(stderr, "ERROR: --gc_content_file (or -G)\toption is mandatory!\n");
         input_error_flag=true;
     }
 
