@@ -29,15 +29,15 @@
 #include "user_inputs.h"
 #include "fileProcessing.h"
 
-void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx) {
+void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx, int thread_id) {
     FILE *wgs_binned_coverage_fp = fopen(user_inputs->wgs_binning_file, "a");
 
-    writeCoverageBins(0, chrom_tracking->chromosome_lengths[chrom_idx], chrom_tracking, chrom_idx, user_inputs, stats_info, wgs_binned_coverage_fp, binned_data_wrapper);
+    writeCoverageBins(0, chrom_tracking->chromosome_lengths[chrom_idx], chrom_tracking, chrom_idx, user_inputs, stats_info, wgs_binned_coverage_fp, binned_data_wrapper, thread_id);
 
     fclose(wgs_binned_coverage_fp);
 }
 
-void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage, Binned_Data_Wrapper *binned_data_wraper) {
+void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage, Binned_Data_Wrapper *binned_data_wraper, int thread_id) {
     // NOTE: for the bed format, the end position is included!
     // next, we need to provide various boundaries for binning
     //       haploid             diploid               duplication               10x of haploid         anything > 10x of haploid
@@ -47,9 +47,10 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
     double dip_upper  = user_inputs->average_coverage * 1.32;   // from paper
     double dup_upper = user_inputs->average_coverage * 10 / 2;
 
-    fprintf(stderr, "#haploid upper bound is:\t%f\n", hap_upper);
-    fprintf(stderr, "#diploid upper bound is:\t%f\n", dip_upper);
-    fprintf(stderr, "#dup upper bound is:\t%f\n", dup_upper);
+    fprintf(stderr, "For chromosome %s using thread %d\n", chrom_tracking->chromosome_ids[chrom_idx], thread_id);
+    fprintf(stderr, "\t#haploid upper bound is:\t%f \n", hap_upper);
+    fprintf(stderr, "\t#diploid upper bound is:\t%f \n", dip_upper);
+    fprintf(stderr, "\t#dup upper bound is:\t%f \n", dup_upper);
 
     uint32_t i=0;
     for (i=begin; i<begin+length; i++) {
@@ -213,19 +214,6 @@ void insertBinData(uint32_t start, uint32_t end, uint32_t length, double ave_cov
     binned_data_wrapper->size++;
     //fprintf(stderr, "Current size is %d\n", binned_data_wrapper->size);
 
-}
-
-void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, char* chrom_id) {
-    FILE *binned_coverage_fp = fopen("Binned_Data.txt", "w");
-
-    uint32_t i;
-    for (i=0; i<binned_data_wrapper->size; i++) {
-        fprintf(binned_coverage_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n", 
-                chrom_id, binned_data_wrapper->data[i].start, binned_data_wrapper->data[i].end,
-                binned_data_wrapper->data[i].length, binned_data_wrapper->data[i].ave_coverage);
-    }
-
-    if (binned_coverage_fp) fclose(binned_coverage_fp);
 }
 
 void reportStatsForDebugging(Stats_Info *stats_info, User_Input *user_inputs) {
@@ -548,7 +536,10 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
 
     // output for debugging
     //
-    if (user_inputs->debug_ON) FILE *fp = fopen(user_inputs->map_gc_details_file, "a");
+    FILE *fp=NULL;
+    if (user_inputs->debug_ON) 
+        fp = fopen(user_inputs->map_gc_details_file, "a");
+
     if (type == 1) {
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += ((double) length / (double)orig_len) * scale_ratio;
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized = 
@@ -571,7 +562,7 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
 
     }
 
-    if (user_inputs->debug_ON) fclose(fp);
+    if (fp != NULL) fclose(fp);
 
     // clean up
     //

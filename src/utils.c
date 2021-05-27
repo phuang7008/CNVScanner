@@ -25,6 +25,7 @@
 #include "terms.h"
 #include "utils.h"
 #include "user_inputs.h"
+#include "utility.h"
 
 
 void cleanKhashInt(khash_t(m32) *hash_to_clean) {
@@ -434,14 +435,50 @@ void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input
 
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         for (j=0; j<binned_data_wrapper[i]->size; j++) {
-            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", 
+            // need to round the final normalized data for stats analysis
+            //
+            uint32_t round_normalized_value = (uint32_t) (binned_data_wrapper[i]->data[j].ave_cov_map_gc_normalized + 0.5);
+
+            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%"PRIu32"\n", 
                 binned_data_wrapper[i]->chromosome_id, binned_data_wrapper[i]->data[j].start, 
                 binned_data_wrapper[i]->data[j].end, binned_data_wrapper[i]->data[j].length,
                 binned_data_wrapper[i]->data[j].weighted_mappability,
                 binned_data_wrapper[i]->data[j].weighted_gc_scale,
                 binned_data_wrapper[i]->data[j].ave_coverage,
                 binned_data_wrapper[i]->data[j].ave_cov_map_normalized,
-                binned_data_wrapper[i]->data[j].ave_cov_map_gc_normalized);
+                binned_data_wrapper[i]->data[j].ave_cov_map_gc_normalized, round_normalized_value);
         }
+    }
+}
+
+void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, char* chrom_id, User_Input *user_inputs) {
+    FILE *binned_coverage_fp = fopen(user_inputs->merged_bin_file, "a");
+                    
+    uint32_t i;
+    for (i=0; i<binned_data_wrapper->size; i++) {
+        fprintf(binned_coverage_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n",
+                chrom_id, binned_data_wrapper->data[i].start, binned_data_wrapper->data[i].end,
+                binned_data_wrapper->data[i].length, binned_data_wrapper->data[i].ave_coverage);
+    }
+
+    if (binned_coverage_fp) fclose(binned_coverage_fp);
+}
+
+void removeDebugFiles(User_Input *user_inputs) {
+    if (user_inputs->debug_ON) {
+        if (user_inputs->merged_bin_file && checkFile(user_inputs->merged_bin_file))
+            remove(user_inputs->merged_bin_file);
+        
+        if (user_inputs->map_gc_details_file && checkFile(user_inputs->map_gc_details_file))
+            remove(user_inputs->map_gc_details_file);
+                
+        if (user_inputs->normalized_result_file && checkFile(user_inputs->normalized_result_file))
+            remove(user_inputs->normalized_result_file);
+
+        if (user_inputs->mappability_outfile && checkFile(user_inputs->mappability_outfile))
+            remove(user_inputs->mappability_outfile);
+
+        if (user_inputs->gc_content_outfile && checkFile(user_inputs->gc_content_outfile))
+            remove(user_inputs->gc_content_outfile);
     }
 }

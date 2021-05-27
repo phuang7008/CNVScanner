@@ -73,9 +73,12 @@ typedef struct {
 
     //misc
     char * reference_version;
-    char * mappability_file;
-    char * gc_content_file;
+    char * mappability_file;            // input mappability file
+    char * mappability_outfile;         // output mappability file for debugging
+    char * gc_content_file;             // input GC% scale file
+    char * gc_content_outfile;          // output GC% scale file for debugging
     char * map_gc_details_file;         // output map and gc calculation details
+    char * merged_bin_file;             // output the merged binned data from raw binned data
     char * normalized_result_file;
     int8_t min_map_quality;
     int8_t min_base_quality;

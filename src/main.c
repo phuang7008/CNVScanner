@@ -160,8 +160,12 @@ int main(int argc, char *argv[]) {
 
     // The following is for debugging purpose
     //
-    findDebugPoint();
-    forDebug();
+    if (user_inputs->debug_ON) {
+        findDebugPoint();
+        forDebug();
+
+        removeDebugFiles(user_inputs);
+    }
 
     fflush(stdout);
 
@@ -191,7 +195,7 @@ int main(int argc, char *argv[]) {
           {
             //int num_of_threads = omp_get_num_threads();
             int thread_id = omp_get_thread_num();
-            //printf("Before File Reading: current thread id is %d\n", thread_id);
+            printf("Current thread id: %d\n", thread_id);
 
             // get the iterator for the current chromosome
             //
@@ -210,7 +214,7 @@ int main(int argc, char *argv[]) {
             bam_destroy1(b);
             hts_itr_destroy(iter);
 
-            printf("Set all excluded region bases to -1\n");
+            //printf("Set all excluded region bases to -1\n");
             if (user_inputs->excluded_region_file)
             zeroAllNsRegions(chrom_tracking->chromosome_ids[chrom_index], excluded_bed_info, chrom_tracking, target_buffer_status, -1);
 
@@ -226,9 +230,9 @@ int main(int argc, char *argv[]) {
             //khash_t(khIntStr) *binned_starts  = kh_init(khIntStr);      // key: start, value: "start end length ave_cov"
             //khash_t(khIntStr) *binned_ends    = kh_init(khIntStr);      // key: end,   value: "start end length ave_cov"
 
-            coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrapper[chrom_index], chrom_index);
+            coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrapper[chrom_index], chrom_index, thread_id);
             if (user_inputs->debug_ON)
-                outputBinnedData(binned_data_wrapper[chrom_index], chrom_tracking->chromosome_ids[chrom_index]);
+                outputBinnedData(binned_data_wrapper[chrom_index], chrom_tracking->chromosome_ids[chrom_index], user_inputs);
 
             // clean-up array
             //
@@ -247,7 +251,7 @@ int main(int argc, char *argv[]) {
               total_lines =
                     processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->mappability_file, map_starts, map_ends);
               printf("The total number of mappability lines is %i\n", total_lines);
-              //outputHashTable(map_starts, 1);
+              outputHashTable(map_starts, 1, user_inputs);
 
               mappabilityGcNormalization(binned_data_wrapper[chrom_index], user_inputs, map_starts, map_ends, total_lines, 1);
 
@@ -267,7 +271,7 @@ int main(int argc, char *argv[]) {
                   processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->gc_content_file, gc_starts, gc_ends);
 
               printf("The total number of GC%% lines is %i\n", total_lines);
-              outputHashTable(gc_starts, 2);
+              outputHashTable(gc_starts, 2, user_inputs);
 
               mappabilityGcNormalization(binned_data_wrapper[chrom_index], user_inputs, gc_starts, gc_ends, total_lines, 2);
 
