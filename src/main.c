@@ -53,20 +53,28 @@ int main(int argc, char *argv[]) {
     processUserOptions(user_inputs, argc, argv);
     //outputUserInputOptions(user_inputs);
 
-    // now for the bam/cram file open it for read
+    // now for the bam/cram file open it for read for multi-threading
     //
-    samFile *sfh = sam_open(user_inputs->bam_file, "r");
-    if (sfh == 0) {
-        fprintf(stderr, "ERROR: Cannot open file \n%s\n", user_inputs->bam_file);
-        return -1;
+    int t;
+    samFile **sfh = calloc(user_inputs->num_of_threads, sizeof(samFile*));
+    for (t=0; t<user_inputs->num_of_threads; t++) {
+        sfh[t] = sam_open(user_inputs->bam_file, "r");
+
+        if (sfh[t] == 0) {
+            fprintf(stderr, "ERROR: Cannot open file \n%s\n", user_inputs->bam_file);
+            return -1;
+        }
     }
 
     // since we are going to handle one chromosome per thread, we need to get the index file
     //
-    hts_idx_t *sfh_idx = sam_index_load(sfh, user_inputs->bam_file);
-    if (sfh_idx == NULL) {
-        fprintf(stderr, "ERROR: Can't locate the index file\n");
-        return -1;
+    hts_idx_t **sfh_idx = calloc(user_inputs->num_of_threads, sizeof(hts_idx_t*));
+    for (t=0; t<user_inputs->num_of_threads; t++) {
+        sfh_idx[t] = sam_index_load(sfh[t], user_inputs->bam_file);
+        if (sfh_idx[t] == NULL) {
+            fprintf(stderr, "ERROR: Can't locate the index file\n");
+            return -1;
+        }
     }
 
     // Set the reference if it is the cram file
@@ -75,13 +83,13 @@ int main(int argc, char *argv[]) {
     if (user_inputs->reference_file) {
         fn_ref = getReferenceFaiPath(user_inputs->reference_file);
 
-        if (hts_set_fai_filename(sfh, fn_ref) != 0) {
+        if (hts_set_fai_filename(sfh[0], fn_ref) != 0) {
             fprintf(stderr, "ERROR: Failed to use reference at hts_set_fai_filename() \"%s\".\n", fn_ref);
             if (fn_ref) free(fn_ref);
             return -1;
         }
     } else {
-        if ( sfh->is_cram || sfh->format.format == cram ) {
+        if ( sfh[0]->is_cram || sfh[0]->format.format == cram ) {
             fprintf(stderr, "ERROR: Please provide the reference sequences for the input CRAM file \n%s\n", user_inputs->bam_file);
             return -1;
         }
@@ -89,12 +97,14 @@ int main(int argc, char *argv[]) {
 
     // check if bam file named as .cram and cram file named as .bam
     //
-    checkFileExtension(user_inputs->bam_file, sfh);
+    checkFileExtension(user_inputs->bam_file, sfh[0]);
 
     // use sam_hdr_read to process both bam and cram header
     //
-    bam_hdr_t *header=NULL;
-    if ((header = sam_hdr_read(sfh)) == 0) return -1;
+    bam_hdr_t **header = calloc(user_inputs->num_of_threads, sizeof(bam_hdr_t*));
+    for (t=0; t<user_inputs->num_of_threads; t++) {
+        if ((header[t] = sam_hdr_read(sfh[t])) == 0) return -1;
+    }
 
     Stats_Info *stats_info = calloc(1, sizeof(Stats_Info));
     statsInfoInit(stats_info);
@@ -118,23 +128,23 @@ int main(int argc, char *argv[]) {
     if (user_inputs->chromosome_bed_file != NULL) {
         stats_info->wgs_cov_stats->total_genome_bases = loadWantedChromosomes(wanted_chromosome_hash, 
                 user_inputs->reference_version, user_inputs->chromosome_bed_file);
-        chromosomeTrackingInit2(wanted_chromosome_hash, chrom_tracking, header);
+        chromosomeTrackingInit2(wanted_chromosome_hash, chrom_tracking, header[0]);
 
         // here we need to verify if the chromosome naming convention matches 
         // between the bam/cram file and the chromosome bed file specified by the end user
         //
-        checkNamingConvention(header, wanted_chromosome_hash);
+        checkNamingConvention(header[0], wanted_chromosome_hash);
 
         target_buffer_status = calloc(chrom_tracking->number_of_chromosomes, sizeof(Target_Buffer_Status));
         TargetBufferStatusInit2(target_buffer_status, wanted_chromosome_hash);
     } else {
         stats_info->wgs_cov_stats->total_genome_bases = 
-            loadGenomeInfoFromBamHeader(wanted_chromosome_hash, header, user_inputs->reference_version);
-        chrom_tracking->number_of_chromosomes = header->n_targets;
-        chromosomeTrackingInit1(chrom_tracking, wanted_chromosome_hash, header);
+            loadGenomeInfoFromBamHeader(wanted_chromosome_hash, header[0], user_inputs->reference_version);
+        chrom_tracking->number_of_chromosomes = header[0]->n_targets;
+        chromosomeTrackingInit1(chrom_tracking, wanted_chromosome_hash, header[0]);
 
         target_buffer_status = calloc(chrom_tracking->number_of_chromosomes, sizeof(Target_Buffer_Status));
-        TargetBufferStatusInit(target_buffer_status, header);
+        TargetBufferStatusInit(target_buffer_status, header[0]);
     }
 
     fprintf(stderr, "The total genome bases is %"PRIu64"\n", stats_info->wgs_cov_stats->total_genome_bases);
@@ -199,7 +209,7 @@ int main(int argc, char *argv[]) {
 
             // get the iterator for the current chromosome
             //
-            hts_itr_t *iter = sam_itr_querys(sfh_idx, header, chrom_tracking->chromosome_ids[chrom_index]);
+            hts_itr_t *iter = sam_itr_querys(sfh_idx[thread_id], header[thread_id], chrom_tracking->chromosome_ids[chrom_index]);
             if (iter == NULL) {
                 fprintf(stderr, "ERROR: iterator creation failed: chr %s\n", chrom_tracking->chromosome_ids[chrom_index]);
                 exit(EXIT_FAILURE);
@@ -208,8 +218,8 @@ int main(int argc, char *argv[]) {
             chromosomeTrackingUpdate(chrom_tracking, chrom_tracking->chromosome_lengths[chrom_index], chrom_index);
 
             bam1_t *b = bam_init1();
-            while (sam_itr_next(sfh, iter, b) >= 0) {
-              processCurrentRecord(user_inputs, b, header, stats_info, chrom_tracking, chrom_index);
+            while (sam_itr_next(sfh[thread_id], iter, b) >= 0) {
+              processCurrentRecord(user_inputs, b, header[thread_id], stats_info, chrom_tracking, chrom_index);
             }
             bam_destroy1(b);
             hts_itr_destroy(iter);
@@ -221,14 +231,6 @@ int main(int argc, char *argv[]) {
             // now need to do the binning
             //
             printf("Thread %d is conducting binning for chr %s\n", thread_id, chrom_tracking->chromosome_ids[chrom_index]);
-
-            //AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
-            //all_starts_ends_array->capacity = 100000;
-            //all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
-            //all_starts_ends_array->size = 0;
-
-            //khash_t(khIntStr) *binned_starts  = kh_init(khIntStr);      // key: start, value: "start end length ave_cov"
-            //khash_t(khIntStr) *binned_ends    = kh_init(khIntStr);      // key: end,   value: "start end length ave_cov"
 
             coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrapper[chrom_index], chrom_index, thread_id);
             if (user_inputs->debug_ON)
@@ -282,14 +284,11 @@ int main(int argc, char *argv[]) {
             }
           }
         }
+#pragma omp taskwait
         //printf("\n");
         fflush(stdout);
-#pragma omp taskwait
       }
     }
-
-    sam_close(sfh);
-    hts_idx_destroy(sfh_idx);
 
     // output report for debugging
     //
@@ -315,7 +314,11 @@ int main(int argc, char *argv[]) {
     if (stats_info)
         statsInfoDestroy(stats_info);
 
-    bam_hdr_destroy(header);
+    for (t=0; t<user_inputs->num_of_threads; t++) {
+        sam_close(sfh[t]);
+        bam_hdr_destroy(header[t]);
+        hts_idx_destroy(sfh_idx[t]);
+    }
 
     if (fn_ref) free(fn_ref);
 
