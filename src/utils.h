@@ -171,4 +171,7 @@ void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, char* chrom_id, 
  */
 void removeDebugFiles(User_Input *user_inputs);
 
+void outputAllPositionArray(AllStartsEndsArray *all_starts_ends_array, int status);
+
+
 #endif //UTILS_H

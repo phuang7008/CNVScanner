@@ -74,7 +74,7 @@ void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromos
 
 void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper);
 
-void exitWithFailure(void * data_point_in);
+void exitWithFailure(void * data_point_in, char* message);
 
 /*
  * This function performs mappability or GC% normalization

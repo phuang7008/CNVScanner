@@ -106,6 +106,8 @@ int main(int argc, char *argv[]) {
         if ((header[t] = sam_hdr_read(sfh[t])) == 0) return -1;
     }
 
+    // for the overall stats_info
+    //
     Stats_Info *stats_info = calloc(1, sizeof(Stats_Info));
     statsInfoInit(stats_info);
 
@@ -149,6 +151,15 @@ int main(int argc, char *argv[]) {
 
     fprintf(stderr, "The total genome bases is %"PRIu64"\n", stats_info->wgs_cov_stats->total_genome_bases);
 
+    // setup the stats_info for each individual chromosome for each threads and initialize them
+    //
+    Stats_Info **stats_info_per_chr = calloc(chrom_tracking->number_of_chromosomes, sizeof(Stats_Info*));
+    uint32_t chrom_index = 0;
+    for (chrom_index=0; chrom_index<chrom_tracking->number_of_chromosomes; ++chrom_index) {
+        stats_info_per_chr[chrom_index] = calloc(1, sizeof(Stats_Info));
+        statsInfoInit(stats_info_per_chr[chrom_index]);
+    }
+
     // For the excluded region bed file
     //
     Bed_Info *excluded_bed_info=NULL;
@@ -164,9 +175,9 @@ int main(int argc, char *argv[]) {
 
     // need to setup data struture to store the binned regions
     //
-    Binned_Data_Wrapper **binned_data_wrapper = calloc(chrom_tracking->number_of_chromosomes, sizeof(Binned_Data_Wrapper*));
-    checkMemoryAllocation(binned_data_wrapper, "Binned_Data_Wrapper **binned_data_wrapper");
-    binnedDataWrapperInit(binned_data_wrapper, chrom_tracking);
+    Binned_Data_Wrapper **binned_data_wrappers = calloc(chrom_tracking->number_of_chromosomes, sizeof(Binned_Data_Wrapper*));
+    checkMemoryAllocation(binned_data_wrappers, "Binned_Data_Wrapper **binned_data_wrappers");
+    binnedDataWrapperInit(binned_data_wrappers, chrom_tracking);
 
     // The following is for debugging purpose
     //
@@ -188,7 +199,6 @@ int main(int argc, char *argv[]) {
     {
 #pragma omp single
       {
-        uint32_t chrom_index = 0;
         for (chrom_index=0; chrom_index<chrom_tracking->number_of_chromosomes; ++chrom_index)
         {
             // need to check if we need to process current chromosome
@@ -219,7 +229,7 @@ int main(int argc, char *argv[]) {
 
             bam1_t *b = bam_init1();
             while (sam_itr_next(sfh[thread_id], iter, b) >= 0) {
-              processCurrentRecord(user_inputs, b, header[thread_id], stats_info, chrom_tracking, chrom_index);
+              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index);
             }
             bam_destroy1(b);
             hts_itr_destroy(iter);
@@ -232,9 +242,9 @@ int main(int argc, char *argv[]) {
             //
             printf("Thread %d is conducting binning for chr %s\n", thread_id, chrom_tracking->chromosome_ids[chrom_index]);
 
-            coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrapper[chrom_index], chrom_index, thread_id);
+            coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrappers[chrom_index], chrom_index, thread_id);
             if (user_inputs->debug_ON)
-                outputBinnedData(binned_data_wrapper[chrom_index], chrom_tracking->chromosome_ids[chrom_index], user_inputs);
+                outputBinnedData(binned_data_wrappers[chrom_index], chrom_tracking->chromosome_ids[chrom_index], user_inputs);
 
             // clean-up array
             //
@@ -255,7 +265,7 @@ int main(int argc, char *argv[]) {
               printf("The total number of mappability lines is %i\n", total_lines);
               outputHashTable(map_starts, 1, user_inputs);
 
-              mappabilityGcNormalization(binned_data_wrapper[chrom_index], user_inputs, map_starts, map_ends, total_lines, 1);
+              mappabilityGcNormalization(binned_data_wrappers[chrom_index], user_inputs, map_starts, map_ends, total_lines, 1);
 
               // clean-up
               //
@@ -275,7 +285,7 @@ int main(int argc, char *argv[]) {
               printf("The total number of GC%% lines is %i\n", total_lines);
               outputHashTable(gc_starts, 2, user_inputs);
 
-              mappabilityGcNormalization(binned_data_wrapper[chrom_index], user_inputs, gc_starts, gc_ends, total_lines, 2);
+              mappabilityGcNormalization(binned_data_wrappers[chrom_index], user_inputs, gc_starts, gc_ends, total_lines, 2);
 
               // clean-up
               //
@@ -285,6 +295,19 @@ int main(int argc, char *argv[]) {
           }
         }
 #pragma omp taskwait
+
+        // now need to combine all the stats_info for the final results
+        //
+#pragma omp critical
+        {
+            for (chrom_index=0; chrom_index<chrom_tracking->number_of_chromosomes; ++chrom_index) {
+                combineCoverageStats(stats_info, stats_info_per_chr[chrom_index]);
+
+                if (stats_info_per_chr[chrom_index])
+                    statsInfoDestroy(stats_info_per_chr[chrom_index]);
+            }
+        }
+
         //printf("\n");
         fflush(stdout);
       }
@@ -296,13 +319,13 @@ int main(int argc, char *argv[]) {
 
     // output final normalized binned results
     //
-    outputFinalBinnedData(binned_data_wrapper, user_inputs, chrom_tracking);
+    outputFinalBinnedData(binned_data_wrappers, user_inputs, chrom_tracking);
 
     // clean up
     //
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);
 
-    binnedDataWrapperDestroy(binned_data_wrapper, chrom_tracking);
+    binnedDataWrapperDestroy(binned_data_wrappers, chrom_tracking);
 
     if (excluded_bed_info != NULL)
         cleanBedInfo(excluded_bed_info);

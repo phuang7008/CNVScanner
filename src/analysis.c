@@ -48,9 +48,10 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
     double dup_upper = user_inputs->average_coverage * 10 / 2;
 
     fprintf(stderr, "For chromosome %s using thread %d\n", chrom_tracking->chromosome_ids[chrom_idx], thread_id);
-    fprintf(stderr, "\t#haploid upper bound is:\t%f \n", hap_upper);
+    /*fprintf(stderr, "\t#haploid upper bound is:\t%f \n", hap_upper);
     fprintf(stderr, "\t#diploid upper bound is:\t%f \n", dip_upper);
     fprintf(stderr, "\t#dup upper bound is:\t%f \n", dup_upper);
+    */
 
     uint32_t i=0;
     for (i=begin; i<begin+length; i++) {
@@ -208,6 +209,11 @@ void insertBinData(uint32_t start, uint32_t end, uint32_t length, double ave_cov
     binned_data_wrapper->data[binned_data_wrapper->size].end    = end;
     binned_data_wrapper->data[binned_data_wrapper->size].length = length;
     binned_data_wrapper->data[binned_data_wrapper->size].ave_coverage = ave_coverage;
+    binned_data_wrapper->data[binned_data_wrapper->size].weighted_mappability = 0;
+    binned_data_wrapper->data[binned_data_wrapper->size].ave_cov_map_normalized = 0;
+    binned_data_wrapper->data[binned_data_wrapper->size].weighted_gc_scale = 0;
+    binned_data_wrapper->data[binned_data_wrapper->size].ave_cov_map_gc_normalized = 0;
+
     binned_data_wrapper->starts[binned_data_wrapper->size] = start;
     binned_data_wrapper->ends[binned_data_wrapper->size]   = end;
 
@@ -360,20 +366,21 @@ void outputGeneralInfo(FILE *fp, Stats_Info *stats_info, double average_coverage
     fprintf(fp, "Average_Coverage\t%.2f\n", average_coverage);
 }
 
-void binnedDataWrapperInit(Binned_Data_Wrapper** binned_data_wrapper, Chromosome_Tracking *chrom_tracking) {
+void binnedDataWrapperInit(Binned_Data_Wrapper** binned_data_wrappers, Chromosome_Tracking *chrom_tracking) {
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         // here we will initialize each binned data array to be 100,000 defined as INIT_BIN_SIZE
         // the size will dynamically expanded when there are more needed
         //
-        binned_data_wrapper[i] = calloc(1, sizeof(Binned_Data_Wrapper));
-        binned_data_wrapper[i]->chromosome_id = calloc(strlen(chrom_tracking->chromosome_ids[i])+1, sizeof(char*));
-        strcpy(binned_data_wrapper[i]->chromosome_id, chrom_tracking->chromosome_ids[i]);
-        binned_data_wrapper[i]->size = 0;
-        binned_data_wrapper[i]->capacity = INIT_BIN_SIZE;
-        binned_data_wrapper[i]->data   = calloc(INIT_BIN_SIZE, sizeof(Binned_Data));
-        binned_data_wrapper[i]->starts = calloc(INIT_BIN_SIZE, sizeof(uint32_t));
-        binned_data_wrapper[i]->ends   = calloc(INIT_BIN_SIZE, sizeof(uint32_t));
+        binned_data_wrappers[i] = calloc(1, sizeof(Binned_Data_Wrapper));
+        binned_data_wrappers[i]->chromosome_id = calloc(strlen(chrom_tracking->chromosome_ids[i])+1, sizeof(char*));
+        strcpy(binned_data_wrappers[i]->chromosome_id, chrom_tracking->chromosome_ids[i]);
+
+        binned_data_wrappers[i]->size = 0;
+        binned_data_wrappers[i]->capacity = INIT_BIN_SIZE;
+        binned_data_wrappers[i]->data   = calloc(INIT_BIN_SIZE, sizeof(Binned_Data));
+        binned_data_wrappers[i]->starts = calloc(INIT_BIN_SIZE, sizeof(uint32_t));
+        binned_data_wrappers[i]->ends   = calloc(INIT_BIN_SIZE, sizeof(uint32_t));
     }
 }
 
@@ -382,26 +389,31 @@ void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper) {
 
     binned_data_wrapper->capacity += INIT_BIN_SIZE;
 
-    binned_data_wrapper->data = 
-        realloc(binned_data_wrapper->data, (binned_data_wrapper->capacity)*sizeof(Binned_Data));
+    if (binned_data_wrapper->data) {
+        binned_data_wrapper->data = 
+            realloc(binned_data_wrapper->data, (binned_data_wrapper->capacity)*sizeof(Binned_Data));
+        exitWithFailure(binned_data_wrapper->data, "binned_data_wrapper->data");
+    } else {
+        fprintf(stderr, "Error: The binned_data_wrapper->data is NULL\n");
+        exit(EXIT_FAILURE);
+    }
 
-    exitWithFailure(binned_data_wrapper->data);
 
     binned_data_wrapper->starts = 
         realloc(binned_data_wrapper->starts, (binned_data_wrapper->capacity)*sizeof(uint32_t));
 
-    exitWithFailure(binned_data_wrapper->starts);
+    exitWithFailure(binned_data_wrapper->starts, "binned_data_wrapper->starts");
 
     binned_data_wrapper->ends = 
         realloc(binned_data_wrapper->ends, (binned_data_wrapper->capacity)*sizeof(uint32_t));
 
-    exitWithFailure(binned_data_wrapper->ends);
+    exitWithFailure(binned_data_wrapper->ends, "binned_data_wrapper->ends");
 
 }
 
-void exitWithFailure(void * data_point_in) {
+void exitWithFailure(void * data_point_in, char* message) {
     if (data_point_in == NULL) {
-        fprintf(stderr, "ERROR: Dynamic Memory allocation for start positions array\n");
+        fprintf(stderr, "ERROR: Dynamic Memory allocation for %s failed!\n", message);
         exit(EXIT_FAILURE);
     }
 }
@@ -423,7 +435,8 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     // create an all starts and ends array, the size will be dynamically increased later
     //
     AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
-    all_starts_ends_array->capacity = binned_data_wraper->size * 2 + total_lines * 2;
+    //all_starts_ends_array->capacity = binned_data_wraper->size * 4 + total_lines * 4;
+    all_starts_ends_array->capacity = binned_data_wraper->size * 2 + total_lines * 2 + 10;
     all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
     all_starts_ends_array->size = 0;
 
@@ -434,19 +447,43 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, starts);
     combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, ends);
 
+    // before sorting
+    //
+    if (user_inputs->debug_ON)
+        //outputAllPositionArray(all_starts_ends_array, 1);
+        fprintf(stderr, "Before sorting, all_starts_ends_array size is %"PRIu32"\n", all_starts_ends_array->size);
+
     // sort the all_starts_ends_array
     //
     qsort(all_starts_ends_array->array, all_starts_ends_array->size, sizeof(uint32_t), compare);
 
+    // after sorting
+    //
+    if (user_inputs->debug_ON)
+        //outputAllPositionArray(all_starts_ends_array, 2);
+        fprintf(stderr, "After sorting, all_starts_ends_array size is %"PRIu32"\n", all_starts_ends_array->size);
+
     // do intersect
     //
-    uint32_t i=0, counter=0;
+    uint32_t i=0;
+    int32_t counter=0;      // the counter needs to be defined as signed int, otherwise, it will never be negative
     uint32_t prev_start0=0, prev_start1=0, map_gc_position=0;
 
     for (i=0; i<all_starts_ends_array->size; i++) {
+        //if (user_inputs->debug_ON)
+        //    fprintf(stderr, "%"PRIu32"\t%"PRIu32"\n", i, all_starts_ends_array->array[i]);
+
         if (checkKhashKey(ends, all_starts_ends_array->array[i]) || 
                 checkKhashKey(binned_ends, all_starts_ends_array->array[i])) {
+
+            // always decrease counter if it is the end position
+            //
             counter--;
+
+            if (counter < 0) {
+                fprintf(stderr, "Error: At type %d, the counter %"PRIu32" should NOT be negative", type, counter);
+                exit(EXIT_FAILURE);
+            }
 
             if (counter == 1) {
                 // the first part of the annotation should come from binned_starts or binned_ends
@@ -463,15 +500,21 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
                     map_gc_string = getKhashValue(ends, map_gc_position);
                 }
 
-                performNormalizationForCurrentBin(binned_data_wraper, user_inputs,
+                if (binned_string && map_gc_string) {
+                    performNormalizationForCurrentBin(binned_data_wraper, user_inputs,
                         binned_string, map_gc_string, all_starts_ends_array->array[i], prev_start1, type);
+                } else {
+                    fprintf(stderr, "Something is wrong: Binned_string=%s; mapping_gc_string=%s with index %"PRIu32"\n",
+                            binned_string, map_gc_string, i);
+                    continue;
+                }
 
-                if (binned_string) free(binned_string);
-                if (map_gc_string) free(map_gc_string);
+                if (binned_string) { free(binned_string); binned_string=NULL; }
+                if (map_gc_string) { free(map_gc_string); map_gc_string=NULL; }
             }
 
             // because bed file starts with 0 (or 0-indxed), so one value will appear in both starts and ends hash-tables
-            // we have to remove those appeas in end position, so the next round, it will be the start position only
+            // we have to remove those appeas in end position, so the next round, it will be a new start position only
             //
             khiter_t iter;
             if (checkKhashKey(ends, all_starts_ends_array->array[i])) {
@@ -490,20 +533,31 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
                 }
             }
         } else {
-            // it should be in the start position
+            // it should be in the start position, always increment counter
+            //
+            counter++;
+
             // need to record the start position of current intersect
+            // 
+            // prev_start0-------------------------------------end0     => this is fromthe binned_array
+            //              prev_start1-----------end1                  => this is from the map_gc array
+            //
+            // we see that we need to record both prev_start0 and prev_start1
+            // it is because the intersect is from the map or gc array
+            // But we need annotations from both binned array and map/gc array
+            // I will use prev_start0 for the binned array annotation
+            // I will use the next block for the map/gc annotation
             //
             if (checkKhashKey(binned_starts, all_starts_ends_array->array[i])) {
-                prev_start0 = all_starts_ends_array->array[i];      // this is needed for the dynamic bin annotation
-                counter++;
-                prev_start1 = all_starts_ends_array->array[i];      // this could be either from the dynamic binned or from map
-            } else if (checkKhashKey(starts, all_starts_ends_array->array[i])) {
-                counter++;
-                prev_start1 = all_starts_ends_array->array[i];
+                prev_start0 = all_starts_ends_array->array[i];  // this is needed for the dynamic bin annotation
+            } else if (!checkKhashKey(starts, all_starts_ends_array->array[i])) {
+                fprintf(stderr, "Warning: index %"PRIu32" value %"PRIu32" is not in the starts hash, for type %d\n", 
+                        i, all_starts_ends_array->array[i], type);
             }
+            prev_start1 = all_starts_ends_array->array[i];      // this could be either from the dynamic binned or from map
         }
 
-        // need to record the map/gc% position of current intersect for the map annotation
+        // need to record the map/gc% position of current intersect for the map/gc annotation
         //
         if (checkKhashKey(ends, all_starts_ends_array->array[i]) || 
                 checkKhashKey(starts, all_starts_ends_array->array[i])) {
@@ -577,11 +631,12 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
 }
 
 // type 1 is for mappability normalization, while type 2 is for gc normalization
+// and store dynamically merged bin's starts and ends to all_starts_ends_array
 //
 void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wrapper, khash_t(khIntStr) *binned_starts, khash_t(khIntStr) *binned_ends, AllStartsEndsArray *all_starts_ends_array, int type) {
     // create a string pointer to store values
     //
-    char * insert_value = calloc(100, sizeof(char));
+    char * insert_value = calloc(200, sizeof(char));
 
     uint32_t i=0;
     for (i = 0; i < binned_data_wrapper->size; i++) {

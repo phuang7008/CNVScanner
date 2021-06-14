@@ -482,3 +482,21 @@ void removeDebugFiles(User_Input *user_inputs) {
             remove(user_inputs->gc_content_outfile);
     }
 }
+
+// status: 1 is before sorting, while 2 is after sorting
+void outputAllPositionArray(AllStartsEndsArray *all_starts_ends_array, int status) {
+    FILE *fp = NULL;
+
+    if (status == 1) {
+        fp = fopen("array_data_before_sorting.txt", "w");
+    } else {
+        fp = fopen("array_data_after_sorting.txt", "w");
+    }
+
+    uint32_t i;
+    for (i=0; i<all_starts_ends_array->size; i++) {
+        fprintf(fp, "%"PRIu32"\t%"PRIu32"\n", i, all_starts_ends_array->array[i]);
+    }
+
+    fclose(fp);
+}
