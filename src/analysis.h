@@ -59,7 +59,7 @@ void insertBinData(uint32_t start, uint32_t end, uint32_t length, double ave_cov
  * This function is used to process binned data and also insert data into bin
  * It will handle edge effects by combining neighboring bins
  */
-void processBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper, Chromosome_Tracking *chrom_tracking, FILE *fh_binned_coverage, int32_t chrom_idx, User_Input *user_inputs);
+void processBinnedData(uint32_t start, uint32_t end, uint32_t coverage, Binned_Data_Wrapper *binned_data_wraper, Chromosome_Tracking *chrom_tracking, FILE *fh_binned_coverage, int32_t chrom_idx, User_Input *user_inputs, uint32_t prev_negative_one);
 
 /*
  * The following method is for debugging only
