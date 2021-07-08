@@ -20,12 +20,9 @@
 
 #include "fileProcessing.h"
 
-uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends) {
+uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends, Binned_Data_Wrapper *binned_data_wraper) {
     FILE *fp = fopen(file_name, "r");
-    if (!fp) {
-        fprintf(stderr, "fopen failed: %s\n", file_name);
-        exit(EXIT_FAILURE);
-    }
+    fileOpenError(fp, file_name);
 
     char *line = NULL;
     size_t len = 0;
@@ -49,14 +46,14 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
         //fprintf(stderr, "%s", line);
         char *dup_line = strdup(line);
 
-        uint32_t i=0;
+        uint32_t i=0, start=0;
         while ((tokPtr = strtok_r(savePtr, "\t", &savePtr))) {
             if (i == 0) {
                 i++;
                 if (strcmp(chrom_id, tokPtr) != 0)
                     break;
             } else if (i == 1) {
-                uint32_t start = (uint32_t) strtol(tokPtr, NULL, 10);
+                start = (uint32_t) strtol(tokPtr, NULL, 10);
 
                 khashInsertion(starts, start, dup_line);
                 i++;
@@ -64,6 +61,9 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
                 uint32_t end = (uint32_t) strtol(tokPtr, NULL, 10);
                 khashInsertion(ends, end, dup_line);
                 i++;
+
+                if (binned_data_wraper)
+                    insertBinData(start, end, end-start, 0, binned_data_wraper);
             }
         }
         if (dup_line) free(dup_line);
@@ -97,6 +97,7 @@ void outputHashTable(khash_t(khIntStr) * khash_in, int type, User_Input *user_in
         out_file = fopen(user_inputs->gc_content_outfile, "a");
         if (out_file == NULL) fprintf(stderr, "Open gc content output file writing/appending failed\n");
     }
+    fileOpenError(out_file, "mappability output file or gc content output file");
 
 
     //fprintf(stderr, "start writing\n");

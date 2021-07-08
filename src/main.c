@@ -31,6 +31,7 @@
 #include "analysis.h"
 #include "excluded_regions.h"
 #include "fileProcessing.h"
+#include "reports.h"
 #include "stats.h"
 #include "terms.h"
 #include "user_inputs.h"
@@ -179,6 +180,12 @@ int main(int argc, char *argv[]) {
     checkMemoryAllocation(binned_data_wrappers, "Binned_Data_Wrapper **binned_data_wrappers");
     binnedDataWrapperInit(binned_data_wrappers, chrom_tracking);
 
+    // setup data structure to store the equal-sized window bins
+    //
+    Binned_Data_Wrapper **equal_size_window_wrappers = calloc(chrom_tracking->number_of_chromosomes, sizeof(Binned_Data_Wrapper*));
+    checkMemoryAllocation(equal_size_window_wrappers, "Binned_Data_Wrapper **equal_size_window_wrappers");
+    binnedDataWrapperInit(equal_size_window_wrappers, chrom_tracking);
+
     // The following is for debugging purpose
     //
     if (user_inputs->debug_ON) {
@@ -244,7 +251,7 @@ int main(int argc, char *argv[]) {
 
             coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrappers[chrom_index], chrom_index, thread_id);
             if (user_inputs->debug_ON)
-                outputBinnedData(binned_data_wrappers[chrom_index], chrom_tracking->chromosome_ids[chrom_index], user_inputs);
+                outputBinnedData(binned_data_wrappers[chrom_index], user_inputs, 1);
 
             // clean-up array
             //
@@ -260,12 +267,13 @@ int main(int argc, char *argv[]) {
               khash_t(khIntStr) * map_starts = kh_init(khIntStr);
               khash_t(khIntStr) * map_ends   = kh_init(khIntStr);
 
-              total_lines =
-                    processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->mappability_file, map_starts, map_ends);
+              total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index],
+                                        user_inputs->mappability_file, map_starts, map_ends, NULL);
               printf("The total number of mappability lines is %i\n", total_lines);
               outputHashTable(map_starts, 1, user_inputs);
 
-              mappabilityGcNormalization(binned_data_wrappers[chrom_index], user_inputs, map_starts, map_ends, total_lines, 1);
+              mappabilityGcNormalization(binned_data_wrappers[chrom_index], 
+                                         user_inputs, map_starts, map_ends, total_lines, 1);
 
               // clean-up
               //
@@ -279,8 +287,8 @@ int main(int argc, char *argv[]) {
               khash_t(khIntStr) *gc_starts = kh_init(khIntStr);
               khash_t(khIntStr) *gc_ends   = kh_init(khIntStr);
 
-              total_lines =
-                  processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->gc_content_file, gc_starts, gc_ends);
+              total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index], 
+                                        user_inputs->gc_content_file, gc_starts, gc_ends, NULL);
 
               printf("The total number of GC%% lines is %i\n", total_lines);
               outputHashTable(gc_starts, 2, user_inputs);
@@ -292,6 +300,16 @@ int main(int argc, char *argv[]) {
               cleanKhashIntStr(gc_starts);
               cleanKhashIntStr(gc_ends);
             }
+
+            // create equal-sized-bins
+            //
+            khash_t(khIntStr) *window_starts = kh_init(khIntStr);
+            khash_t(khIntStr) *window_ends   = kh_init(khIntStr);
+            total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->equal_size_window, 
+                                        window_starts, window_ends, equal_size_window_wrappers[chrom_index]);
+
+            generateEqualSizedBins(user_inputs, binned_data_wrappers[chrom_index],
+                                        equal_size_window_wrappers[chrom_index],  total_lines);
           }
         }
 #pragma omp taskwait
@@ -319,7 +337,7 @@ int main(int argc, char *argv[]) {
 
     // output final normalized binned results
     //
-    outputFinalBinnedData(binned_data_wrappers, user_inputs, chrom_tracking);
+    outputFinalBinnedData(binned_data_wrappers, user_inputs, chrom_tracking, 1);
 
     // clean up
     //

@@ -22,10 +22,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "reports.h"
 #include "terms.h"
 #include "utility.h"
 
-uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends);
+uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends, Binned_Data_Wrapper *binned_data_wraper);
 
 void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value);
 

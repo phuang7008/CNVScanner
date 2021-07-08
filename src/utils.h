@@ -161,9 +161,9 @@ void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array);
  * @param user_inputs: a variable that contains the user provided options
  * @param chrom_tracking: a variable that contains the chromosome informaiton to be processed
  */
-void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input *user_inputs, Chromosome_Tracking *chrom_tracking);
+void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input *user_inputs, Chromosome_Tracking *chrom_tracking, int type);
 
-void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, char* chrom_id, User_Input *user_inputs);
+void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user_inputs, int type);
 
 /*
  * this function clears the debugging output file produced in early runs
@@ -173,5 +173,6 @@ void removeDebugFiles(User_Input *user_inputs);
 
 void outputAllPositionArray(AllStartsEndsArray *all_starts_ends_array, int status);
 
+void fileOpenError(FILE *fp, char *message);
 
 #endif //UTILS_H

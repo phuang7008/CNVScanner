@@ -357,6 +357,8 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
 	// open WGS coverage summary report file handle
 	//
 	FILE *out_fp = fopen(user_inputs->wgs_cov_report, "a");
+    fileOpenError(out_fp, user_inputs->wgs_cov_report);
+
 	fprintf(out_fp, "\n#Smoothed_Coverage_Frequency_Distribution_for_Whole_Genome\n");
 	fprintf(out_fp, "==");
 	khiter_t iter;
@@ -429,8 +431,15 @@ void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array) {
     if (all_starts_ends_array) free(all_starts_ends_array);
 }
 
-void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input *user_inputs, Chromosome_Tracking *chrom_tracking) {
-    FILE *fp = fopen(user_inputs->normalized_result_file, "w");
+void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input *user_inputs, Chromosome_Tracking *chrom_tracking, int type) {
+    FILE *fp;
+    if (type == 1) {
+        fp = fopen(user_inputs->normalized_result_file, "w");
+    } else {
+        fp = fopen("Raw_equal_window_bins_final.txt", "w");
+    }
+    fileOpenError(fp, "Raw_window_sized_bins.txt or user_inputs->normalized_result_file");
+
     uint32_t i=0, j=0;
 
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
@@ -451,13 +460,19 @@ void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input
     }
 }
 
-void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, char* chrom_id, User_Input *user_inputs) {
-    FILE *binned_coverage_fp = fopen(user_inputs->merged_bin_file, "a");
+void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user_inputs, int type) {
+    FILE *binned_coverage_fp;
+    if (type == 1) {
+        binned_coverage_fp = fopen(user_inputs->merged_bin_file, "a");
+    } else {
+        binned_coverage_fp = fopen("Raw_equal_window_bins.txt", "a");
+    }
+    fileOpenError(binned_coverage_fp, "Raw_window_bins_w_index.txt or user_inputs->merged_bin_file");
                     
     uint32_t i;
     for (i=0; i<binned_data_wrapper->size; i++) {
         fprintf(binned_coverage_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n",
-                chrom_id, binned_data_wrapper->data[i].start, binned_data_wrapper->data[i].end,
+                binned_data_wrapper->chromosome_id, binned_data_wrapper->data[i].start, binned_data_wrapper->data[i].end,
                 binned_data_wrapper->data[i].length, binned_data_wrapper->data[i].ave_coverage);
     }
 
@@ -492,6 +507,7 @@ void outputAllPositionArray(AllStartsEndsArray *all_starts_ends_array, int statu
     } else {
         fp = fopen("array_data_after_sorting.txt", "w");
     }
+    fileOpenError(fp, "Array data before/after sorting");
 
     uint32_t i;
     for (i=0; i<all_starts_ends_array->size; i++) {
@@ -499,4 +515,11 @@ void outputAllPositionArray(AllStartsEndsArray *all_starts_ends_array, int statu
     }
 
     fclose(fp);
+}
+
+void fileOpenError(FILE *fp, char *message) {
+    if (fp == NULL) {
+        fprintf(stderr, "File %s open failed\n", message);
+        exit(EXIT_FAILURE);
+    }
 }

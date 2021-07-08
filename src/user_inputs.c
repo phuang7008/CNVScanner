@@ -45,6 +45,7 @@ void usage() {
     printf("--average_coverage  -a  the average coverage of current sample. It Is Mandatory\n");
     printf("--mappability_file  -M  the genomic mappability file. It Is Mandatory\n");
     printf("--gc_content_file   -G  the genomic GC%% file. It Is Mandatory\n");
+    printf("--equal_size_window -w  the equal size window bed file. It Is Mandatory\n");
     printf("--reference         -R  the file path of the reference sequence. \n");
     printf("                        It is Mandatory for CRAM files\n\n");
 
@@ -60,6 +61,7 @@ void usage() {
     printf("--threads           -T  the number of threads \n");
     printf("                        (Note: when used with HPC's msub, make sure that the number of\n"); 
     printf("                        processors:ppn matches to number of threads). Default 3\n");
+    printf("--equal_bin_size    -S  the final bin size after dividing chromosomes into equal sized bins. Default 500\n");
 
     printf("The Followings Are Flags\n");
     printf("--duplicate         -d  Specify this flag only when you want to keep Duplicates reads.\n");
@@ -99,6 +101,8 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             {"ref_version",       required_argument,  0,  'V'},
             {"percentage",        required_argument,  0,  'p'},
             {"excluded_regions",  required_argument,  0,  'e'},
+            {"equal_bin_size",    required_argument,  0,  'S'},
+            {"equal_size_window", required_argument,  0,  'w'},
             {"average_coverage",  required_argument,  0,  'a'},
             {"threads",           required_argument,  0,  'T'},
             {"duplicate",           no_argument,  0,  'd'},
@@ -113,7 +117,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arg = getopt_long_only (argc, argv, "b:de:gG:hi:m:M:o:p:Or:R:s:T:V:W", long_options, &option_index);
+        arg = getopt_long_only (argc, argv, "b:de:gG:hi:m:M:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (arg == -1) break;
@@ -184,6 +188,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 strcpy(user_inputs->reference_file, optarg);
                 break;
             case 's': user_inputs->remove_supplementary_alignments = true; break;
+            case 'S': user_inputs->equal_bin_size = atoi(optarg); break;
             case 'T':
                 if (!isNumber(optarg)) {
                     fprintf (stderr, "ERROR: Entered number of threads %s is not a number\n", optarg);
@@ -193,6 +198,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 break;
             case 'V':
                 strcpy(user_inputs->reference_version, optarg);
+                break;
+            case 'w':
+                user_inputs->equal_size_window = (char *) malloc((strlen(optarg)+1) * sizeof(char));
+                strcpy(user_inputs->equal_size_window, optarg);
                 break;
             case 'W': 
                 user_inputs->Write_WGS_cov_fasta = true;
@@ -234,6 +243,11 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
 
     if (user_inputs->mappability_file == NULL) {
         fprintf(stderr, "ERROR: --gc_content_file (or -G)\toption is mandatory!\n");
+        input_error_flag=true;
+    }
+
+    if (user_inputs->equal_size_window == NULL) {
+        fprintf(stderr, "ERROR: --equal_size_window (or -S)\toption is mandatory!\n");
         input_error_flag=true;
     }
 
@@ -396,6 +410,7 @@ User_Input * userInputInit() {
     user_inputs->min_map_quality  = 0;
     user_inputs->min_base_quality = 0;
     user_inputs->num_of_threads   = 3;
+    user_inputs->equal_bin_size   = 500;
     user_inputs->percentage = 1.0;
     user_inputs->Write_WGS_cov_fasta = false;
     user_inputs->excluding_overlapping_bases = false;
@@ -408,6 +423,7 @@ User_Input * userInputInit() {
     user_inputs->merged_bin_file  = NULL;
     user_inputs->mappability_file = NULL;
     user_inputs->gc_content_file  = NULL;
+    user_inputs->equal_size_window = NULL;
     user_inputs->mappability_outfile  = NULL;
     user_inputs->gc_content_outfile   = NULL;
     user_inputs->chromosome_bed_file  = NULL;
@@ -482,6 +498,9 @@ void userInputDestroy(User_Input *user_inputs) {
 
     if (user_inputs->normalized_result_file)
         free(user_inputs->normalized_result_file);
+
+    if (user_inputs->equal_size_window)
+        free(user_inputs->equal_size_window);
 
     if (user_inputs)
         free(user_inputs);

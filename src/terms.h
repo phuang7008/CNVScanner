@@ -64,6 +64,7 @@ typedef struct {
     char * output_dir;              // output directory (mandatory)
     char * reference_file;          // reference file name for cram input file
     char * chromosome_bed_file;     // a file contains chromosome ids and regions need to be processed in bed format
+    char * equal_size_window;       // a bed file contains equal sized bin windows for all chromosomes
     int16_t average_coverage;       // the average coverage of current sample, need to be signed for comparison
 
     // For whole genome (WGS) related outputs
@@ -78,8 +79,10 @@ typedef struct {
     char * gc_content_file;             // input GC% scale file
     char * gc_content_outfile;          // output GC% scale file for debugging
     char * map_gc_details_file;         // output map and gc calculation details
+    char * window_details_file;         // output equal size window intersect details
     char * merged_bin_file;             // output the merged binned data from raw binned data
     char * normalized_result_file;
+    int16_t equal_bin_size;
     int8_t min_map_quality;
     int8_t min_base_quality;
     unsigned short num_of_threads;
@@ -100,6 +103,7 @@ typedef struct {
     uint32_t start;
     uint32_t end;
     uint32_t length;
+    uint32_t index;
     double   ave_coverage;
     double   weighted_mappability;
     double   ave_cov_map_normalized;
