@@ -20,7 +20,7 @@
 
 #include "fileProcessing.h"
 
-uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends, Binned_Data_Wrapper *binned_data_wraper) {
+uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends, Binned_Data_Wrapper *binned_data_wrapper) {
     FILE *fp = fopen(file_name, "r");
     fileOpenError(fp, file_name);
 
@@ -62,8 +62,19 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
                 khashInsertion(ends, end, dup_line);
                 i++;
 
-                if (binned_data_wraper)
-                    insertBinData(start, end, end-start, 0, binned_data_wraper);
+                if (binned_data_wrapper) {
+                    // check the capacity ofthe binned_data_wrapper
+                    //
+                    if (binned_data_wrapper->size + 20 > binned_data_wrapper->capacity) {
+                        fprintf(stderr, "before dynamic size increase %d in fileProcessing\n", binned_data_wrapper->capacity);
+                        dynamicIncreaseBinSize(binned_data_wrapper);
+                        fprintf(stderr, "after dynamic size increase %d in fileProcessing\n", binned_data_wrapper->capacity);
+                    }
+
+                    // need to set length to 0 here so it will be added later
+                    //
+                    insertBinData(start, end, 0, 0, binned_data_wrapper);
+                }
             }
         }
         if (dup_line) free(dup_line);
@@ -84,7 +95,7 @@ void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value) {
         kh_value(khash_in, iter) = calloc(strlen(value)+1, sizeof(char));
         strcpy(kh_value(khash_in, iter), value);
     } else {
-        fprintf(stderr, "The key %"PRIu32" exist, maybe the input data is not sorted or merged?\n", key);
+        fprintf(stderr, "The key %"PRIu32" exist with value %s, maybe the input data is not sorted or merged?\n", key, value);
     }
 }
 

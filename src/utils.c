@@ -436,14 +436,25 @@ void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input
     if (type == 1) {
         fp = fopen(user_inputs->normalized_result_file, "w");
     } else {
-        fp = fopen("Raw_equal_window_bins_final.txt", "w");
+        fp = fopen("Equal_window_bins_norm_final.txt", "w");
     }
-    fileOpenError(fp, "Raw_window_sized_bins.txt or user_inputs->normalized_result_file");
+    fileOpenError(fp, "Equal_window_bins_norm_final.txt or user_inputs->normalized_result_file");
 
     uint32_t i=0, j=0;
 
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         for (j=0; j<binned_data_wrapper[i]->size; j++) {
+
+            if (type == 2) {
+                // need to process the data into final scaled values
+                //
+                if (binned_data_wrapper[i]->data[j].length == 0)
+                    continue;
+
+                binned_data_wrapper[i]->data[j].weighted_mappability /= binned_data_wrapper[i]->data[j].length;
+                binned_data_wrapper[i]->data[j].ave_coverage /= binned_data_wrapper[i]->data[j].length;
+            }
+
             // need to round the final normalized data for stats analysis
             //
             uint32_t round_normalized_value = (uint32_t) (binned_data_wrapper[i]->data[j].ave_cov_map_gc_normalized + 0.5);

@@ -64,7 +64,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     // do intersect
     //
     uint32_t i=0;
-    int32_t counter=0;      // the counter needs to be defined as signed int, otherwise, it will never be negative
+    int16_t counter=0;      // the counter needs to be defined as signed int, otherwise, it will never be negative
     uint32_t prev_start0=0, prev_start1=0, map_gc_position=0;
 
     for (i=0; i<all_starts_ends_array->size; i++) {
@@ -79,7 +79,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
             counter--;
 
             if (counter < 0) {
-                fprintf(stderr, "Error: At type %d, the counter %"PRIu32" should NOT be negative", type, counter);
+                fprintf(stderr, "Error: At type %d, the counter %"PRId16" should NOT be negative", type, counter);
                 exit(EXIT_FAILURE);
             }
 
@@ -137,7 +137,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
 
             // need to record the start position of current intersect
             // 
-            // prev_start0-------------------------------------end0     => this is fromthe binned_array
+            // prev_start0-------------------------------------end0     => this is from the binned_array
             //              prev_start1-----------end1                  => this is from the map_gc array
             //
             // we see that we need to record both prev_start0 and prev_start1
@@ -285,22 +285,23 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     // for debugging, output the equal_size_window_wrapper
     //
     if (user_inputs->debug_ON) {
-        printf("Before output raw window bins\n");
+        fprintf(stderr, "Before output raw window bins\n");
         outputBinnedData(equal_size_window_wrapper, user_inputs, 2);
-        printf("After output raw window bins\n");
+        fprintf(stderr, "After output raw window bins\n");
     }
-    return;
+
     //combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, window_starts);
     //combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, window_ends);
 
     // sort the all_starts_ends_array
     //
     qsort(all_starts_ends_array->array, all_starts_ends_array->size, sizeof(uint32_t), compare);
+    fprintf(stderr, "the sorted all starts and ends array has the size as %"PRIu32"\n", all_starts_ends_array->size);
 
     // do intersect
     //
     uint32_t i=0;
-    int32_t counter=0;      // the counter needs to be defined as signed int, otherwise, it will never be negative
+    int16_t counter=0;      // the counter needs to be defined as signed int, otherwise, it will never be negative
     uint32_t prev_start0=0, prev_start1=0, interval_position=0;
 
     for (i=0; i<all_starts_ends_array->size; i++) {
@@ -315,7 +316,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
             counter--;
 
             if (counter < 0) {
-                fprintf(stderr, "Error: the counter %"PRIu32" should NOT be negative", counter);
+                fprintf(stderr, "Error: the counter %"PRId16" should NOT be negative", counter);
                 exit(EXIT_FAILURE);
             }
 
@@ -339,7 +340,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
                             binned_string, interval_string, all_starts_ends_array->array[i], prev_start1);
 
                 } else {
-                    fprintf(stderr, "Something is wrong: Binned_string=%s; mapping_gc_string=%s with index %"PRIu32"\n",
+                    fprintf(stderr, "Something is wrong: Binned_string=%s; interval_string=%s with index %"PRIu32"\n",
                                 binned_string, interval_string, i);
                     continue;
                 }
@@ -347,9 +348,68 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
                 if (binned_string) { free(binned_string); binned_string=NULL; }
                 if (interval_string) { free(interval_string); interval_string=NULL; }
             }
+
+            // because bed file starts with 0 (or 0-indxed), so one value will appear in both starts and ends hash-tables
+            // we have to remove those appeas in end position, so the next round, it will be a new start position only
+            //
+            // In addition:
+            // NOTE: here we need to use if .. else if .. clause it is because of the following cases:
+            // (base) [phuang@sug-login1 equal_interval_combining]$ grep 375000 1000_chr19_*
+            //  1000_chr19_500bp_windows:19 374500  375000
+            //  1000_chr19_500bp_windows:19 375000  375500
+            //
+            //  1000_chr19_binned_data:19   374643  375000  357 1.00    1.00    39.87   39.87   40.04   40
+            //  1000_chr19_binned_data:19   375000  375275  275 1.00    0.95    31.00   31.00   29.35   29
+            //
+            //  both binned data and window interval contain the same coordinates
+            //  Need to handle them one at a time, NOT BOTH
+            //                                                                                                 # 
+            khiter_t iter;
+            if (checkKhashKey(binned_ends, all_starts_ends_array->array[i])) {
+                iter = kh_get(khIntStr, binned_ends, all_starts_ends_array->array[i]);
+                if (iter != kh_end(binned_ends)) {
+                    if (kh_value(binned_ends, iter))
+                        free(kh_value(binned_ends, iter));
+                    kh_del(khIntStr, binned_ends, iter);
+                }
+            } else if (checkKhashKey(window_ends, all_starts_ends_array->array[i])) {
+                iter = kh_get(khIntStr, window_ends, all_starts_ends_array->array[i]);
+                if (iter != kh_end(window_ends)) {
+                    if (kh_value(window_ends, iter))
+                        free(kh_value(window_ends, iter));      // this deletes the value first
+                    kh_del(khIntStr, window_ends, iter);        // this deletes the key second
+                }
+            }
+        } else {
+            // it should be in the 'start' position, always increment counter
+            //
+            counter++;
+
+            if (checkKhashKey(binned_starts, all_starts_ends_array->array[i])) {
+                prev_start0 = all_starts_ends_array->array[i];  // this is needed for the dynamic bin annotation
+            } else if (!checkKhashKey(window_starts, all_starts_ends_array->array[i])) {
+                fprintf(stderr, "Warning: index %"PRIu32" value %"PRIu32" is not in the starts hash, in generateEqualBinSize()\n",
+                            i, all_starts_ends_array->array[i]);
+            }
+                
+            prev_start1 = all_starts_ends_array->array[i];  // this could be either from the dynamic bins or from window_interval
+        }
+
+        // need to record the map/gc% position of current intersect for the map/gc annotation
+        //
+        if (checkKhashKey(window_ends, all_starts_ends_array->array[i]) ||
+                checkKhashKey(window_starts, all_starts_ends_array->array[i])) {
+            interval_position = all_starts_ends_array->array[i];
         }
     }
 
+    // clean-up
+    //
+    cleanAllStartsEndsArray(all_starts_ends_array);
+    cleanKhashIntStr(binned_starts);
+    cleanKhashIntStr(binned_ends);
+    cleanKhashIntStr(window_starts);
+    cleanKhashIntStr(window_ends);
 }
 
 void store_window_results(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wrapper *equal_size_window_wrapper, User_Input *user_inputs, char *binned_string, char *interval_string, uint32_t current_position, uint32_t prev_start) {
@@ -364,7 +424,7 @@ void store_window_results(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_W
     // Note: the binned_array->theArray[0] is the index to the binned_array_wrapper->data
     //
     uint32_t length = current_position - prev_start;
-    uint32_t orig_len = strtoul(binned_array->theArray[3], NULL, 10) - strtoul(binned_array->theArray[2], NULL, 10);
+    //uint32_t orig_len = strtoul(window_bin_array->theArray[3], NULL, 10) - strtoul(window_bin_array->theArray[2], NULL, 10);
     double ave = strtod(binned_array->theArray[5], NULL);
     double mappability = strtod(binned_array->theArray[4], NULL);
 
@@ -372,16 +432,17 @@ void store_window_results(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_W
     //
     FILE *fp=NULL;
     if (user_inputs->debug_ON) {
-        //fp = fopen(user_inputs->window_details_file, "a");
-        //fileOpenError(fp, user_inputs->window_details_file);
-
-        //binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability;
-        //binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized;
+        fp = fopen(user_inputs->window_details_file, "a");
+        fileOpenError(fp, user_inputs->window_details_file);
     }
 
-    equal_size_window_wrapper->data[strtoul(binned_array->theArray[0], NULL, 10)].length += length;
-    equal_size_window_wrapper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_coverage += length * ave;
-    equal_size_window_wrapper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += length * mappability;
+    equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].length += length;
+    equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage += length * ave;
+    equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].weighted_mappability += length * mappability;
+
+    if (user_inputs->debug_ON) {
+        fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%"PRIu32"\t%.2f\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, binned_string, interval_string, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].length, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].weighted_mappability);
+    }
 
     if (fp) fclose(fp);
 }

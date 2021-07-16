@@ -310,6 +310,12 @@ int main(int argc, char *argv[]) {
 
             generateEqualSizedBins(user_inputs, binned_data_wrappers[chrom_index],
                                         equal_size_window_wrappers[chrom_index],  total_lines);
+
+            // clean-up
+            //
+            cleanKhashIntStr(window_starts);
+            cleanKhashIntStr(window_ends);
+
           }
         }
 #pragma omp taskwait
@@ -338,6 +344,10 @@ int main(int argc, char *argv[]) {
     // output final normalized binned results
     //
     outputFinalBinnedData(binned_data_wrappers, user_inputs, chrom_tracking, 1);
+
+    // output final equal sized window 
+    //
+    outputFinalBinnedData(equal_size_window_wrappers, user_inputs, chrom_tracking, 2);
 
     // clean up
     //

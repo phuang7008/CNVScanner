@@ -247,7 +247,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
     }
 
     if (user_inputs->equal_size_window == NULL) {
-        fprintf(stderr, "ERROR: --equal_size_window (or -S)\toption is mandatory!\n");
+        fprintf(stderr, "ERROR: --equal_size_window (or -w)\toption is mandatory!\n");
         input_error_flag=true;
     }
 
@@ -309,6 +309,9 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     //
     sprintf(string_to_add, ".WGS_normalized_binned_results.txt");
     createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->normalized_result_file, string_to_add, VERSION_);
+
+    sprintf(string_to_add, ".WGS_equal_window_details.txt");
+    createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->window_details_file, string_to_add, VERSION_);
 
     // for whole genome (wgs) file name
     if (user_inputs->Write_WGS_cov_fasta) {
@@ -429,6 +432,7 @@ User_Input * userInputInit() {
     user_inputs->chromosome_bed_file  = NULL;
     user_inputs->map_gc_details_file  = NULL;
     user_inputs->excluded_region_file = NULL;
+    user_inputs->window_details_file  = NULL;
     user_inputs->normalized_result_file = NULL;
 
     user_inputs->reference_version = calloc(10, sizeof(char));
@@ -501,6 +505,9 @@ void userInputDestroy(User_Input *user_inputs) {
 
     if (user_inputs->equal_size_window)
         free(user_inputs->equal_size_window);
+
+    if (user_inputs->window_details_file)
+        free(user_inputs->window_details_file);
 
     if (user_inputs)
         free(user_inputs);
