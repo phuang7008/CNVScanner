@@ -355,3 +355,74 @@ bool getOverlapInfo(User_Input *user_inputs, Stats_Info *stats_info, bam1_t *rec
     fprintf(stderr, "Not Handled: %s\n", rec->data);
     return false;
 }
+
+void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned_data_wrapper, Stats *the_stats, Chromosome_Tracking *chrom_tracking) {
+
+    uint32_t i=0, j=0, total_num=0;
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        total_num += binned_data_wrapper[i]->size;
+    }
+
+    DoubleArray *average_coverage_array = calloc(1, sizeof(DoubleArray));
+    average_coverage_array->array = calloc(total_num, sizeof(double));
+    average_coverage_array->size=0;
+
+    double sum_of_squares=0.0, sum_of_values=0.0;
+    uint32_t num_of_filtered=0;
+
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        for (j=0; j<binned_data_wrapper[i]->size; j++) {
+            if (binned_data_wrapper[i]->data[j].weighted_mappability > user_inputs->mappability_cutoff) {
+                sum_of_values += binned_data_wrapper[i]->data[j].ave_coverage;
+                sum_of_squares += pow(binned_data_wrapper[i]->data[j].ave_coverage, 2);
+
+                average_coverage_array->array[average_coverage_array->size] = binned_data_wrapper[i]->data[j].ave_coverage;
+                average_coverage_array->size++;
+            } else {
+                num_of_filtered++;
+            }
+        }
+    }
+
+    fprintf(stderr, "total sum of values is %.4f with size of %"PRIu32" with sum of squares is %.4f\n", sum_of_values, average_coverage_array->size, sum_of_squares);
+    the_stats->mean  = sum_of_values / average_coverage_array->size;
+    the_stats->stdev = sqrt((sum_of_squares - average_coverage_array->size * pow(the_stats->mean,2)) / (average_coverage_array->size - 1 ));
+
+    if ((average_coverage_array->size + num_of_filtered) != total_num) {
+        fprintf(stderr, "ERROR: the numbers don't match between array->size %"PRIu32" and total_num %"PRIu32"\n",
+                average_coverage_array->size, total_num);
+        exit(EXIT_FAILURE);
+    }
+
+    // now calculate the percentile
+    //
+    double percentile_cutoff = CalcualtePercentile(average_coverage_array, 99);
+    the_stats->ninty_nine_percentile = percentile_cutoff;
+
+    percentile_cutoff = CalcualtePercentile(average_coverage_array, 98);
+    the_stats->ninty_eight_percentile = percentile_cutoff;
+}
+
+// the following function is used to for double number array qsort()
+//
+int compareDouble(const void * val1, const void * val2) {
+    double tmp_val1 = *((double*) val1);
+    double tmp_val2 = *((double*) val2);
+
+    if (tmp_val1 == tmp_val2) return 0;
+    else if (tmp_val1 < tmp_val2) return -1;
+    else return 1;
+}
+
+double CalcualtePercentile(DoubleArray *array_in, int percentile) {
+    // sort arry first
+    //
+    qsort(array_in->array, array_in->size, sizeof(double), compareDouble);
+
+    // get the index where the 
+    //
+    uint32_t percentile_rank = (uint32_t) (floor(array_in->size * percentile)/100);
+    fprintf(stderr, "The %d percentile index/rank is at %"PRIu32"\n", percentile, percentile_rank);
+
+    return array_in->array[percentile_rank];
+}

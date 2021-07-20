@@ -39,38 +39,39 @@ void usage() {
     printf("Note:   this is a multi-threading program. Each thread needs 4Gb of memory. So please allocate them accordingly!\n");
     printf("\tfor example: 3 threads would use 12Gb of memory, while 4 threads would need 16Gb of memory, etc.\n\n");
     printf("Mandatory:\n");
-    printf("--input_bam         -i  BAM/CRAM alignment file (multiple files are not allowed!).\n");
-    printf("                        It Is Mandatory\n");
-    printf("--output_dir        -o  output directory. It Is Mandatory\n");
-    printf("--average_coverage  -a  the average coverage of current sample. It Is Mandatory\n");
-    printf("--mappability_file  -M  the genomic mappability file. It Is Mandatory\n");
-    printf("--gc_content_file   -G  the genomic GC%% file. It Is Mandatory\n");
-    printf("--equal_size_window -w  the equal size window bed file. It Is Mandatory\n");
-    printf("--reference         -R  the file path of the reference sequence. \n");
-    printf("                        It is Mandatory for CRAM files\n\n");
+    printf("--input_bam          -i  BAM/CRAM alignment file (multiple files are not allowed!).\n");
+    printf("                         It Is Mandatory\n");
+    printf("--output_dir         -o  output directory. It Is Mandatory\n");
+    printf("--average_coverage   -a  the average coverage of current sample. It Is Mandatory\n");
+    printf("--mappability_file   -M  the genomic mappability file. It Is Mandatory\n");
+    printf("--gc_content_file    -G  the genomic GC%% file. It Is Mandatory\n");
+    printf("--equal_size_window  -w  the equal size window bed file. It Is Mandatory\n");
+    printf("--reference          -R  the file path of the reference sequence. \n");
+    printf("                         It is Mandatory for CRAM files\n\n");
 
     printf("The Followings Are Optional:\n");
-    printf("--min_base_qual     -b  minimal base quality\n");
-    printf("                        to filter out any bases with base quality less than b. Default 0\n");
-    printf("--min_map_qual      -m  minimal mapping quality\n");
-    printf("                        to filter out any reads with mapping quality less than m. Default 0\n");
-    printf("--excluded_regions  -e  file name that contains regions to be excluded in bed format\n");
-    printf("--percentage        -p  the percentage (fraction) of reads used for this analysis. Default 1.0 (ie, 100%%)\n");
-    printf("--chr_list          -r  file name that contains chromosomes and their regions \n");
-    printf("                        need to be processed in bed format. Default: Not Provided\n");
-    printf("--threads           -T  the number of threads \n");
-    printf("                        (Note: when used with HPC's msub, make sure that the number of\n"); 
-    printf("                        processors:ppn matches to number of threads). Default 3\n");
-    printf("--equal_bin_size    -S  the final bin size after dividing chromosomes into equal sized bins. Default 500\n");
+    printf("--min_base_qual      -b  minimal base quality\n");
+    printf("                         to filter out any bases with base quality less than b. Default 0\n");
+    printf("--min_map_qual       -m  minimal mapping quality\n");
+    printf("                         to filter out any reads with mapping quality less than m. Default 0\n");
+    printf("--excluded_regions   -e  file name that contains regions to be excluded in bed format\n");
+    printf("--percentage         -p  the percentage (fraction) of reads used for this analysis. Default 1.0 (ie, 100%%)\n");
+    printf("--chr_list           -r  file name that contains chromosomes and their regions \n");
+    printf("                         need to be processed in bed format. Default: Not Provided\n");
+    printf("--threads            -T  the number of threads \n");
+    printf("                         (Note: when used with HPC's msub, make sure that the number of\n"); 
+    printf("                         processors:ppn matches to number of threads). Default 3\n");
+    printf("--equal_bin_size     -S  the final bin size after dividing chromosomes into equal sized bins. Default 500\n");
+    printf("--mappability_cutoff -c  the minimal mappability used to filter out low mappability regions. Default 0.0\n");
 
     printf("The Followings Are Flags\n");
-    printf("--duplicate         -d  Specify this flag only when you want to keep Duplicates reads.\n");
-    printf("                        Default: Remove Duplicate is ON\n");
-    printf("--supplemental      -s  Remove Supplementary alignments and DO NOT use them for statistics. Default: off\n");
-    printf("--overlap           -O  Remove Overlapping Bases to avoid double counting. Default: off\n");
-    printf("--wgs_depth         -W  Write/Dump the WGS base coverage depth into Coverage.fasta file \n");
-    printf("                        (both -w and -W needed). Default: off\n");
-    printf("--help              -h  Print this help/usage message\n");
+    printf("--duplicate          -d  Specify this flag only when you want to keep Duplicates reads.\n");
+    printf("                         Default: Remove Duplicate is ON\n");
+    printf("--supplemental       -s  Remove Supplementary alignments and DO NOT use them for statistics. Default: off\n");
+    printf("--overlap            -O  Remove Overlapping Bases to avoid double counting. Default: off\n");
+    printf("--wgs_depth          -W  Write/Dump the WGS base coverage depth into Coverage.fasta file \n");
+    printf("                         (both -w and -W needed). Default: off\n");
+    printf("--help               -h  Print this help/usage message\n");
 }
 
 // Get command line arguments in and check the sanity of user inputs 
@@ -90,21 +91,22 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             //{"verbose",  no_argument,  &verbose_flag,  9},
             //{"brief",    no_argument,  &verbose_flag,  0},
             /* These options don't set a flag. We distinguish them by their indices. */
-            {"chr_list",          required_argument,  0,  'r'},
-            {"input_bam",         required_argument,  0,  'i'},
-            {"min_base_qual",     required_argument,  0,  'b'},
-            {"min_map_qual",      required_argument,  0,  'm'},
-            {"output_dir",        required_argument,  0,  'o'},
-            {"reference",         required_argument,  0,  'R'},
-            {"mappability_file",  required_argument,  0,  'M'},
-            {"gc_content_file",   required_argument,  0,  'G'},
-            {"ref_version",       required_argument,  0,  'V'},
-            {"percentage",        required_argument,  0,  'p'},
-            {"excluded_regions",  required_argument,  0,  'e'},
-            {"equal_bin_size",    required_argument,  0,  'S'},
-            {"equal_size_window", required_argument,  0,  'w'},
-            {"average_coverage",  required_argument,  0,  'a'},
-            {"threads",           required_argument,  0,  'T'},
+            {"chr_list",            required_argument,  0,  'r'},
+            {"input_bam",           required_argument,  0,  'i'},
+            {"min_base_qual",       required_argument,  0,  'b'},
+            {"min_map_qual",        required_argument,  0,  'm'},
+            {"output_dir",          required_argument,  0,  'o'},
+            {"reference",           required_argument,  0,  'R'},
+            {"mappability_file",    required_argument,  0,  'M'},
+            {"gc_content_file",     required_argument,  0,  'G'},
+            {"ref_version",         required_argument,  0,  'V'},
+            {"percentage",          required_argument,  0,  'p'},
+            {"excluded_regions",    required_argument,  0,  'e'},
+            {"equal_bin_size",      required_argument,  0,  'S'},
+            {"equal_size_window",   required_argument,  0,  'w'},
+            {"average_coverage",    required_argument,  0,  'a'},
+            {"mappability_cutoff",  required_argument,  0,  'c'},
+            {"threads",             required_argument,  0,  'T'},
             {"duplicate",           no_argument,  0,  'd'},
             {"help",                no_argument,  0,  'h'},
             {"overlap",             no_argument,  0,  'O'},
@@ -117,7 +119,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arg = getopt_long_only (argc, argv, "b:de:gG:hi:m:M:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
+        arg = getopt_long_only (argc, argv, "b:c:de:gG:hi:m:M:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (arg == -1) break;
@@ -133,6 +135,9 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                     exit(EXIT_FAILURE);
                 }
                 user_inputs->min_base_quality = atoi(optarg);
+                break;
+            case 'c':
+                user_inputs->mappability_cutoff = atof(optarg);
                 break;
             case 'd': 
                 user_inputs->remove_duplicate = false;
@@ -409,12 +414,13 @@ User_Input * userInputInit() {
         exit(EXIT_FAILURE);
     }
 
+    user_inputs->percentage = 1.0;
     user_inputs->average_coverage = -1;
     user_inputs->min_map_quality  = 0;
     user_inputs->min_base_quality = 0;
     user_inputs->num_of_threads   = 3;
     user_inputs->equal_bin_size   = 500;
-    user_inputs->percentage = 1.0;
+    user_inputs->mappability_cutoff  = 0.0;
     user_inputs->Write_WGS_cov_fasta = false;
     user_inputs->excluding_overlapping_bases = false;
     user_inputs->remove_duplicate = true;

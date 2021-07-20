@@ -349,6 +349,17 @@ int main(int argc, char *argv[]) {
     //
     outputFinalBinnedData(equal_size_window_wrappers, user_inputs, chrom_tracking, 2);
 
+    // calculate the statistics here
+    //
+    Stats *the_stats = calloc(1, sizeof(Stats));
+    calculateMeanAndStdev(user_inputs, equal_size_window_wrappers, the_stats, chrom_tracking);
+    //calculateMeanAndStdev(user_inputs, binned_data_wrappers, the_stats, chrom_tracking);
+    fprintf(stderr, "Mean:  %.2f\n", the_stats->mean);
+    fprintf(stderr, "Stdev: %.2f\n", the_stats->stdev);
+    fprintf(stderr, "99_percentile: %.2f\n", the_stats->ninty_nine_percentile);
+    fprintf(stderr, "98_percentile: %.2f\n", the_stats->ninty_eight_percentile);
+    if (the_stats) free(the_stats);
+
     // clean up
     //
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);

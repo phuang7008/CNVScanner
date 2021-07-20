@@ -76,6 +76,7 @@ typedef struct {
     char * reference_version;
     char * mappability_file;            // input mappability file
     char * mappability_outfile;         // output mappability file for debugging
+    float  mappability_cutoff;          // the value used to filter out low mappability (default 0.0)
     char * gc_content_file;             // input GC% scale file
     char * gc_content_outfile;          // output GC% scale file for debugging
     char * map_gc_details_file;         // output map and gc calculation details
@@ -125,6 +126,12 @@ typedef struct {
     uint32_t size;
     uint32_t capacity;
 } AllStartsEndsArray;
+
+typedef struct {
+    double * array;
+    uint32_t size;
+} DoubleArray;
+
 
 #include "htslib/khash.h"
 
@@ -198,5 +205,13 @@ typedef struct {
     Read_Coverage_Stats     *read_cov_stats;
     WGS_Coverage_Stats      *wgs_cov_stats;
 } Stats_Info;
+
+
+typedef struct {
+    double mean;
+    double stdev;
+    double ninty_nine_percentile;
+    double ninty_eight_percentile;
+} Stats;
 
 #endif //TERMS_H
