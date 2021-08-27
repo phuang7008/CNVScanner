@@ -1,6 +1,6 @@
 IDIR=/opt/rh/devtoolset-8/root/usr/include
 CODEDIR=/stornext/snfs130/NGIRD/scratch/phuang/repo/wgs_cnv/src
-HTSDIR=/stornext/snfs130/NGIRD/scratch/phuang/htslib/v1.10.2/htslib
+HTSDIR=/stornext/snfs130/NGIRD/scratch/phuang/htslib/
 MYSQLDIR=/usr/include/mysql
 MYSQLLIB=/usr/lib64
 MYLIB=/stornext/snfs130/NGIRD/scratch/phuang/repo/common_libs
