@@ -186,6 +186,11 @@ int main(int argc, char *argv[]) {
     checkMemoryAllocation(equal_size_window_wrappers, "Binned_Data_Wrapper **equal_size_window_wrappers");
     binnedDataWrapperInit(equal_size_window_wrappers, chrom_tracking);
 
+    // setup one pass stdev data-structure
+    //
+    OnePassStdev **one_pass_stdev = calloc(chrom_tracking->number_of_chromosomes, sizeof(OnePassStdev*));
+    OnePassStdevInit(one_pass_stdev, chrom_tracking);
+
     // The following is for debugging purpose
     //
     if (user_inputs->debug_ON) {
@@ -363,6 +368,8 @@ int main(int argc, char *argv[]) {
     // clean up
     //
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);
+
+    OnePassStdevDestroy(one_pass_stdev, chrom_tracking);
 
     binnedDataWrapperDestroy(binned_data_wrappers, chrom_tracking);
 

@@ -132,6 +132,12 @@ typedef struct {
     uint32_t size;
 } DoubleArray;
 
+// calculation stdev in one pass
+typedef struct {
+    double total_sum;
+    double total_bases;
+    double sum_of_base_cov_square;
+} OnePassStdev;
 
 #include "htslib/khash.h"
 
