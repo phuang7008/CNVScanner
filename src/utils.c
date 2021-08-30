@@ -373,10 +373,10 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
 void OnePassStdevInit(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking) {
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        one_pass_stdev = calloc(1, sizeof(OnePassStdev));
-        one_pass_stdev[i]->total_sum   = 0;
-        one_pass_stdev[i]->total_bases = 0;
-        one_pass_stdev[i]->sum_of_base_cov_square = 0;
+        one_pass_stdev[i] = calloc(1, sizeof(OnePassStdev));
+        one_pass_stdev[i]->total_sum   = 0.0;
+        one_pass_stdev[i]->total_bases = 0.0;
+        one_pass_stdev[i]->sum_of_base_cov_square = 0.0;
     }
 }
 
