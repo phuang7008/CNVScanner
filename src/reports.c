@@ -25,16 +25,16 @@
 
 #include "reports.h"
 
-void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx, int thread_id) {
+void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx, Simple_Stats *wgs_simple_stats, int thread_id) {
     FILE *wgs_binned_coverage_fp = fopen(user_inputs->wgs_binning_file, "a");
     fileOpenError(wgs_binned_coverage_fp, user_inputs->wgs_binning_file);
 
-    writeCoverageBins(0, chrom_tracking->chromosome_lengths[chrom_idx], chrom_tracking, chrom_idx, user_inputs, stats_info, wgs_binned_coverage_fp, binned_data_wrapper, thread_id);
+    writeCoverageBins(0, chrom_tracking->chromosome_lengths[chrom_idx], chrom_tracking, chrom_idx, user_inputs, stats_info, wgs_binned_coverage_fp, binned_data_wrapper, wgs_simple_stats, thread_id);
 
     fclose(wgs_binned_coverage_fp);
 }
 
-void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage, Binned_Data_Wrapper *binned_data_wrapper, int thread_id) {
+void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage, Binned_Data_Wrapper *binned_data_wrapper, Simple_Stats *wgs_simple_stats, int thread_id) {
     // NOTE: for the bed format, the end position is included!
     // next, we need to provide various boundaries for binning
     //       haploid             diploid               duplication               10x of haploid         anything > 10x of haploid
@@ -68,9 +68,6 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
 
         // For the excluded bases
         //
-        if (i==43399486 || i == 43399343) {
-            printf("stop\n");
-        }
         if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] == -1)) {
             start = i;
             while ( i < begin+length && (chrom_tracking->coverage[chrom_idx][i] == -1)) {
@@ -80,6 +77,15 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
             if (user_inputs->debug_ON)
                 fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t-1\n",
                         chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start);
+        } else if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= wgs_simple_stats->outlier_cutoff)) {
+           start = i;
+           while (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= wgs_simple_stats->outlier_cutoff)) {
+               i++;
+           }
+           end = i;
+           if (user_inputs->debug_ON)
+               fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t-2\n",
+                       chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start);
         } else if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] < hap_upper)) {
             start = i;
             while( i < begin+length && (0 <= chrom_tracking->coverage[chrom_idx][i]) && (chrom_tracking->coverage[chrom_idx][i] < hap_upper)) {

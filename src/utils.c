@@ -370,41 +370,6 @@ void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist
 	fclose(out_fp);
 }
 
-void OnePassStdevInit(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking) {
-    uint32_t i;
-    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        one_pass_stdev[i] = calloc(1, sizeof(OnePassStdev));
-        one_pass_stdev[i]->total_sum   = 0.0;
-        one_pass_stdev[i]->total_bases = 0.0;
-        one_pass_stdev[i]->sum_of_base_cov_square = 0.0;
-    }
-}
-
-void OnePassStdevDestroy(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking) {
-    uint32_t i;
-    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        if (one_pass_stdev[i] != NULL)
-            free(one_pass_stdev[i]);
-    }
-
-    if (one_pass_stdev)
-        free(one_pass_stdev);
-}
-
-double CalculateStdev(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking) {
-    uint32_t i;
-    double total_sum=0, total_square_sum=0, total_bases=0;
-    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        total_sum   += one_pass_stdev[i]->total_sum;
-        total_bases += one_pass_stdev[i]->total_bases;
-        total_square_sum += one_pass_stdev[i]->sum_of_base_cov_square;
-    }
-
-    double mean  = total_sum / total_bases;
-    double stdev = total_square_sum / total_bases - mean * mean;
-    return stdev;
-}
-
 void splitStringToArray(char* string_to_split, StringArray *string_array) {
     // since the strtok_r is destructive, so I have to use a copy for this
     // the bin_string has 5 entries like the follow order

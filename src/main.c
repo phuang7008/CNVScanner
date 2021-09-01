@@ -29,6 +29,7 @@
 #include "utility.h"
 
 #include "analysis.h"
+#include "calculate_stdev.h"
 #include "excluded_regions.h"
 #include "fileProcessing.h"
 #include "reports.h"
@@ -186,10 +187,11 @@ int main(int argc, char *argv[]) {
     checkMemoryAllocation(equal_size_window_wrappers, "Binned_Data_Wrapper **equal_size_window_wrappers");
     binnedDataWrapperInit(equal_size_window_wrappers, chrom_tracking);
 
-    // setup one pass stdev data-structure
+    // calculate the whole genome base coverage mean and standard deviation
     //
-    OnePassStdev **one_pass_stdev = calloc(chrom_tracking->number_of_chromosomes, sizeof(OnePassStdev*));
-    OnePassStdevInit(one_pass_stdev, chrom_tracking);
+    Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
+    SimpleStatsInit(wgs_simple_stats);
+    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, target_buffer_status);
 
     // The following is for debugging purpose
     //
@@ -254,7 +256,7 @@ int main(int argc, char *argv[]) {
             //
             printf("Thread %d is conducting binning for chr %s\n", thread_id, chrom_tracking->chromosome_ids[chrom_index]);
 
-            coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrappers[chrom_index], chrom_index, thread_id);
+            coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrappers[chrom_index], chrom_index, wgs_simple_stats, thread_id);
             if (user_inputs->debug_ON)
                 outputBinnedData(binned_data_wrappers[chrom_index], user_inputs, 1);
 
@@ -368,8 +370,6 @@ int main(int argc, char *argv[]) {
     // clean up
     //
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);
-
-    OnePassStdevDestroy(one_pass_stdev, chrom_tracking);
 
     binnedDataWrapperDestroy(binned_data_wrappers, chrom_tracking);
 

@@ -32,7 +32,7 @@
  * @param user_inputs: contains all the user_inputs options
  * @param stats_info: a variable that contains all reads and base information
  */
-void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx, int thread_id);
+void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx, Simple_Stats *wgs_simple_stats, int thread_id);
 
 /*
  * This is used to generate average coverage information for a range of position based on different binning strategies
@@ -43,7 +43,7 @@ void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *use
  * @param user_inputs: contains all the user_inputs options
  * @param wgs_binned_coverage_fp: the file handle for depositing the binned data
  * */
-void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage, Binned_Data_Wrapper *binned_data_wraper, int thread_id);
+void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage, Binned_Data_Wrapper *binned_data_wraper, Simple_Stats *wgs_simple_stats, int thread_id);
 
 /*
  * This is the function used for insertion. But before doing any insertion, 

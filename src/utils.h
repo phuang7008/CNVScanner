@@ -132,12 +132,6 @@ uint32_t getHashKey(uint32_t position_in);
 
 void outputFreqDistribution(User_Input *user_inputs, khash_t(m32) *cov_freq_dist);
 
-void OnePassStdevInit(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking);
-
-void OnePassStdevDestroy(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking);
-
-double CalculateStdev(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking);
-
 void splitStringToArray(char* string_to_split, StringArray *string_array);
 
 /*

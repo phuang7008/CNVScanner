@@ -139,6 +139,15 @@ typedef struct {
     double sum_of_base_cov_square;
 } OnePassStdev;
 
+// store mean and stdev info
+//
+typedef struct {
+    double average_coverage;
+    uint32_t total_bases_used;      // excluding N-regsions, Repeat Masks, Mappability Excluded Regions and Seg-Dup
+    double stdev;
+    double outlier_cutoff;
+} Simple_Stats;
+
 #include "htslib/khash.h"
 
 // Instantiate a hash map containing integer keys
