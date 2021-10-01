@@ -63,6 +63,7 @@ void usage() {
     printf("                         processors:ppn matches to number of threads). Default 3\n");
     printf("--equal_bin_size     -S  the final bin size after dividing chromosomes into equal sized bins. Default 500\n");
     printf("--mappability_cutoff -c  the minimal mappability used to filter out low mappability regions. Default 0.0\n");
+    printf("--ref_version        -V  the reference version used. Default hg38\n");
 
     printf("The Followings Are Flags\n");
     printf("--duplicate          -d  Specify this flag only when you want to keep Duplicates reads.\n");

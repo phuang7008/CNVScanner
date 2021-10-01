@@ -122,12 +122,6 @@ typedef struct {
 } Binned_Data_Wrapper;
 
 typedef struct {
-    uint32_t * array;
-    uint32_t size;
-    uint32_t capacity;
-} AllStartsEndsArray;
-
-typedef struct {
     double * array;
     uint32_t size;
 } DoubleArray;

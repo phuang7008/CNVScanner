@@ -129,7 +129,8 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
             }
         } else {
             start = i;
-            while( i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= dup_upper)) {
+            while( i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= dup_upper) &&
+                        (chrom_tracking->coverage[chrom_idx][i] < wgs_simple_stats->outlier_cutoff)) {
                 cov_total += chrom_tracking->coverage[chrom_idx][i];
                 i++;
             }
@@ -406,7 +407,7 @@ void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper) {
     if (binned_data_wrapper->data) {
         binned_data_wrapper->data = 
             realloc(binned_data_wrapper->data, (binned_data_wrapper->capacity)*sizeof(Binned_Data));
-        exitWithFailure(binned_data_wrapper->data, "binned_data_wrapper->data");
+        failureExit(binned_data_wrapper->data, "binned_data_wrapper->data");
     } else {
         fprintf(stderr, "Error: The binned_data_wrapper->data is NULL\n");
         exit(EXIT_FAILURE);
@@ -416,16 +417,16 @@ void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper) {
     binned_data_wrapper->starts = 
         realloc(binned_data_wrapper->starts, (binned_data_wrapper->capacity)*sizeof(uint32_t));
 
-    exitWithFailure(binned_data_wrapper->starts, "binned_data_wrapper->starts");
+    failureExit(binned_data_wrapper->starts, "binned_data_wrapper->starts");
 
     binned_data_wrapper->ends = 
         realloc(binned_data_wrapper->ends, (binned_data_wrapper->capacity)*sizeof(uint32_t));
 
-    exitWithFailure(binned_data_wrapper->ends, "binned_data_wrapper->ends");
+    failureExit(binned_data_wrapper->ends, "binned_data_wrapper->ends");
 
 }
 
-void exitWithFailure(void * data_point_in, char* message) {
+void failureExit(void * data_point_in, char* message) {
     if (data_point_in == NULL) {
         fprintf(stderr, "ERROR: Dynamic Memory allocation for %s failed!\n", message);
         exit(EXIT_FAILURE);
