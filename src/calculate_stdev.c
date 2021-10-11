@@ -87,10 +87,8 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     // fetch the breakpoint array chromosome index here
                     //
                     uint32_t bpt_chr_idx = fetchBreakpointArrayChrIndex(breakpoint_array, chrom_tracking->chromosome_ids[chrom_index]);
-                    //breakpoint_array->bpts_per_chr[bpt_chr_idx].breakpoints = 
-                    //        calloc(breakpoint_array->bpts_per_chr[bpt_chr_idx].bpts_capacity, sizeof(Breakpoint));
 
-                    // create a lookup table for paired reads
+                    // create a lookup table for paired reads of each breakpoint
                     // key: read name (str), while value: the index in the breakpoint array for this chromosome
                     //
                     khash_t(khStrInt) *breakpoint_pairs_hash = kh_init(khStrInt);

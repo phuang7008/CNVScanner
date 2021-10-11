@@ -194,8 +194,10 @@ typedef struct {
 
 typedef struct {
     uint32_t breakpoint_position;
-    uint32_t left_most_position;
-    uint32_t right_most_position;
+    uint32_t current_start_position;
+    uint32_t mate_start_position;
+    int32_t current_index;
+    int32_t mate_index;
     uint32_t tlen;
     char * read_name;
 } Paired_Reads_Cross_Breakpoints;
