@@ -40,7 +40,7 @@
 
 // The followings are defined as macro/constants. The program should never try to change their values
 #define VERSION_ "##WGS CNV v1.0.0"
-#define INIT_BIN_SIZE 100000
+#define INIT_SIZE 250000
 #define DIFF_COV_TO_MERGE 5
 #define SMALL_LENGTH_CUTOFF 50
 
@@ -141,6 +141,105 @@ typedef struct {
     double stdev;
     double outlier_cutoff;
 } Simple_Stats;
+
+// store breakpoint info
+// Breakpoint_Array
+//                  chr_id_1        chr_id_2        chr_id_3        ...     chr_id_n
+//                  bp_per_chr1     bp_per_chr2     bp_per_chr3     ...     bp_per_chr_n
+//                      chr_1                       ...                     chr_n
+//                      bp_1                        ...                     bp_n
+//                          bp_position
+//                          chr_id
+//                          mate_chr_id
+//                          cigar
+//                          left_read
+//                          read_start
+//                          mate_start
+//                          tlen
+//============================================================================================
+//                  read1                                                   read2
+//      start1 -------------------->                        start2 <------------------------
+//      TLEN = start2 - start1 + 1 + read2_length
+//
+typedef struct {
+    int type;                       //1: soft-clip;   2: hard-clip;
+    uint32_t breakpoint_position;
+    char * read_name;                 // samtools' qname: the current query name
+    //int32_t current_chr_id;         // samtools' rname: Reference name (or tid for target id)
+    //int32_t mate_chr_id;            // samtools' rnext: Mate's reference name (or mtid for next name)
+    //bool left_read;                 // if it is the read from left side (true) or from right side (false)
+    //char * cigar;                   // samtools' CIGAR: the detailed map info
+    int32_t current_index;          // the breakpoint index of itself in the breakpoint array
+    int32_t mate_index;             // the breakpoint index of its mate in the breakpoint array
+    uint32_t current_read_start;    // samtools' pos:   Alignment position (1-based)
+    uint32_t mate_read_start;       // samtools' pnext: Mate's alignment position (1-based)
+    int32_t gap_distance_TLEN;      // samtools' tlen:  Template length (insert size)
+                                    //                  The TLEN field is positive for the leftmost
+                                    //                  segment of the template, negative for the rightmost,
+} Breakpoint;
+
+typedef struct {
+    uint32_t size;
+    uint32_t capacity;
+    //char * chrom_id;
+    Breakpoint * breakpoints;       // there is a bpt_arr_ind associated with the array
+} Breakpoints_Per_Chromosome;
+
+typedef struct {
+    uint32_t size;
+    //uint32_t bp_array_capacity;
+    char ** chrom_ids;
+    Breakpoints_Per_Chromosome *bpts_per_chr;   // there is a bpt_chr_idx associated with this array
+} Breakpoint_Array;
+
+typedef struct {
+    uint32_t breakpoint_position;
+    uint32_t left_most_position;
+    uint32_t right_most_position;
+    uint32_t tlen;
+    char * read_name;
+} Paired_Reads_Cross_Breakpoints;
+
+typedef struct {
+    uint32_t size;
+    uint32_t capacity;
+    Paired_Reads_Cross_Breakpoints * preads_x_bpts;
+} Paired_Reads_Cross_Breakpoints_Per_Chromosome;
+
+typedef struct {
+    uint32_t size;
+    char ** chrom_ids;
+    Paired_Reads_Cross_Breakpoints_Per_Chromosome *preads_x_bpts_per_chr;
+} Paired_Reads_Cross_Breakpoints_Array;
+
+// consolidate all reads associated with a breakpoint
+//                      breakpoint
+//         read1 -----------/----->     ...    <---------------  read2
+//  read3 ------------->              ...        <------------------  read4
+//                      cross-breakpoint
+//
+typedef struct {
+    uint32_t breakpoint_position;
+    uint16_t breakpoint_count;          // number of reads with the current breakpoint in them
+    uint16_t cross_breakpoint_count;    // number of reads w/o the current breakpoints in them, but cross the breakpoint
+    uint32_t cbda_capacity;             // here the size is the cross_breakpoint_count
+    uint32_t *cross_breakpoint_distance_array;
+    //Breakpoint * breakpoints;
+    //Paired_Reads_Cross_Breakpoints * pread_x_bpts;
+} Breakpoint_Stats;
+
+typedef struct {
+    uint32_t size;
+    uint32_t capacity;
+    Breakpoint_Stats *bpts_stats;
+} Breakpoint_Stats_Per_Chromosome;
+
+typedef struct {
+    uint32_t size;
+    char ** chrom_ids;
+    Breakpoint_Stats_Per_Chromosome *bp_stats_per_chr;
+} Breakpoint_Stats_Array;
+
 
 #include "htslib/khash.h"
 

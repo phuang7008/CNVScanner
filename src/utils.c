@@ -534,3 +534,11 @@ void fileOpenError(FILE *fp, char *message) {
         exit(EXIT_FAILURE);
     }
 }
+
+void failureExit(void * data_point_in, char* message) {
+    if (data_point_in == NULL) {
+        fprintf(stderr, "ERROR: Dynamic Memory allocation for %s failed!\n", message);
+        exit(EXIT_FAILURE);
+    }
+}
+

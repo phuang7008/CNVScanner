@@ -22,6 +22,7 @@
 //#include <my_global.h>
 //#include <mysql.h>
 //#include <stdbool.h>
+#include "breakpoints.h"
 #include "htslib/sam.h"
 #include "terms.h"
 
@@ -39,7 +40,7 @@ void findDebugPoint();
  * @param chrom_tracking, a variable used to track count information at each chromosome position
  * @param chrom_index, a index points to the current chromosome index at the chromo_tracking array variable
  */
-void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index);
+void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array, uint32_t breakpoint_array_index, khash_t(khStrInt) *breakpoint_pairs_hash);
 
 /**
  * This function is used to process individual aligned read and put the results into a chrom_tracking variable
@@ -49,7 +50,7 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
  * @param chrom_tracking, a variable used to track count information at each chromosome position
  * @param chrom_index, a index points to the current chromosome index at the chromo_tracking array variable
  */
-void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *rec, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index);
+void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *rec, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array, uint32_t breakpoint_array_index, khash_t(khStrInt) *breakpoint_pairs_hash);
 
 bool getOverlapInfo(User_Input *user_inputs, Stats_Info *stats_info, bam1_t *rec, uint32_t *m_pos_r_end);
 

@@ -75,7 +75,5 @@ void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromos
 
 void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper);
 
-void failureExit(void * data_point_in, char* message);
-
 
 #endif //UTILS_H

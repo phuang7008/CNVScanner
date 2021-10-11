@@ -29,6 +29,7 @@
 #include "utility.h"
 
 #include "analysis.h"
+#include "breakpoints.h"
 #include "calculate_stdev.h"
 #include "excluded_regions.h"
 #include "fileProcessing.h"
@@ -186,12 +187,23 @@ int main(int argc, char *argv[]) {
     Binned_Data_Wrapper **equal_size_window_wrappers = calloc(chrom_tracking->number_of_chromosomes, sizeof(Binned_Data_Wrapper*));
     checkMemoryAllocation(equal_size_window_wrappers, "Binned_Data_Wrapper **equal_size_window_wrappers");
     binnedDataWrapperInit(equal_size_window_wrappers, chrom_tracking);
+    
+    // setup the Breakpoint_Array, Paired_Reads_Cross_Breakpoints_Array and Breakpoint_Stats_Array
+    //
+    Breakpoint_Array *breakpoint_array = calloc(1, sizeof(Breakpoint_Array));
+    BreakpointArrayInit(breakpoint_array, chrom_tracking);
+
+    Paired_Reads_Cross_Breakpoints_Array *preads_x_bpts_array = calloc(1, sizeof(Paired_Reads_Cross_Breakpoints_Array));
+    PairedReadsCrossBreakpointsArrayInit(preads_x_bpts_array, chrom_tracking);
+
+    Breakpoint_Stats_Array *bpt_stats_array = calloc(1, sizeof(Breakpoint_Stats_Array));
+    BreakpointStatsArrayInit(bpt_stats_array, chrom_tracking);
 
     // calculate the whole genome base coverage mean and standard deviation
     //
     Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
     SimpleStatsInit(wgs_simple_stats);
-    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, target_buffer_status);
+    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, target_buffer_status, breakpoint_array);
 
     // The following is for debugging purpose
     //
@@ -243,7 +255,7 @@ int main(int argc, char *argv[]) {
 
             bam1_t *b = bam_init1();
             while (sam_itr_next(sfh[thread_id], iter, b) >= 0) {
-              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index);
+              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, 0, NULL);
             }
             bam_destroy1(b);
             hts_itr_destroy(iter);

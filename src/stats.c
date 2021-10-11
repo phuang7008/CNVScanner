@@ -28,7 +28,7 @@ void findDebugPoint() {
     printf("for debugging\n");
 }
 
-void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index) {
+void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array, uint32_t breakpoint_array_index, khash_t(khStrInt) *breakpoint_pairs_hash) {
 
     if(user_inputs->percentage < 1.0) {
         // set random seed and only need to be set ONCE
@@ -97,12 +97,12 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
     if (strcmp("*", header->target_name[rec->core.tid]) == 0)
         return;
 
-    processRecord(user_inputs, tmp_stats_info, rec, chrom_tracking, chrom_index);
+    processRecord(user_inputs, tmp_stats_info, rec, chrom_tracking, chrom_index, breakpoint_array, breakpoint_array_index, breakpoint_pairs_hash);
 
     //printf("Done read bam for thread %d\n", thread_id);
 }
 
-void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *rec, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index) {
+void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *rec, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx, khash_t(khStrInt) *breakpoint_pairs_hash) {
     uint32_t i=0;
     uint32_t chrom_len = chrom_tracking->chromosome_lengths[chrom_index];
 
@@ -189,6 +189,11 @@ void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *
             //
             pos_q += cln;
 
+            // need to store the soft clip breakpoint here
+            //
+            if (bpt_arr != NULL)
+                storeCurrentReadBreakpointInfo(pos_r, rec, bpt_arr, bpt_chr_idx, breakpoint_pairs_hash, 1);
+
         } else if (cop == BAM_CINS) {
             // as they are not part of the reference, we will not advance the pos_r
             // this is confirmed by the web:  https://github.com/lh3/samtools/blob/master/bam_md.c
@@ -221,6 +226,9 @@ void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *
             // from the query sequence. Therefore, it is not part of query anymore
             // So no need to advance on query sequence anymore
             //
+
+            if (cop == BAM_CHARD_CLIP && bpt_arr != NULL)
+                storeCurrentReadBreakpointInfo(pos_r, rec, bpt_arr, bpt_chr_idx, breakpoint_pairs_hash, 2);
 
         } else {
             if (user_inputs->debug_ON)

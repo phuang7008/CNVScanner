@@ -175,4 +175,7 @@ void outputAllPositionArray(AllStartsEndsArray *all_starts_ends_array, int statu
 
 void fileOpenError(FILE *fp, char *message);
 
+void failureExit(void * data_point_in, char* message);
+
+
 #endif //UTILS_H

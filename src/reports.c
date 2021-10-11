@@ -384,7 +384,7 @@ void outputGeneralInfo(FILE *fp, Stats_Info *stats_info, double average_coverage
 void binnedDataWrapperInit(Binned_Data_Wrapper** binned_data_wrappers, Chromosome_Tracking *chrom_tracking) {
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        // here we will initialize each binned data array to be 100,000 defined as INIT_BIN_SIZE
+        // here we will initialize each binned data array to be 100,000 defined as INIT_SIZE
         // the size will dynamically expanded when there are more needed
         //
         binned_data_wrappers[i] = calloc(1, sizeof(Binned_Data_Wrapper));
@@ -392,17 +392,17 @@ void binnedDataWrapperInit(Binned_Data_Wrapper** binned_data_wrappers, Chromosom
         strcpy(binned_data_wrappers[i]->chromosome_id, chrom_tracking->chromosome_ids[i]);
 
         binned_data_wrappers[i]->size = 0;
-        binned_data_wrappers[i]->capacity = INIT_BIN_SIZE;
-        binned_data_wrappers[i]->data   = calloc(INIT_BIN_SIZE, sizeof(Binned_Data));
-        binned_data_wrappers[i]->starts = calloc(INIT_BIN_SIZE, sizeof(uint32_t));
-        binned_data_wrappers[i]->ends   = calloc(INIT_BIN_SIZE, sizeof(uint32_t));
+        binned_data_wrappers[i]->capacity = INIT_SIZE;
+        binned_data_wrappers[i]->data   = calloc(INIT_SIZE, sizeof(Binned_Data));
+        binned_data_wrappers[i]->starts = calloc(INIT_SIZE, sizeof(uint32_t));
+        binned_data_wrappers[i]->ends   = calloc(INIT_SIZE, sizeof(uint32_t));
     }
 }
 
 void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper) {
     if (!binned_data_wrapper) return;
 
-    binned_data_wrapper->capacity += INIT_BIN_SIZE;
+    binned_data_wrapper->capacity += INIT_SIZE;
 
     if (binned_data_wrapper->data) {
         binned_data_wrapper->data = 
@@ -424,13 +424,6 @@ void dynamicIncreaseBinSize(Binned_Data_Wrapper* binned_data_wrapper) {
 
     failureExit(binned_data_wrapper->ends, "binned_data_wrapper->ends");
 
-}
-
-void failureExit(void * data_point_in, char* message) {
-    if (data_point_in == NULL) {
-        fprintf(stderr, "ERROR: Dynamic Memory allocation for %s failed!\n", message);
-        exit(EXIT_FAILURE);
-    }
 }
 
 void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromosome_Tracking *chrom_tracking) {

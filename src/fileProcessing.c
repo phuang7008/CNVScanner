@@ -92,8 +92,7 @@ void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value) {
     khiter_t iter = kh_put(khIntStr, khash_in, key, &absent);
     if (absent) {
         kh_key(khash_in, iter) = key;
-        kh_value(khash_in, iter) = calloc(strlen(value)+1, sizeof(char));
-        strcpy(kh_value(khash_in, iter), value);
+        kh_value(khash_in, iter) = strdup(value);
     } else {
         fprintf(stderr, "The key %"PRIu32" exist with value %s, maybe the input data is not sorted or merged?\n", key, value);
     }
