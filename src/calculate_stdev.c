@@ -18,7 +18,7 @@
 
 #include "calculate_stdev.h"
 
-void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info, Simple_Stats *simple_stats, Target_Buffer_Status *target_buffer_status, Breakpoint_Array *breakpoint_array) {
+void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info, Simple_Stats *simple_stats, Target_Buffer_Status *target_buffer_status, Breakpoint_Array *breakpoint_array, Paired_Reads_Cross_Breakpoints_Array *preads_x_bpts_array) {
     // for tmp stats info
     //
     Stats_Info *stats_info = calloc(1, sizeof(Stats_Info));
@@ -101,6 +101,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     }
                     bam_destroy1(b);
                     hts_itr_destroy(iter);
+                    cleanKhashStrInt(breakpoint_pairs_hash);
 
                     if (user_inputs->excluded_region_file)
                         zeroAllNsRegions(chrom_tracking->chromosome_ids[chrom_index], excluded_bed_info, chrom_tracking, target_buffer_status, -1);
@@ -116,9 +117,16 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                         chrom_tracking->coverage[chrom_index] = NULL;
                     }
 
-                    // output breakpoint array for debugging
+                    // obtain paired reads across breakpoints info
+                    //
+                    uint32_t preads_x_bpt_chr_idx = 
+                        fetchPReadsXBreakpointArrayChrIndex(preads_x_bpts_array, chrom_tracking->chromosome_ids[chrom_index]);
+                    storePairedReadsCrossBreakpointsPerChr(breakpoint_array, bpt_chr_idx, preads_x_bpts_array, preads_x_bpt_chr_idx, header[thread_id], sfh_idx[thread_id], sfh[thread_id]);
+
+                    // output breakpoint array and paired_reads across breakpointsfor debugging
                     //
                     outputBreakpointArray(breakpoint_array);
+                    outputPairedReadsCrossBreakpointsArray(preads_x_bpts_array);
                 }
             }
 #pragma omp taskwait

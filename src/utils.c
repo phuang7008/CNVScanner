@@ -28,15 +28,6 @@
 #include "utility.h"
 
 
-void cleanKhashInt(khash_t(m32) *hash_to_clean) {
-	khint_t k;
-	for (k = kh_begin(hash_to_clean); k != kh_end(hash_to_clean); ++k)
-		if (kh_exist(hash_to_clean, k))
-			kh_del(m32, hash_to_clean, k);
-
-	if (hash_to_clean) kh_destroy(m32, hash_to_clean);
-}
-
 void cleanKhashStr(khash_t(str) *hash_to_clean, uint8_t type) {
 	khint_t k;
 	for (k = kh_begin(hash_to_clean); k != kh_end(hash_to_clean); ++k) {
@@ -105,6 +96,21 @@ void cleanKhashStrStr(khash_t(khStrStr) * hash_to_clean) {
     }
 
     if (hash_to_clean) kh_destroy(khStrStr, hash_to_clean);
+}
+
+void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean) {
+    khint_t k;
+    for (k=kh_begin(hash_to_clean); k!=kh_end(hash_to_clean); ++k) {
+        if (kh_exist(hash_to_clean, k)) { 
+            uint32_t i;
+            for (i=0; i<kh_value(hash_to_clean, k)->size; i++) {
+                if (kh_value(hash_to_clean, k)->pread_x_a_bpt[i].read_name != NULL) {
+                    free(kh_value(hash_to_clean, k)->pread_x_a_bpt[i].read_name);
+                    kh_value(hash_to_clean, k)->pread_x_a_bpt[i].read_name = NULL;
+                }
+            }
+        }
+    }
 }
 
 bool checkKhashKey(khash_t(khIntStr) *hash_in, uint32_t key) {

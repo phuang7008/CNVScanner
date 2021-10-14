@@ -39,12 +39,6 @@ uint32_t processLowCovRegionFromKhash(khash_t(khStrInt) *low_cov_regions, char *
  */
 uint32_t processLowCovRegionFromStrArray(StringArray *low_cov_regions, char *output);
 
-/*
- * This function is used to clean the khash_t (uint32_t key) hash table used by the users
- * @param hash_to_clean: loop through the hash table to clean all the allocated memories
- */
-void cleanKhashInt(khash_t(m32) *hash_to_clean);
-
 /* 
  * It is used to clean the kash_t (char* as key, but string array as value) hash table
  * @param hash_to_clean: loop through the hash table to clean all the allocated memories including keys and char* array
@@ -63,6 +57,8 @@ void cleanKhashStr(khash_t(str) *hash_to_clean, uint8_t type);
  * @param hash_to_clean: a khash_t variable to be cleaned
  */
 void cleanKhashStrStr(khash_t(khStrStr) * hash_to_clean);
+
+void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean);
 
 /*
  * Initialize the member of the Stats_Info variable

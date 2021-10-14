@@ -34,13 +34,15 @@
 
 // Users defined header files
 #include "htslib/sam.h"
+#include "htslib/khash.h"
 
 #include "data_structure.h"
 #include "coverage_tracking.h"
 
 // The followings are defined as macro/constants. The program should never try to change their values
 #define VERSION_ "##WGS CNV v1.0.0"
-#define INIT_SIZE 250000
+#define INIT_SIZE 500000
+#define PR_INIT_SIZE 200        // the init size for number of paired reads cross a breakpoint
 #define DIFF_COV_TO_MERGE 5
 #define SMALL_LENGTH_CUTOFF 50
 
@@ -50,9 +52,7 @@
 extern bool EXCLUDED_FILE_PROVIDED;
 extern int  khStrStr;
 extern int  khStrFloat;
-extern int  khStrStrArray;
-extern int  khStrLCG;
-extern int  khStrGTP;
+extern int  khIntPrArray;
 
 /**
  * define a structure that holds the file strings from user inputs
@@ -192,34 +192,55 @@ typedef struct {
     Breakpoints_Per_Chromosome *bpts_per_chr;   // there is a bpt_chr_idx associated with this array
 } Breakpoint_Array;
 
-typedef struct {
-    uint32_t breakpoint_position;
-    uint32_t current_start_position;
-    uint32_t mate_start_position;
-    int32_t current_index;
-    int32_t mate_index;
-    uint32_t tlen;
-    char * read_name;
-} Paired_Reads_Cross_Breakpoints;
-
-typedef struct {
-    uint32_t size;
-    uint32_t capacity;
-    Paired_Reads_Cross_Breakpoints * preads_x_bpts;
-} Paired_Reads_Cross_Breakpoints_Per_Chromosome;
-
-typedef struct {
-    uint32_t size;
-    char ** chrom_ids;
-    Paired_Reads_Cross_Breakpoints_Per_Chromosome *preads_x_bpts_per_chr;
-} Paired_Reads_Cross_Breakpoints_Array;
-
 // consolidate all reads associated with a breakpoint
 //                      breakpoint
 //         read1 -----------/----->     ...    <---------------  read2
 //  read3 ------------->              ...        <------------------  read4
 //                      cross-breakpoint
 //
+// Here is the detailed storage structure
+// Paired_Reads_Cross_Breakpoints_Array: 
+//          preads_x_bpts_array (stores array of hash tables)
+//              preads_x_bpts_per_chr_arr (chr1)    preads_x_bpts_per_chr_arr (chr2)    ... (array of hash tables)
+//                  key1: bpt_pos1
+//                  val1: preads_x_bpts_per_chr_arr (chr1): need to initialize for the key1
+//                      set: size, capacity and current_breakpoint_count
+//                      initialize preads_x_bpts_per_chr_arr[0]->pread_x_a_bpt array to the size of PR_INIT_SIZE
+//                          -> pread_x_a_bpt[0]: for current_start_position, mate_start_position, tlen, read_name
+//                          -> pread_x_a_bpt[1]
+//                          -> ...
+//                          -> pread_x_a_bpt[n]
+//                                              
+//                  key2: bpt_pos2
+//                  val2: ... 
+//                  etc.
+//
+typedef struct {
+    uint32_t current_start_position;
+    uint32_t mate_start_position;
+    uint32_t tlen;
+    char * read_name;
+} Paired_Reads_Cross_A_Breakpoint;
+
+typedef struct {
+    uint32_t size;                              // number of unique breakpoints for this chromosome
+    uint32_t capacity;
+    uint8_t  current_breakpoint_count;          // number of breakpoint at this specific position
+    uint8_t  num_TLEN_ge_1000;                  // number of insertion size >= 1000
+    Paired_Reads_Cross_A_Breakpoint *pread_x_a_bpt;
+} Paired_Reads_Cross_A_Breakpoint_Array;
+
+// key is the breakpoint position as uint32_t, while value is the the array of Paired_Reads_Cross_A_Breakpoint
+// the KHASH_MAP_INIT_INT, the last INT means the key is INT
+//
+KHASH_MAP_INIT_INT(khIntPrArray, Paired_Reads_Cross_A_Breakpoint_Array*)
+
+typedef struct {
+    uint32_t size;
+    char ** chrom_ids;
+    khash_t(khIntPrArray) **preads_x_bpts_per_chr_arr;  // key: breakpoint, value: Paired_Reads_Cross_A_Breakpoint_Array
+} Paired_Reads_Cross_Breakpoints_Array;
+
 typedef struct {
     uint32_t breakpoint_position;
     uint16_t breakpoint_count;          // number of reads with the current breakpoint in them
@@ -242,15 +263,6 @@ typedef struct {
     Breakpoint_Stats_Per_Chromosome *bp_stats_per_chr;
 } Breakpoint_Stats_Array;
 
-
-#include "htslib/khash.h"
-
-// Instantiate a hash map containing integer keys
-// m32 means the key is 32 bit integer, while the value is of unsigned int type (ie uint16_t)
-//
-KHASH_MAP_INIT_INT(m32, uint32_t)
-KHASH_MAP_INIT_INT(m16, uint16_t)
-KHASH_MAP_INIT_INT(m8, uint16_t)
 
 // khIntStr: the key as 32 bit integer, while the value is the string
 KHASH_MAP_INIT_INT(khIntStr, char*)

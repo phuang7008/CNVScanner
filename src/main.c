@@ -48,6 +48,9 @@ int khStrInt = 34;
 //
 int khIntStr = 35;
 
+// used for KHASH_MAP_INIT_STR(khIntPrArray, Paired_Reads_Cross_A_Breakpoint*)
+//
+int khIntPrArray = 36;
 
 int main(int argc, char *argv[]) {
     // get user input options and then processing it accordingly
@@ -203,7 +206,7 @@ int main(int argc, char *argv[]) {
     //
     Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
     SimpleStatsInit(wgs_simple_stats);
-    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, target_buffer_status, breakpoint_array);
+    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, target_buffer_status, breakpoint_array, preads_x_bpts_array);
 
     // The following is for debugging purpose
     //
@@ -384,6 +387,10 @@ int main(int argc, char *argv[]) {
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);
 
     binnedDataWrapperDestroy(binned_data_wrappers, chrom_tracking);
+
+    BreakpointArrayDestroy(breakpoint_array);
+    PairedReadsCrossBreakpointsArrayDestroy(preads_x_bpts_array);
+    BreakpointStatsArrayDestroy(bpt_stats_array);
 
     if (excluded_bed_info != NULL)
         cleanBedInfo(excluded_bed_info);
