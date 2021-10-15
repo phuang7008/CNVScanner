@@ -216,11 +216,12 @@ void PairedReadsCrossBreakpointsArrayDestroy(Paired_Reads_Cross_Breakpoints_Arra
             pread_x_bpts_array->chrom_ids[i] = NULL;
         }
 
-        khint_t iter_h;
-        for (iter_h=kh_begin(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]);
-                iter_h != kh_end(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]); ++iter_h) {
-            cleanKhashIntPrArray(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]);
-        }
+        //khint_t iter_h;
+        //for (iter_h=kh_begin(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]);
+        //        iter_h != kh_end(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]); ++iter_h) {
+        //    if (kh_exist(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i], iter_h))
+        cleanKhashIntPrArray(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]);
+        //}
     }
 
     if (pread_x_bpts_array->chrom_ids != NULL) {
@@ -279,6 +280,12 @@ void storePairedReadsCrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t 
                 exit(EXIT_FAILURE);
             }
             kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->current_breakpoint_count++;
+
+            if (bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[k].type == 1) {
+                kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->num_of_soft_clipping++;
+            } else {
+                kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->num_of_hard_clipping++;
+            }
             continue;
         }
 
@@ -326,9 +333,17 @@ void storePairedReadsCrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t 
                                                         calloc(1, sizeof(Paired_Reads_Cross_A_Breakpoint_Array));
                     kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->capacity = PR_INIT_SIZE;
                     kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->size = 0;
-                    kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->current_breakpoint_count++;
                     kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->pread_x_a_bpt = \
                                                         calloc(PR_INIT_SIZE, sizeof(Paired_Reads_Cross_A_Breakpoint));
+
+                    // only record once for each breakpoint info
+                    //
+                    kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->current_breakpoint_count++;
+                    if (bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[k].type == 1) {
+                        kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->num_of_soft_clipping++;
+                    } else {
+                        kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->num_of_hard_clipping++;
+                    }
                 }
             }
 
@@ -383,22 +398,25 @@ void outputPairedReadsCrossBreakpointsArray(Paired_Reads_Cross_Breakpoints_Array
                 // print Breakpoint key first
                 //
                 fprintf(fp, "At_Breakpoint\t%"PRIu32"\n", kh_key(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k));
-                fprintf(fp, "Associated_Number_of_Paired_Reads\t%"PRIu32"\n", kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->size);
-                fprintf(fp, "Num_of_Current_Breakpoint_only\t%d\n", \
+                fprintf(fp, "  Associated_Number_of_Paired_Reads\t%"PRIu32"\n", kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->size);
+                fprintf(fp, "  Num_of_Current_Breakpoint_only\t%d\n", \
                         kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->current_breakpoint_count);
-                fprintf(fp, "Number_of_Paired_Reads_with_Insertion_size >= 1000:\t%d\n", \
+                fprintf(fp, "  Num_of_soft_clipping:\t%d\n", kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->num_of_soft_clipping);
+                fprintf(fp, "  Num_of_hard_clipping:\t%d\n", kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->num_of_hard_clipping);
+                fprintf(fp, "  Number_of_Paired_Reads_with_Insertion_size >= 1000:\t%d\n", \
                         kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->num_TLEN_ge_1000);
 
                 for (j=0; j<kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->size; j++) {    // at each breakpoint array
-                    fprintf(fp, "Read Name: %s\n", kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->pread_x_a_bpt[j].read_name);
-                    fprintf(fp, "Start Position 1: %"PRIu32"\n", \
+                    fprintf(fp, "    Read Name: %s\n", kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->pread_x_a_bpt[j].read_name);
+                    fprintf(fp, "    Start Position 1: %"PRIu32"\n", \
                             kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->pread_x_a_bpt[j].current_start_position);
-                    fprintf(fp, "Start Position 2: %"PRIu32"\n", \
+                    fprintf(fp, "    Start Position 2: %"PRIu32"\n", \
                             kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->pread_x_a_bpt[j].mate_start_position);
-                    fprintf(fp, "TLEN: %"PRIu32"\n", kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->pread_x_a_bpt[j].tlen);
+                    fprintf(fp, "    TLEN: %"PRIu32"\n", kh_value(preads_x_bpt_arr->preads_x_bpts_per_chr_arr[i], k)->pread_x_a_bpt[j].tlen);
                 }
             }
         }
+        fprintf(fp, "\n");
     }
     fclose(fp);
 }

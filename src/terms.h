@@ -227,6 +227,8 @@ typedef struct {
     uint32_t capacity;
     uint8_t  current_breakpoint_count;          // number of breakpoint at this specific position
     uint8_t  num_TLEN_ge_1000;                  // number of insertion size >= 1000
+    uint16_t num_of_soft_clipping;
+    uint16_t num_of_hard_clipping;
     Paired_Reads_Cross_A_Breakpoint *pread_x_a_bpt;
 } Paired_Reads_Cross_A_Breakpoint_Array;
 

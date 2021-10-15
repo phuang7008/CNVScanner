@@ -109,6 +109,11 @@ void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean) {
                     kh_value(hash_to_clean, k)->pread_x_a_bpt[i].read_name = NULL;
                 }
             }
+
+            if (kh_value(hash_to_clean, k)) {
+                free(kh_value(hash_to_clean, k));
+                kh_value(hash_to_clean, k) = NULL;
+            }
         }
     }
 }

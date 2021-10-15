@@ -390,7 +390,7 @@ int main(int argc, char *argv[]) {
 
     BreakpointArrayDestroy(breakpoint_array);
     PairedReadsCrossBreakpointsArrayDestroy(preads_x_bpts_array);
-    BreakpointStatsArrayDestroy(bpt_stats_array);
+    //BreakpointStatsArrayDestroy(bpt_stats_array);
 
     if (excluded_bed_info != NULL)
         cleanBedInfo(excluded_bed_info);
