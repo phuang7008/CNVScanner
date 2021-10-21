@@ -216,12 +216,7 @@ void PairedReadsCrossBreakpointsArrayDestroy(Paired_Reads_Cross_Breakpoints_Arra
             pread_x_bpts_array->chrom_ids[i] = NULL;
         }
 
-        //khint_t iter_h;
-        //for (iter_h=kh_begin(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]);
-        //        iter_h != kh_end(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]); ++iter_h) {
-        //    if (kh_exist(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i], iter_h))
         cleanKhashIntPrArray(pread_x_bpts_array->preads_x_bpts_per_chr_arr[i]);
-        //}
     }
 
     if (pread_x_bpts_array->chrom_ids != NULL) {
@@ -364,9 +359,9 @@ void storePairedReadsCrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t 
         }
         bam_destroy1(b);
         cleanKhashStrInt(paired_read_name_hash);
+        hts_itr_destroy(hts_itr);
     }
 
-    //hts_itr_destroy(hts_itr);
     cleanKhashInt(seen_breakpoints_hash);
 }
 

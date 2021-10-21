@@ -199,8 +199,8 @@ int main(int argc, char *argv[]) {
     Paired_Reads_Cross_Breakpoints_Array *preads_x_bpts_array = calloc(1, sizeof(Paired_Reads_Cross_Breakpoints_Array));
     PairedReadsCrossBreakpointsArrayInit(preads_x_bpts_array, chrom_tracking);
 
-    Breakpoint_Stats_Array *bpt_stats_array = calloc(1, sizeof(Breakpoint_Stats_Array));
-    BreakpointStatsArrayInit(bpt_stats_array, chrom_tracking);
+    //Breakpoint_Stats_Array *bpt_stats_array = calloc(1, sizeof(Breakpoint_Stats_Array));
+    //BreakpointStatsArrayInit(bpt_stats_array, chrom_tracking);
 
     // calculate the whole genome base coverage mean and standard deviation
     //
@@ -282,9 +282,29 @@ int main(int argc, char *argv[]) {
               chrom_tracking->coverage[chrom_index] = NULL;
             }
 
-            // now handling mappability normalization
+            // GC normalization section
             //
             uint32_t total_lines;
+            if (user_inputs->gc_content_file) {
+                khash_t(khIntStr) *gc_starts = kh_init(khIntStr);
+                khash_t(khIntStr) *gc_ends   = kh_init(khIntStr);
+
+                total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index],
+                        user_inputs->gc_content_file, gc_starts, gc_ends, NULL);
+                
+                printf("The total number of GC%% lines is %i\n", total_lines);
+                outputHashTable(gc_starts, 1, user_inputs);
+
+                mappabilityGcNormalization(binned_data_wrappers[chrom_index], user_inputs, gc_starts, gc_ends, total_lines, 1);
+
+                // clean-up
+                //
+                cleanKhashIntStr(gc_starts);
+                cleanKhashIntStr(gc_ends);
+            }
+
+            // now handling mappability normalization
+            //
             if (user_inputs->mappability_file) {
               khash_t(khIntStr) * map_starts = kh_init(khIntStr);
               khash_t(khIntStr) * map_ends   = kh_init(khIntStr);
@@ -292,35 +312,15 @@ int main(int argc, char *argv[]) {
               total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index],
                                         user_inputs->mappability_file, map_starts, map_ends, NULL);
               printf("The total number of mappability lines is %i\n", total_lines);
-              outputHashTable(map_starts, 1, user_inputs);
+              outputHashTable(map_starts, 2, user_inputs);
 
               mappabilityGcNormalization(binned_data_wrappers[chrom_index], 
-                                         user_inputs, map_starts, map_ends, total_lines, 1);
+                                         user_inputs, map_starts, map_ends, total_lines, 2);
 
               // clean-up
               //
               cleanKhashIntStr(map_starts);
               cleanKhashIntStr(map_ends);
-            }
-
-            // GC normalization section
-            //
-            if (user_inputs->gc_content_file) {
-              khash_t(khIntStr) *gc_starts = kh_init(khIntStr);
-              khash_t(khIntStr) *gc_ends   = kh_init(khIntStr);
-
-              total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index], 
-                                        user_inputs->gc_content_file, gc_starts, gc_ends, NULL);
-
-              printf("The total number of GC%% lines is %i\n", total_lines);
-              outputHashTable(gc_starts, 2, user_inputs);
-
-              mappabilityGcNormalization(binned_data_wrappers[chrom_index], user_inputs, gc_starts, gc_ends, total_lines, 2);
-
-              // clean-up
-              //
-              cleanKhashIntStr(gc_starts);
-              cleanKhashIntStr(gc_ends);
             }
 
             // create equal-sized-bins
@@ -387,6 +387,7 @@ int main(int argc, char *argv[]) {
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);
 
     binnedDataWrapperDestroy(binned_data_wrappers, chrom_tracking);
+    binnedDataWrapperDestroy(equal_size_window_wrappers, chrom_tracking);
 
     BreakpointArrayDestroy(breakpoint_array);
     PairedReadsCrossBreakpointsArrayDestroy(preads_x_bpts_array);

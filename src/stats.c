@@ -409,6 +409,11 @@ void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned
 
     percentile_cutoff = CalcualtePercentile(average_coverage_array, 98);
     the_stats->ninty_eight_percentile = percentile_cutoff;
+
+    // clean up
+    //
+    free(average_coverage_array->array);
+    free(average_coverage_array);
 }
 
 // the following function is used to for double number array qsort()

@@ -107,7 +107,7 @@ typedef struct {
     uint32_t index;
     double   ave_coverage;
     double   weighted_mappability;
-    double   ave_cov_map_normalized;
+    double   ave_cov_gc_normalized;
     double   weighted_gc_scale;
     double   ave_cov_map_gc_normalized;
 } Binned_Data;

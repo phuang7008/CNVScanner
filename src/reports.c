@@ -224,7 +224,7 @@ void insertBinData(uint32_t start, uint32_t end, uint32_t length, double ave_cov
     binned_data_wrapper->data[binned_data_wrapper->size].index  = binned_data_wrapper->size;
     binned_data_wrapper->data[binned_data_wrapper->size].ave_coverage = ave_coverage;
     binned_data_wrapper->data[binned_data_wrapper->size].weighted_mappability = 0;
-    binned_data_wrapper->data[binned_data_wrapper->size].ave_cov_map_normalized = 0;
+    binned_data_wrapper->data[binned_data_wrapper->size].ave_cov_gc_normalized = 0;
     binned_data_wrapper->data[binned_data_wrapper->size].weighted_gc_scale = 0;
     binned_data_wrapper->data[binned_data_wrapper->size].ave_cov_map_gc_normalized = 0;
 
@@ -384,7 +384,7 @@ void outputGeneralInfo(FILE *fp, Stats_Info *stats_info, double average_coverage
 void binnedDataWrapperInit(Binned_Data_Wrapper** binned_data_wrappers, Chromosome_Tracking *chrom_tracking) {
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        // here we will initialize each binned data array to be 100,000 defined as INIT_SIZE
+        // here we will initialize each binned data array to be 500,000 defined as INIT_SIZE
         // the size will dynamically expanded when there are more needed
         //
         binned_data_wrappers[i] = calloc(1, sizeof(Binned_Data_Wrapper));
@@ -430,11 +430,11 @@ void binnedDataWrapperDestroy(Binned_Data_Wrapper** binned_data_wrapper, Chromos
 
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        free(binned_data_wrapper[i]->chromosome_id);
-        free(binned_data_wrapper[i]->starts);
-        free(binned_data_wrapper[i]->data);
-        free(binned_data_wrapper[i]->ends);
-        free(binned_data_wrapper[i]);
+        if (binned_data_wrapper[i]->chromosome_id) free(binned_data_wrapper[i]->chromosome_id);
+        if (binned_data_wrapper[i]->starts) free(binned_data_wrapper[i]->starts);
+        if (binned_data_wrapper[i]->data) free(binned_data_wrapper[i]->data);
+        if (binned_data_wrapper[i]->ends) free(binned_data_wrapper[i]->ends);
+        if (binned_data_wrapper[i]) free(binned_data_wrapper[i]);
     }
     free(binned_data_wrapper);
 }

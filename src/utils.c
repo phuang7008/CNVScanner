@@ -110,7 +110,12 @@ void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean) {
                 }
             }
 
-            if (kh_value(hash_to_clean, k)) {
+            if (kh_value(hash_to_clean, k)->pread_x_a_bpt != NULL) {
+                free(kh_value(hash_to_clean, k)->pread_x_a_bpt);
+                kh_value(hash_to_clean, k)->pread_x_a_bpt = NULL;
+            }
+
+            if (kh_value(hash_to_clean, k) != NULL) {
                 free(kh_value(hash_to_clean, k));
                 kh_value(hash_to_clean, k) = NULL;
             }
@@ -213,6 +218,8 @@ void statsInfoDestroy(Stats_Info *stats_info) {
         free(stats_info->wgs_cov_stats);
         stats_info->wgs_cov_stats = NULL;
     }
+
+    if (stats_info != NULL) free(stats_info);
 
 }
 
@@ -443,7 +450,7 @@ void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array) {
 }
 
 void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input *user_inputs, Chromosome_Tracking *chrom_tracking, int type) {
-    FILE *fp;
+    FILE *fp=NULL;
     if (type == 1) {
         fp = fopen(user_inputs->normalized_result_file, "w");
     } else {
@@ -476,10 +483,11 @@ void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input
                 binned_data_wrapper[i]->data[j].weighted_mappability,
                 binned_data_wrapper[i]->data[j].weighted_gc_scale,
                 binned_data_wrapper[i]->data[j].ave_coverage,
-                binned_data_wrapper[i]->data[j].ave_cov_map_normalized,
+                binned_data_wrapper[i]->data[j].ave_cov_gc_normalized,
                 binned_data_wrapper[i]->data[j].ave_cov_map_gc_normalized, round_normalized_value);
         }
     }
+    if (fp) fclose(fp);
 }
 
 void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user_inputs, int type) {

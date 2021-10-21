@@ -38,8 +38,10 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
     all_starts_ends_array->size = 0;
 
-    khash_t(khIntStr) *binned_starts  = kh_init(khIntStr);      // key: start, value: "start end length ave_cov"
-    khash_t(khIntStr) *binned_ends    = kh_init(khIntStr);      // key: end,   value: "start end length ave_cov"
+    // key: start (or end), value: "start end length ave_cov (type==1), first_normalized ave (type==2)"
+    //
+    khash_t(khIntStr) *binned_starts  = kh_init(khIntStr);      
+    khash_t(khIntStr) *binned_ends    = kh_init(khIntStr);
 
     generateHashFromDynamicBins(binned_data_wraper, binned_starts, binned_ends, all_starts_ends_array, type);
     combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, starts);
@@ -155,7 +157,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
             prev_start1 = all_starts_ends_array->array[i];      // this could be either from the dynamic binned or from map
         }
 
-        // need to record the map/gc% position of current intersect for the map/gc annotation
+        // need to remember the map/gc% position of current intersect for the map/gc annotation
         //
         if (checkKhashKey(ends, all_starts_ends_array->array[i]) || 
                 checkKhashKey(starts, all_starts_ends_array->array[i])) {
@@ -181,8 +183,8 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
 
     // Note: the binned_array->theArray[0] is the index to the binned_array_wrapper->data
     //
-    uint32_t length = current_position - prev_start;
-    uint32_t orig_len = strtoul(binned_array->theArray[3], NULL, 10) - strtoul(binned_array->theArray[2], NULL, 10);
+    uint32_t length = current_position - prev_start;        // it is the current window length after intersect
+    uint32_t orig_len = strtoul(binned_array->theArray[3], NULL, 10) - strtoul(binned_array->theArray[2], NULL, 10); // the orig raw binned window
     double ave = strtod(binned_array->theArray[4], NULL);
     double scale_ratio = strtod(map_gc_array->theArray[3], NULL);
 
@@ -195,25 +197,24 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
     }
 
     if (type == 1) {
-        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += ((double) length / (double)orig_len) * scale_ratio;
-        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized = 
-            ave / binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability;
-
-        // output for debugging
-        //
-        //if (user_inputs->debug_ON)
-        //    fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_normalized);
-
-    } else {
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale += ((double) length / (double)orig_len) * scale_ratio;
-        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized =
+        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized = 
             ave * binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale;
 
         // output for debugging
         //
-        //if (user_inputs->debug_ON)
-        //    fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized);
+        if (user_inputs->debug_ON)
+            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized);
 
+    } else {
+        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += ((double) length / (double)orig_len) * scale_ratio;
+        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized =
+            ave / binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability;
+
+        // output for debugging
+        //
+        if (user_inputs->debug_ON)
+            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized);
     }
 
     if (fp != NULL) fclose(fp);
@@ -230,13 +231,14 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
         free(map_gc_array);
 }
 
-// type 1 is for mappability normalization, while type 2 is for gc normalization
+// type 1 is for gc content normalization, while type 2 is for mappability normalization
+// type 3 is for binned array used for equal window bins and type 4 is for equal window bins
 // and store dynamically merged bin's starts and ends to all_starts_ends_array
 //
 void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wrapper, khash_t(khIntStr) *binned_starts, khash_t(khIntStr) *binned_ends, AllStartsEndsArray *all_starts_ends_array, int type) {
     // create a string pointer to store values
     //
-    char * insert_value = calloc(200, sizeof(char));
+    char * insert_value = calloc(250, sizeof(char));
 
     uint32_t i=0;
     for (i = 0; i < binned_data_wrapper->size; i++) {
@@ -245,7 +247,7 @@ void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wrapper, khash
         if (type == 1) {
             sprintf(insert_value, "%"PRIu32"\t%s\t%"PRIu32"\t%"PRIu32"\t%.2f", i, binned_data_wrapper->chromosome_id, binned_data_wrapper->starts[i], binned_data_wrapper->ends[i], binned_data_wrapper->data[i].ave_coverage);
         } else if (type == 2) {
-            sprintf(insert_value, "%"PRIu32"\t%s\t%"PRIu32"\t%"PRIu32"\t%.2f", i, binned_data_wrapper->chromosome_id, binned_data_wrapper->starts[i], binned_data_wrapper->ends[i], binned_data_wrapper->data[i].ave_cov_map_normalized);
+            sprintf(insert_value, "%"PRIu32"\t%s\t%"PRIu32"\t%"PRIu32"\t%.2f", i, binned_data_wrapper->chromosome_id, binned_data_wrapper->starts[i], binned_data_wrapper->ends[i], binned_data_wrapper->data[i].ave_cov_gc_normalized);
         } else if (type == 3) {
             sprintf(insert_value, "%"PRIu32"\t%s\t%"PRIu32"\t%"PRIu32"\t%.2f\t%.2f", i, binned_data_wrapper->chromosome_id, binned_data_wrapper->starts[i], binned_data_wrapper->ends[i], binned_data_wrapper->data[i].weighted_mappability, binned_data_wrapper->data[i].ave_cov_map_gc_normalized);
         } else {
@@ -437,6 +439,7 @@ void store_window_results(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_W
     }
 
     equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].length += length;
+    //equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage += length * ave;
     equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage += length * ave;
     equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].weighted_mappability += length * mappability;
 
@@ -445,6 +448,17 @@ void store_window_results(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_W
     }
 
     if (fp) fclose(fp);
+
+    //clean-up
+    //
+    stringArrayDestroy(binned_array);
+    stringArrayDestroy(window_bin_array);
+
+    if (binned_array)
+        free(binned_array);
+
+    if (window_bin_array)
+        free(window_bin_array);
 }
 
 void combineAllStartsAndEndsFromOtherSource(AllStartsEndsArray *all_starts_ends_array, khash_t(khIntStr) *hash_in) {
