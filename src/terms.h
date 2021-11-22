@@ -42,7 +42,7 @@
 // The followings are defined as macro/constants. The program should never try to change their values
 #define VERSION_ "##WGS CNV v1.0.0"
 #define INIT_SIZE 500000
-#define PR_INIT_SIZE 200        // the init size for number of paired reads cross a breakpoint
+#define PR_INIT_SIZE 200        // the init size for number of paired reads across a breakpoint
 #define DIFF_COV_TO_MERGE 5
 #define SMALL_LENGTH_CUTOFF 50
 
@@ -199,7 +199,7 @@ typedef struct {
 //                      cross-breakpoint
 //
 // Here is the detailed storage structure
-// Paired_Reads_Cross_Breakpoints_Array: 
+// Paired_Reads_Across_Breakpoints_Array: 
 //          preads_x_bpts_array (stores array of hash tables)
 //              preads_x_bpts_per_chr_arr (chr1)    preads_x_bpts_per_chr_arr (chr2)    ... (array of hash tables)
 //                  key1: bpt_pos1
@@ -220,7 +220,7 @@ typedef struct {
     uint32_t mate_start_position;
     uint32_t tlen;
     char * read_name;
-} Paired_Reads_Cross_A_Breakpoint;
+} Paired_Reads_Across_A_Breakpoint;
 
 typedef struct {
     uint32_t size;                              // number of unique breakpoints for this chromosome
@@ -229,28 +229,28 @@ typedef struct {
     uint8_t  num_TLEN_ge_1000;                  // number of insertion size >= 1000
     uint16_t num_of_soft_clipping;
     uint16_t num_of_hard_clipping;
-    Paired_Reads_Cross_A_Breakpoint *pread_x_a_bpt;
-} Paired_Reads_Cross_A_Breakpoint_Array;
+    Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;
+} Paired_Reads_Across_A_Breakpoint_Array;
 
-// key is the breakpoint position as uint32_t, while value is the the array of Paired_Reads_Cross_A_Breakpoint
+// key is the breakpoint position as uint32_t, while value is the the array of Paired_Reads_Across_A_Breakpoint
 // the KHASH_MAP_INIT_INT, the last INT means the key is INT
 //
-KHASH_MAP_INIT_INT(khIntPrArray, Paired_Reads_Cross_A_Breakpoint_Array*)
+KHASH_MAP_INIT_INT(khIntPrArray, Paired_Reads_Across_A_Breakpoint_Array*)
 
 typedef struct {
     uint32_t size;
     char ** chrom_ids;
-    khash_t(khIntPrArray) **preads_x_bpts_per_chr_arr;  // key: breakpoint, value: Paired_Reads_Cross_A_Breakpoint_Array
-} Paired_Reads_Cross_Breakpoints_Array;
+    khash_t(khIntPrArray) **preads_x_bpts_per_chr_arr;  // key: breakpoint, value: Paired_Reads_Across_A_Breakpoint_Array
+} Paired_Reads_Across_Breakpoints_Array;
 
 typedef struct {
     uint32_t breakpoint_position;
     uint16_t breakpoint_count;          // number of reads with the current breakpoint in them
-    uint16_t cross_breakpoint_count;    // number of reads w/o the current breakpoints in them, but cross the breakpoint
+    uint16_t cross_breakpoint_count;    // number of reads cross the breakpoint
     uint32_t cbda_capacity;             // here the size is the cross_breakpoint_count
     uint32_t *cross_breakpoint_distance_array;
     //Breakpoint * breakpoints;
-    //Paired_Reads_Cross_Breakpoints * pread_x_bpts;
+    //Paired_Reads_Across_Breakpoints * pread_x_bpts;
 } Breakpoint_Stats;
 
 typedef struct {

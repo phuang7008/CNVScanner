@@ -48,7 +48,7 @@ int khStrInt = 34;
 //
 int khIntStr = 35;
 
-// used for KHASH_MAP_INIT_STR(khIntPrArray, Paired_Reads_Cross_A_Breakpoint*)
+// used for KHASH_MAP_INIT_STR(khIntPrArray, Paired_Reads_Across_A_Breakpoint*)
 //
 int khIntPrArray = 36;
 
@@ -191,13 +191,13 @@ int main(int argc, char *argv[]) {
     checkMemoryAllocation(equal_size_window_wrappers, "Binned_Data_Wrapper **equal_size_window_wrappers");
     binnedDataWrapperInit(equal_size_window_wrappers, chrom_tracking);
     
-    // setup the Breakpoint_Array, Paired_Reads_Cross_Breakpoints_Array and Breakpoint_Stats_Array
+    // setup the Breakpoint_Array, Paired_Reads_Across_Breakpoints_Array and Breakpoint_Stats_Array
     //
     Breakpoint_Array *breakpoint_array = calloc(1, sizeof(Breakpoint_Array));
     BreakpointArrayInit(breakpoint_array, chrom_tracking);
 
-    Paired_Reads_Cross_Breakpoints_Array *preads_x_bpts_array = calloc(1, sizeof(Paired_Reads_Cross_Breakpoints_Array));
-    PairedReadsCrossBreakpointsArrayInit(preads_x_bpts_array, chrom_tracking);
+    Paired_Reads_Across_Breakpoints_Array *preads_x_bpts_array = calloc(1, sizeof(Paired_Reads_Across_Breakpoints_Array));
+    PairedReadsAcrossBreakpointsArrayInit(preads_x_bpts_array, chrom_tracking);
 
     //Breakpoint_Stats_Array *bpt_stats_array = calloc(1, sizeof(Breakpoint_Stats_Array));
     //BreakpointStatsArrayInit(bpt_stats_array, chrom_tracking);
@@ -390,7 +390,7 @@ int main(int argc, char *argv[]) {
     binnedDataWrapperDestroy(equal_size_window_wrappers, chrom_tracking);
 
     BreakpointArrayDestroy(breakpoint_array);
-    PairedReadsCrossBreakpointsArrayDestroy(preads_x_bpts_array);
+    PairedReadsAcrossBreakpointsArrayDestroy(preads_x_bpts_array);
     //BreakpointStatsArrayDestroy(bpt_stats_array);
 
     if (excluded_bed_info != NULL)

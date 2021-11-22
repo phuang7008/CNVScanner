@@ -194,7 +194,7 @@ void outputBreakpointArray(Breakpoint_Array *bpt_arr) {
     fclose(fp);
 }
 
-void PairedReadsCrossBreakpointsArrayInit(Paired_Reads_Cross_Breakpoints_Array *pread_x_bpts_array, Chromosome_Tracking *chrom_tracking) {
+void PairedReadsAcrossBreakpointsArrayInit(Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array, Chromosome_Tracking *chrom_tracking) {
     pread_x_bpts_array->size = chrom_tracking->number_of_chromosomes;
     pread_x_bpts_array->chrom_ids = calloc(pread_x_bpts_array->size, sizeof(char*));
     pread_x_bpts_array->preads_x_bpts_per_chr_arr = calloc(pread_x_bpts_array->size, sizeof(khash_t(khIntPrArray)*));
@@ -208,7 +208,7 @@ void PairedReadsCrossBreakpointsArrayInit(Paired_Reads_Cross_Breakpoints_Array *
     }
 }
 
-void PairedReadsCrossBreakpointsArrayDestroy(Paired_Reads_Cross_Breakpoints_Array *pread_x_bpts_array) {
+void PairedReadsAcrossBreakpointsArrayDestroy(Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array) {
     uint32_t i;
     for (i=0; i< pread_x_bpts_array->size; i++) {
         if (pread_x_bpts_array->chrom_ids[i] != NULL) {
@@ -230,7 +230,7 @@ void PairedReadsCrossBreakpointsArrayDestroy(Paired_Reads_Cross_Breakpoints_Arra
     }
 }
 
-uint32_t fetchPReadsXBreakpointArrayChrIndex(Paired_Reads_Cross_Breakpoints_Array *preads_x_bpt_arr, char * chrom_id) {
+uint32_t fetchPReadsXBreakpointArrayChrIndex(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, char * chrom_id) {
     uint32_t i;
     for (i=0; i<preads_x_bpt_arr->size; i++) {
         if (strcmp(preads_x_bpt_arr->chrom_ids[i], chrom_id) == 0) {
@@ -241,7 +241,7 @@ uint32_t fetchPReadsXBreakpointArrayChrIndex(Paired_Reads_Cross_Breakpoints_Arra
     return preads_x_bpt_arr->size + 10;
 }
 
-void storePairedReadsCrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx, Paired_Reads_Cross_Breakpoints_Array *pread_x_bpts_array, uint32_t pr_chr_ind, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh) {
+void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx, Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array, uint32_t pr_chr_ind, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh) {
     // need to store processed breakpoints
     //
     khash_t(m32) *seen_breakpoints_hash = kh_init(m32);
@@ -325,11 +325,11 @@ void storePairedReadsCrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t 
                 if (absent) {
                     kh_key(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h) = bpt_pos;
                     kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h) = \
-                                                        calloc(1, sizeof(Paired_Reads_Cross_A_Breakpoint_Array));
+                                                        calloc(1, sizeof(Paired_Reads_Across_A_Breakpoint_Array));
                     kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->capacity = PR_INIT_SIZE;
                     kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->size = 0;
                     kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->pread_x_a_bpt = \
-                                                        calloc(PR_INIT_SIZE, sizeof(Paired_Reads_Cross_A_Breakpoint));
+                                                        calloc(PR_INIT_SIZE, sizeof(Paired_Reads_Across_A_Breakpoint));
 
                     // only record once for each breakpoint info
                     //
@@ -355,7 +355,7 @@ void storePairedReadsCrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t 
 
             if (kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->size + 10 >
                         kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h)->capacity)
-                dynamicPairedReadsCrossABreakpointArraySizeIncrease(kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h));
+                dynamicPairedReadsAcrossABreakpointArraySizeIncrease(kh_value(pread_x_bpts_array->preads_x_bpts_per_chr_arr[pr_chr_ind], iter_h));
         }
         bam_destroy1(b);
         cleanKhashStrInt(paired_read_name_hash);
@@ -365,22 +365,22 @@ void storePairedReadsCrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t 
     cleanKhashInt(seen_breakpoints_hash);
 }
 
-void dynamicPairedReadsCrossABreakpointArraySizeIncrease(Paired_Reads_Cross_A_Breakpoint_Array *preads_x_bpts_arr) {
+void dynamicPairedReadsAcrossABreakpointArraySizeIncrease(Paired_Reads_Across_A_Breakpoint_Array *preads_x_bpts_arr) {
     if (preads_x_bpts_arr == NULL) return;
 
     preads_x_bpts_arr->capacity += PR_INIT_SIZE;
 
     if (preads_x_bpts_arr->pread_x_a_bpt) {
-        preads_x_bpts_arr->pread_x_a_bpt = realloc(preads_x_bpts_arr->pread_x_a_bpt, preads_x_bpts_arr->capacity * sizeof(Paired_Reads_Cross_A_Breakpoint));
-        failureExit(preads_x_bpts_arr, "Paired_Reads_Cross_A_Breakpoint_Array *preads_x_bpts_arr->pread_x_a_bpt");
+        preads_x_bpts_arr->pread_x_a_bpt = realloc(preads_x_bpts_arr->pread_x_a_bpt, preads_x_bpts_arr->capacity * sizeof(Paired_Reads_Across_A_Breakpoint));
+        failureExit(preads_x_bpts_arr, "Paired_Reads_Across_A_Breakpoint_Array *preads_x_bpts_arr->pread_x_a_bpt");
     } else {
         fprintf(stderr, "Error: The preads_x_bpts_arr is NULL\n");
         exit(EXIT_FAILURE);
     }
 }
 
-void outputPairedReadsCrossBreakpointsArray(Paired_Reads_Cross_Breakpoints_Array *preads_x_bpt_arr) {
-    FILE *fp = fopen("Paired_Reads_Cross_Breakpoints_Array.txt" ,"w");
+void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr) {
+    FILE *fp = fopen("Paired_Reads_Across_Breakpoints_Array.txt" ,"w");
 
     uint32_t i, j;
     for (i=0; i<preads_x_bpt_arr->size; i++) {      // at the top array level
