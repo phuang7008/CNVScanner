@@ -200,13 +200,15 @@ typedef struct {
 //
 // Here is the detailed storage structure
 // Paired_Reads_Across_Breakpoints_Array: 
-//          preads_x_bpts_array (stores array of hash tables)
+//          preads_x_bpts_array (stores array of hash tables, one hashtable for one chromosome at first level)
 //              preads_x_bpts_per_chr_arr (chr1)    preads_x_bpts_per_chr_arr (chr2)    ... (array of hash tables)
 //                  key1: bpt_pos1
 //                  val1: preads_x_bpts_per_chr_arr (chr1): need to initialize for the key1
 //                      set: size, capacity and current_breakpoint_count
+//                           array of neighboring breakpoints (within 5 bp distance) -> group them together
 //                      initialize preads_x_bpts_per_chr_arr[0]->pread_x_a_bpt array to the size of PR_INIT_SIZE
-//                          -> pread_x_a_bpt[0]: for current_start_position, mate_start_position, tlen, read_name
+//                          -> pread_x_a_bpt[0]: for current read, need to store the following info:
+//                                  current_start_position, mate_start_position, tlen, read_name
 //                          -> pread_x_a_bpt[1]
 //                          -> ...
 //                          -> pread_x_a_bpt[n]
@@ -225,6 +227,8 @@ typedef struct {
 typedef struct {
     uint32_t size;                              // number of unique breakpoints for this chromosome
     uint32_t capacity;
+    uint32_t my_breakpoint_group[6];            // array of breakpoints (within 5 bp distance) -> group them together
+    int my_group_size;
     uint8_t  current_breakpoint_count;          // number of breakpoint at this specific position
     uint8_t  num_TLEN_ge_1000;                  // number of insertion size >= 1000
     uint16_t num_of_soft_clipping;
@@ -240,7 +244,10 @@ KHASH_MAP_INIT_INT(khIntPrArray, Paired_Reads_Across_A_Breakpoint_Array*)
 typedef struct {
     uint32_t size;
     char ** chrom_ids;
-    khash_t(khIntPrArray) **preads_x_bpts_per_chr_arr;  // key: breakpoint, value: Paired_Reads_Across_A_Breakpoint_Array
+    khash_t(khIntPrArray) **preads_x_bpts_per_chr_arr;  // first level is an array
+                                                        // second level is a hashtable with
+                                                        //   key: breakpoint, 
+                                                        //   value: Paired_Reads_Across_A_Breakpoint_Array
 } Paired_Reads_Across_Breakpoints_Array;
 
 typedef struct {
