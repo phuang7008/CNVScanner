@@ -192,37 +192,38 @@ typedef struct {
     Breakpoints_Per_Chromosome *bpts_per_chr;   // there is a bpt_chr_idx associated with this array
 } Breakpoint_Array;
 
-// consolidate all reads associated with a breakpoint
+// consolidate all paired reads associated with a breakpoint
 //                      breakpoint
-//         read1 -----------/----->     ...    <---------------  read2
-//  read3 ------------->              ...        <------------------  read4
+//         read1_f -----------/----->     ...    <---------------  read1_r
+//  read2_f ------------->              ...        <------------------  read2_r
 //                      cross-breakpoint
 //
 // Here is the detailed storage structure
 // Paired_Reads_Across_Breakpoints_Array: 
-//          preads_x_bpts_array (stores array of hash tables, one hashtable for one chromosome at first level)
-//              preads_x_bpts_per_chr_arr (chr1)    preads_x_bpts_per_chr_arr (chr2)    ... (array of hash tables)
-//                  key1: bpt_pos1
-//                  val1: preads_x_bpts_per_chr_arr (chr1): need to initialize for the key1
-//                      set: size, capacity and current_breakpoint_count
-//                           array of neighboring breakpoints (within 5 bp distance) -> group them together
-//                      initialize preads_x_bpts_per_chr_arr[0]->pread_x_a_bpt array to the size of PR_INIT_SIZE
-//                          -> pread_x_a_bpt[0]: for current read, need to store the following info:
-//                                  current_start_position, mate_start_position, tlen, read_name
-//                          -> pread_x_a_bpt[1]
-//                          -> ...
-//                          -> pread_x_a_bpt[n]
+//      Note: preads_x_per_anchor_bpt_arr is an array of hash tables
+//      preads_x_per_anchor_bpt_arr (chr1)    preads_x_per_anchor_bpt_arr (chr2)    ... (array of hash tables)
+//          key1: anchor_bpt_pos1
+//          val1: preads_x_per_anchor_bpt_arr (chr1): need to initialize for the key1
+//              set: size, capacity and current_breakpoint_count
+//                   array of neighboring breakpoints (within 5 bp distance) -> group them together
+//              initialize preads_x_per_anchor_bpt_arr[0]->pread_x_a_bpt array to the size of PR_INIT_SIZE
+//                         and  seen_paired_read_hash
+//                  -> pread_x_a_bpt[0]: for current read, need to store the following info:
+//                          current_start_position, mate_start_position, tlen, read_name
+//                  -> pread_x_a_bpt[1]
+//                  -> ...
+//                  -> pread_x_a_bpt[n]
 //                                              
-//                  key2: bpt_pos2
-//                  val2: ... 
-//                  etc.
+//          key2: anchor_bpt_pos2
+//          val2: ... 
+//          etc.
 //
 typedef struct {
     uint32_t current_start_position;
     uint32_t mate_start_position;
     uint32_t tlen;
     char * read_name;
-} Paired_Reads_Across_A_Breakpoint;
+} Paired_Reads_Across_A_Breakpoint;             // for a single breakpoint
 
 typedef struct {
     uint32_t size;                              // number of unique breakpoints for this chromosome
@@ -233,22 +234,23 @@ typedef struct {
     uint8_t  num_TLEN_ge_1000;                  // number of insertion size >= 1000
     uint16_t num_of_soft_clipping;
     uint16_t num_of_hard_clipping;
-    Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;
-} Paired_Reads_Across_A_Breakpoint_Array;
+    khash_t(khStrInt) *seen_paired_read_hash;           // names of paired reads which already encountered
+    Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;    // an array of breakpoints in this anchor breakpoint group
+} Paired_Reads_Across_Per_Anchor_Breakpoint_Array;      // for breakpoints on one anchor breakpoint
 
 // key is the breakpoint position as uint32_t, while value is the the array of Paired_Reads_Across_A_Breakpoint
 // the KHASH_MAP_INIT_INT, the last INT means the key is INT
 //
-KHASH_MAP_INIT_INT(khIntPrArray, Paired_Reads_Across_A_Breakpoint_Array*)
+KHASH_MAP_INIT_INT(khIntPrArray, Paired_Reads_Across_Per_Anchor_Breakpoint_Array*)
 
 typedef struct {
     uint32_t size;
     char ** chrom_ids;
-    khash_t(khIntPrArray) **preads_x_bpts_per_chr_arr;  // first level is an array
-                                                        // second level is a hashtable with
-                                                        //   key: breakpoint, 
-                                                        //   value: Paired_Reads_Across_A_Breakpoint_Array
-} Paired_Reads_Across_Breakpoints_Array;
+    khash_t(khIntPrArray) **preads_x_per_anchor_bpt_arr;   // *  first level is an array based on the chromosome ids order
+                                                            // ** second level is a hashtable (on each chromosome)
+                                                            //      key: anchor breakpoint, 
+                                                            //      value: Paired_Reads_Across_A_Breakpoint_Per_Anchor_Array
+} Paired_Reads_Across_Breakpoints_Array;                    // For all breakpoints on all chromosomes (one array element for one chromosome)
 
 typedef struct {
     uint32_t breakpoint_position;
