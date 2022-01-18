@@ -48,6 +48,8 @@ void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Break
 
 void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx, Paired_Reads_Across_Breakpoints_Array *preads_x_bpts_arr, uint32_t pr_chr_ind, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh);
 
+void eliminateUnwantedBreakpoints(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t pr_chr_ind);
+
 void outputBreakpointArray(Breakpoint_Array *bpt_arr);
 
 void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr);

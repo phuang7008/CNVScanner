@@ -417,6 +417,56 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
     }
     free(sorted_breakpoints);
     kh_destroy(m32, anchor_breakpoints_hash);
+
+    eliminateUnwantedBreakpoints(pread_x_bpts_array, pr_chr_ind);
+}
+
+// this method will remove those breakpoints where:
+// 1). only associated with a single breakpoint AND
+// 2). the paired reads across breakpoint with tlen < 1000
+//
+void eliminateUnwantedBreakpoints(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t pr_chr_ind) {
+    FILE *fp = fopen("breakpoints.bed", "w");
+    khint_t k;
+    for (k=kh_begin(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind]); \
+            k!=kh_end(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind]); ++k) {   // at the hash array per chr
+        if (kh_exist(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)) {
+            if (!(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->current_breakpoint_count > 1 &&
+                    kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->num_TLEN_ge_1000 > 0)) {
+                // free memories allocated for the pointer variables in the current bucket
+                //
+                uint32_t i;
+                for (i=0; i<kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->size; i++) {
+                    if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->pread_x_a_bpt[i].read_name != NULL) {
+                        free(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->pread_x_a_bpt[i].read_name);
+                        kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->pread_x_a_bpt[i].read_name = NULL;
+                    }
+                }
+
+                if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->pread_x_a_bpt != NULL) {
+                    free(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->pread_x_a_bpt);
+                    kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->pread_x_a_bpt = NULL;
+                }
+
+                cleanKhashStrInt(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->seen_paired_read_hash);
+
+                // remove the key-value pair
+                //
+                kh_del(khIntPrArray, preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k);
+            } else {
+                // print breakpoint in bedfile format
+                // chr_id   start   end   #breakpoints   #tlen>1000
+                //
+                fprintf(fp, "%s", preads_x_bpt_arr->chrom_ids[pr_chr_ind]);
+                fprintf(fp, "\t%"PRIu32, kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k));
+                fprintf(fp, "\t%"PRIu32, kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)+1);
+                fprintf(fp, "\t%"PRIu8, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->current_breakpoint_count);
+                fprintf(fp, "\t%"PRIu8"\n", kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->num_TLEN_ge_1000);
+                //fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%d\n", preads_x_bpt_arr->chrom_ids[pr_chr_ind], kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k), kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)+1, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->current_breakpoint_count, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->num_TLEN_ge_1000);
+            }
+        }
+    }
+    fclose(fp);
 }
 
 void dynamicPairedReadsAcrossABreakpointArraySizeIncrease(Paired_Reads_Across_Per_Anchor_Breakpoint_Array *preads_x_bpts_arr) {
