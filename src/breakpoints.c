@@ -269,7 +269,7 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
     // need to find out the anchor breakpoints for grouping neighboring breakpoints <= 5 bps away
     //
     khash_t(m32) *anchor_breakpoints_hash = kh_init(m32);
-    recordAnchorBreakpoints(sorted_breakpoints, anchor_breakpoints_hash, bpt_arr, bpt_chr_idx);
+    uint32_t num_of_anchors = recordAnchorBreakpoints(sorted_breakpoints, anchor_breakpoints_hash, bpt_arr, bpt_chr_idx);
 
     // need to store the processed breakpoints, so that the breakpoint will be handled only once
     //
@@ -418,24 +418,49 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
     free(sorted_breakpoints);
     kh_destroy(m32, anchor_breakpoints_hash);
 
-    eliminateUnwantedBreakpoints(pread_x_bpts_array, pr_chr_ind);
+    eliminateUnwantedBreakpoints(bpt_arr->chrom_ids[bpt_chr_idx], pread_x_bpts_array, pr_chr_ind, num_of_anchors);
 }
 
 // this method will remove those breakpoints where:
 // 1). only associated with a single breakpoint AND
 // 2). the paired reads across breakpoint with tlen < 1000
 //
-void eliminateUnwantedBreakpoints(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t pr_chr_ind) {
-    FILE *fp = fopen("breakpoints.bed", "w");
+void eliminateUnwantedBreakpoints(char *chr_id,  Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t pr_chr_ind, uint32_t num_of_anchors) {
+    char filename[50];
+    sprintf(filename, "%s_breakpoints_sorted.bed", chr_id);
+
+    FILE *fp = fopen(filename, "w");
+
+    uint32_t *anchor_breakpoints = calloc(num_of_anchors, sizeof(uint32_t));
+    uint32_t counter=0;
+
     khint_t k;
     for (k=kh_begin(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind]); \
             k!=kh_end(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind]); ++k) {   // at the hash array per chr
         if (kh_exist(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)) {
+            anchor_breakpoints[counter] = kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k);
+            counter++;
+        }
+    }
+
+    if (counter != num_of_anchors) {
+        fprintf(stderr, "ERROR: counter %"PRIu32"doesn't match to the number of anchors %"PRIu32"\n", counter, num_of_anchors);
+        exit(EXIT_FAILURE);
+    }
+
+    qsort(anchor_breakpoints, counter, sizeof(uint32_t), compare);
+
+    uint32_t i, j;
+    for (j=0; j<counter; j++) {
+        k = kh_get(khIntPrArray, preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], anchor_breakpoints[j]);
+        if (k == kh_end(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind])) {
+            fprintf(stderr, "ERROR: can't find the anchor key at position: %"PRIu32"\n", anchor_breakpoints[j]);
+            exit(EXIT_FAILURE);
+        } else {
             if (!(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->current_breakpoint_count > 1 &&
                     kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->num_TLEN_ge_1000 > 0)) {
                 // free memories allocated for the pointer variables in the current bucket
                 //
-                uint32_t i;
                 for (i=0; i<kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->size; i++) {
                     if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->pread_x_a_bpt[i].read_name != NULL) {
                         free(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->pread_x_a_bpt[i].read_name);
@@ -457,16 +482,17 @@ void eliminateUnwantedBreakpoints(Paired_Reads_Across_Breakpoints_Array *preads_
                 // print breakpoint in bedfile format
                 // chr_id   start   end   #breakpoints   #tlen>1000
                 //
-                fprintf(fp, "%s", preads_x_bpt_arr->chrom_ids[pr_chr_ind]);
-                fprintf(fp, "\t%"PRIu32, kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k));
-                fprintf(fp, "\t%"PRIu32, kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)+1);
-                fprintf(fp, "\t%"PRIu8, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->current_breakpoint_count);
-                fprintf(fp, "\t%"PRIu8"\n", kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->num_TLEN_ge_1000);
-                //fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%d\n", preads_x_bpt_arr->chrom_ids[pr_chr_ind], kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k), kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)+1, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->current_breakpoint_count, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->num_TLEN_ge_1000);
+                //fprintf(fp, "%s", preads_x_bpt_arr->chrom_ids[pr_chr_ind]);
+                //fprintf(fp, "\t%"PRIu32, kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k));
+                //fprintf(fp, "\t%"PRIu32, kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)+1);
+                //fprintf(fp, "\t%"PRIu8, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->current_breakpoint_count);
+                //fprintf(fp, "\t%"PRIu8"\n", kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->num_TLEN_ge_1000);
+                fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu8"\t%"PRIu8"\n", preads_x_bpt_arr->chrom_ids[pr_chr_ind], kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k), kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)+1, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->current_breakpoint_count, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_arr[pr_chr_ind], k)->num_TLEN_ge_1000);
             }
         }
     }
     fclose(fp);
+    free(anchor_breakpoints);
 }
 
 void dynamicPairedReadsAcrossABreakpointArraySizeIncrease(Paired_Reads_Across_Per_Anchor_Breakpoint_Array *preads_x_bpts_arr) {
@@ -603,8 +629,8 @@ void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bp
 // this method is to set the anchor point for each breakpoint in anchor_breakpoints_hash
 // key: current breakpoint; value: current_anchor
 //
-void recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx) {
-    uint32_t i, current_anchor=0, current_breakpoint=0;
+uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx) {
+    uint32_t i, current_anchor=0, current_breakpoint=0, num_of_anchors=0;
     khiter_t iter_h;
     int absent;
     
@@ -624,6 +650,7 @@ void recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_
                 if (absent) {
                     kh_key(anchor_breakpoints_hash, iter_h) = current_breakpoint;
                     kh_value(anchor_breakpoints_hash, iter_h) = current_breakpoint;
+                    num_of_anchors++;
                 }
             }
             current_anchor = current_breakpoint;
@@ -658,4 +685,6 @@ void recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_
             fprintf(fp, "%d\t%d\n", kh_key(anchor_breakpoints_hash, k), kh_value(anchor_breakpoints_hash, k));
         }
     }
+
+    return num_of_anchors;
 }
