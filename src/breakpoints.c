@@ -292,8 +292,7 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
         uint32_t current_anchor_pos=0;
         khiter_t iter_anchor = kh_get(m32, anchor_breakpoints_hash, bpt_pos);
         if (iter_anchor == kh_end(anchor_breakpoints_hash)) {
-            fprintf(stderr, "ERROR: can't find the anchor breakpoint for the current breakpoint %"PRIu32"\t1\n", bpt_pos);
-            exit(EXIT_FAILURE);
+            continue;
         } else {
             current_anchor_pos = kh_value(anchor_breakpoints_hash, iter_anchor);
 
@@ -631,13 +630,14 @@ void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bp
 //
 uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx) {
     uint32_t i, current_anchor=0, current_breakpoint=0, num_of_anchors=0;
+    khash_t(m32) *tmp_anchor_count_hash = kh_init(m32);
     khiter_t iter_h;
     int absent;
     
     for (i=0; i<bpt_arr->bpts_per_chr[bpt_chr_idx].size; i++) {
         //current_breakpoint = bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[i].breakpoint_position;
         current_breakpoint = sorted_breakpoints[i];
-        if (current_breakpoint == 366586) {
+        if (current_breakpoint == 59118983) {
             printf("stop\n");
         }
 
@@ -650,15 +650,27 @@ uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anc
                 if (absent) {
                     kh_key(anchor_breakpoints_hash, iter_h) = current_breakpoint;
                     kh_value(anchor_breakpoints_hash, iter_h) = current_breakpoint;
-                    num_of_anchors++;
                 }
             }
             current_anchor = current_breakpoint;
+
+            // record count information for current anchor breakpoint
+            //
+            iter_h = kh_get(m32, tmp_anchor_count_hash, current_anchor);
+            if (iter_h == kh_end(tmp_anchor_count_hash)) {
+                iter_h = kh_put(m32, tmp_anchor_count_hash, current_anchor, &absent);
+                if (absent) {
+                    kh_key(tmp_anchor_count_hash, iter_h) = current_anchor;
+                    kh_value(tmp_anchor_count_hash, iter_h) = 1;
+                    if (current_anchor == 59118983) printf("59118983 is added!\n");
+                }
+            }
         } else {
             // check to see if it is closer to the previous breakpoint (i.e. current_anchor)
+            // here the key is current breakpoint, while the value is the current_anchor
             //
             if ( (current_anchor > 0) && (current_breakpoint - current_anchor <= 5) ) {
-                // the current_anchor should be the anchor
+                // the current_anchor should be the anchor (as value, not key)
                 //
                 iter_h = kh_get(m32, anchor_breakpoints_hash, current_breakpoint);
                 if (iter_h == kh_end(anchor_breakpoints_hash)) {
@@ -667,6 +679,14 @@ uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anc
                         kh_key(anchor_breakpoints_hash, iter_h) = current_breakpoint;
                         kh_value(anchor_breakpoints_hash, iter_h) = current_anchor;
                     }
+                }
+
+                iter_h = kh_get(m32, tmp_anchor_count_hash, current_anchor);
+                if (iter_h == kh_end(tmp_anchor_count_hash)) {
+                    fprintf(stderr, "ERROR: current anchor %"PRIu32" doesn't exist at 1!\n", current_anchor);
+                    exit(EXIT_FAILURE);
+                } else {
+                    kh_value(tmp_anchor_count_hash, iter_h)++;
                 }
             } else {
                 // something is wrong, output the warning message
@@ -677,14 +697,49 @@ uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anc
     }
 
     // output anchor breakpoint grouping info for debugging purpose
+    // and get rid of anchors with only single breakpoint
     //
     FILE *fp = fopen("Anchor_Breakpoint_Details_Unique.txt", "w");
     khint_t k;
     for (k=kh_begin(anchor_breakpoints_hash); k!=kh_end(anchor_breakpoints_hash); ++k) {
         if (kh_exist(anchor_breakpoints_hash, k)) {
             fprintf(fp, "%d\t%d\n", kh_key(anchor_breakpoints_hash, k), kh_value(anchor_breakpoints_hash, k));
+
+            iter_h = kh_get(m32, tmp_anchor_count_hash, kh_value(anchor_breakpoints_hash, k));
+            if (iter_h == kh_end(tmp_anchor_count_hash)) {
+                fprintf(stderr, "ERROR: current anchor %"PRIu32" doesn't exist at 2!\n", current_anchor);
+                exit(EXIT_FAILURE);
+            } else {
+                if (kh_value(tmp_anchor_count_hash, iter_h) == 1)
+                    kh_del(m32, anchor_breakpoints_hash, k);
+            }
         }
     }
+    fclose(fp);
+    kh_destroy(m32, tmp_anchor_count_hash);
+
+    // now output shrinked anchor hash
+    //
+    fp = fopen("Anchor_Breakpoint_Used_For_CNV_Detection.txt", "w");
+    khash_t(m32) *seen_anchors_hash = kh_init(m32);
+
+    for (k=kh_begin(anchor_breakpoints_hash); k!=kh_end(anchor_breakpoints_hash); ++k) {
+        if (kh_exist(anchor_breakpoints_hash, k)) {
+            fprintf(fp, "%d\t%d\n", kh_key(anchor_breakpoints_hash, k), kh_value(anchor_breakpoints_hash, k));
+            
+            iter_h = kh_get(m32, seen_anchors_hash, kh_value(anchor_breakpoints_hash, k));
+            if (iter_h == kh_end(seen_anchors_hash)) {
+                iter_h = kh_put(m32, seen_anchors_hash, kh_value(anchor_breakpoints_hash, k), &absent);
+                if (absent) {
+                    kh_key(seen_anchors_hash, iter_h) = kh_value(anchor_breakpoints_hash, k);
+                    kh_value(seen_anchors_hash, iter_h) = 1;
+                    num_of_anchors++;
+                }
+            }
+        }
+    }
+    fclose(fp);
+    kh_destroy(m32, seen_anchors_hash);
 
     return num_of_anchors;
 }
