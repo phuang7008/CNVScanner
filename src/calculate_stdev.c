@@ -127,13 +127,14 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     //
                     outputBreakpointArray(breakpoint_array);
                     outputPairedReadsAcrossBreakpointsArray(preads_x_bpts_array);
-                }
-            }
+                } // omp task
+            } // for loop
 #pragma omp taskwait
+
             // now need to combine all the stats_info for the final results
             //
 #pragma omp critical
-            {       
+            {
                 StdevCalculation(one_pass_stdev, chrom_tracking, simple_stats);
 
                 for (chrom_index=0; chrom_index<chrom_tracking->number_of_chromosomes; ++chrom_index) {
@@ -142,9 +143,10 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     if (stats_info_per_chr[chrom_index])
                         statsInfoDestroy(stats_info_per_chr[chrom_index]);
                 }
-            }   
-        }
-    }
+            }
+
+        } // omp single
+    } // omp parallel
 
     // clean-up
     //
@@ -193,9 +195,11 @@ void StdevCalculation(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_
 
     simple_stats->average_coverage  = total_sum / total_bases;
     simple_stats->total_bases_used  = total_bases;
-    simple_stats->stdev = total_square_sum / total_bases - simple_stats->average_coverage * simple_stats->average_coverage;
-    simple_stats->outlier_cutoff    = 3 * simple_stats->stdev;
+    simple_stats->stdev = sqrt(total_square_sum / total_bases - simple_stats->average_coverage * simple_stats->average_coverage);
+    //simple_stats->stdev = total_square_sum / total_bases - simple_stats->average_coverage * simple_stats->average_coverage;
+    simple_stats->outlier_cutoff    = simple_stats->average_coverage + 3 * simple_stats->stdev;
 
+    fprintf(stderr, "After one pass calculation of mean and stdev\n");
     fprintf(stderr, "Average Coverage: %.2f\n", simple_stats->average_coverage);
     fprintf(stderr, "Standard Deviation: %.2f\n", simple_stats->stdev);
     fprintf(stderr, "Outlier Cutoff: %.2f\n", simple_stats->outlier_cutoff);

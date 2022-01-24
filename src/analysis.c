@@ -412,6 +412,13 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     cleanKhashIntStr(binned_ends);
     cleanKhashIntStr(window_starts);
     cleanKhashIntStr(window_ends);
+
+    // now we need to divide the average coverage by total length to get the real average coverage
+    //
+    for (i=0; i<equal_size_window_wrapper->size; i++) {
+        equal_size_window_wrapper->data[i].weighted_mappability /= equal_size_window_wrapper->data[i].length;
+        equal_size_window_wrapper->data[i].ave_coverage /= equal_size_window_wrapper->data[i].length;
+    }
 }
 
 void store_window_results(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wrapper *equal_size_window_wrapper, User_Input *user_inputs, char *binned_string, char *interval_string, uint32_t current_position, uint32_t prev_start) {

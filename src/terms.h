@@ -142,6 +142,43 @@ typedef struct {
     double outlier_cutoff;
 } Simple_Stats;
 
+// store discovered CNVs
+//
+typedef struct {
+    uint32_t start;
+    uint32_t end;
+    double   ave_coverage;
+} Equal_Window_Bin;
+
+typedef struct {
+    uint32_t start;
+    uint32_t end;
+    uint32_t ave_coverage;
+
+    // store grouped bins 
+    //
+    uint32_t size;
+    uint32_t capacity;
+    Equal_Window_Bin *equal_bin_array;  // list of all bins that are combined
+
+    // store related nearby breakpoint info
+    //
+    //uint32_t left_breakpoint;
+    //uint32_t right_breakpoint;
+} CNV;
+
+typedef struct {
+    uint32_t size;
+    uint32_t capacity;
+    CNV *cnvs;
+} CNVs_Per_Chromosome;
+
+typedef struct {
+    char *chromosome_id;
+    uint32_t size;
+    CNVs_Per_Chromosome* CNVs_per_chromosome;
+} CNV_Array;
+
 // store breakpoint info
 // Breakpoint_Array
 //                  chr_id_1        chr_id_2        chr_id_3        ...     chr_id_n

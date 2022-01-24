@@ -35,6 +35,7 @@
 #include "fileProcessing.h"
 #include "reports.h"
 #include "stats.h"
+#include "std_cnv_calling.h"
 #include "terms.h"
 #include "user_inputs.h"
 #include "utils.h"
@@ -338,8 +339,8 @@ int main(int argc, char *argv[]) {
             cleanKhashIntStr(window_starts);
             cleanKhashIntStr(window_ends);
 
-          }
-        }
+          } // omp task
+        } // for loop
 #pragma omp taskwait
 
         // now need to combine all the stats_info for the final results
@@ -354,10 +355,9 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        //printf("\n");
         fflush(stdout);
-      }
-    }
+      } // omp single
+    } // omp parallel
 
     // output report for debugging
     //
@@ -371,7 +371,7 @@ int main(int argc, char *argv[]) {
     //
     outputFinalBinnedData(equal_size_window_wrappers, user_inputs, chrom_tracking, 2);
 
-    // calculate the statistics here
+    // calculate the statistics here for WGS
     //
     Stats *the_stats = calloc(1, sizeof(Stats));
     calculateMeanAndStdev(user_inputs, equal_size_window_wrappers, the_stats, chrom_tracking);
@@ -381,6 +381,23 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "99_percentile: %.2f\n", the_stats->ninty_nine_percentile);
     fprintf(stderr, "98_percentile: %.2f\n", the_stats->ninty_eight_percentile);
     if (the_stats) free(the_stats);
+
+    // Here we are going to calculate the stats for equal-sized bins
+    //
+    double cutoff_99p = calculate99Percentile(equal_size_window_wrappers, chrom_tracking->number_of_chromosomes);
+    fprintf(stderr, "The equal window bin coverage cutoff is %.2f\n", cutoff_99p);
+    Simple_Stats *equal_window_stats = calloc(1, sizeof(Simple_Stats));
+    generateStatsForNormalizedData(equal_size_window_wrappers, chrom_tracking->number_of_chromosomes, equal_window_stats, cutoff_99p);
+    fprintf(stderr, "After calculating equal window bin stats\n");
+    fprintf(stderr, "Equal Bin Mean:   %.2f\n", equal_window_stats->average_coverage);
+    fprintf(stderr, "Equal Bin Stdev:  %.2f\n", equal_window_stats->stdev);
+    fprintf(stderr, "Total number of Equal Bin:  %"PRIu32"\n", equal_window_stats->total_bases_used);
+    fprintf(stderr, "Equal Bin Hap cutoff:  %.2f\n", equal_window_stats->average_coverage - equal_window_stats->outlier_cutoff);
+    fprintf(stderr, "Equal Bin Dup cutoff:  %.2f\n", equal_window_stats->average_coverage + equal_window_stats->outlier_cutoff);
+
+    CNV_Array **cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
+    cnvArrayInit(cnv_array, chrom_tracking);
+    //mergeNeighboringBinsBasedOn_3xStd(cnv_array, equal_size_window_wrapper, chrom_tracking->number_of_chromosomes, equal_window_stats);
 
     // clean up
     //

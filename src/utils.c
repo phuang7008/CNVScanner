@@ -464,13 +464,10 @@ void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input
         for (j=0; j<binned_data_wrapper[i]->size; j++) {
 
             if (type == 2) {
-                // need to process the data into final scaled values
+                // Need to skip those windows with repeat maskers, mappbility <0.2, Ns regions etc
                 //
                 if (binned_data_wrapper[i]->data[j].length == 0)
                     continue;
-
-                binned_data_wrapper[i]->data[j].weighted_mappability /= binned_data_wrapper[i]->data[j].length;
-                binned_data_wrapper[i]->data[j].ave_coverage /= binned_data_wrapper[i]->data[j].length;
             }
 
             // need to round the final normalized data for stats analysis
