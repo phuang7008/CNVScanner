@@ -50,9 +50,9 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
 
 void eliminateUnwantedBreakpoints(char* chr_id, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t pr_chr_ind, uint32_t num_of_anchors);
 
-void outputBreakpointArray(Breakpoint_Array *bpt_arr);
+void outputBreakpointArray(Breakpoint_Array *bpt_arr, char* chr_id);
 
-void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr);
+void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, char* chr_id);
 
 void dynamicBreakpointPerChrArraySizeIncrease(Breakpoints_Per_Chromosome *bpts_per_chr);
 

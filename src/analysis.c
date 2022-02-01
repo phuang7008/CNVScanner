@@ -338,7 +338,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
                 }
 
                 if (binned_string && interval_string) {
-                    store_window_results(binned_data_wrapper, equal_size_window_wrapper, user_inputs,
+                    storeWindowResults(binned_data_wrapper, equal_size_window_wrapper, user_inputs,
                             binned_string, interval_string, all_starts_ends_array->array[i], prev_start1);
 
                 } else {
@@ -421,7 +421,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     }
 }
 
-void store_window_results(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wrapper *equal_size_window_wrapper, User_Input *user_inputs, char *binned_string, char *interval_string, uint32_t current_position, uint32_t prev_start) {
+void storeWindowResults(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wrapper *equal_size_window_wrapper, User_Input *user_inputs, char *binned_string, char *interval_string, uint32_t current_position, uint32_t prev_start) {
     StringArray *binned_array = calloc(1, sizeof(StringArray));
     stringArrayInit(binned_array, 10);
     splitStringToArray(binned_string, binned_array);    // bin_string has 6 entries: index,chr,start,end,mapp,ave_cov_normalized

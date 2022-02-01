@@ -125,8 +125,8 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
 
                     // output breakpoint array and paired_reads across breakpointsfor debugging
                     //
-                    outputBreakpointArray(breakpoint_array);
-                    outputPairedReadsAcrossBreakpointsArray(preads_x_bpts_array);
+                    outputBreakpointArray(breakpoint_array, chrom_tracking->chromosome_ids[chrom_index]);
+                    outputPairedReadsAcrossBreakpointsArray(preads_x_bpts_array, chrom_tracking->chromosome_ids[chrom_index]);
                 } // omp task
             } // for loop
 #pragma omp taskwait

@@ -45,6 +45,7 @@
 #define PR_INIT_SIZE 200        // the init size for number of paired reads across a breakpoint
 #define DIFF_COV_TO_MERGE 5
 #define SMALL_LENGTH_CUTOFF 50
+#define EQUAL_BIN_SIZE 20
 
 // We need to declared the followings as glabal since the program will change these values!!!
 // The naming convention for this type of data is CAPTICAL_WORD1_WORD2_WORD3...extern bool EXCLUDED_FILE_PROVIDED;
@@ -147,13 +148,15 @@ typedef struct {
 typedef struct {
     uint32_t start;
     uint32_t end;
+    uint32_t length;
     double   ave_coverage;
 } Equal_Window_Bin;
 
 typedef struct {
     uint32_t start;
     uint32_t end;
-    uint32_t ave_coverage;
+    uint32_t length;    // note, the length is not necessarily = end - start, as some bases like Ns regions are removed
+    double  ave_coverage;
 
     // store grouped bins 
     //
@@ -263,16 +266,21 @@ typedef struct {
 } Paired_Reads_Across_A_Breakpoint;             // for a single breakpoint
 
 typedef struct {
-    uint32_t size;                              // number of unique breakpoints for this chromosome
+    // paired reads info
+    //
+    uint32_t size;                              // number of paired reads for this anchor breakpoint
     uint32_t capacity;
-    uint32_t my_breakpoint_group[6];            // array of breakpoints (within 5 bp distance) -> group them together
+    uint8_t  num_TLEN_ge_1000;                  // number of paired reads with insertion size >= 1000
+    khash_t(khStrInt) *seen_paired_read_hash;           // names of paired reads which already encountered
+    Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;    // an array of paired reads in this anchor breakpoint group
+
+    // breakpoint info
+    //
     int my_group_size;
-    uint8_t  current_breakpoint_count;          // number of breakpoint at this specific position
-    uint8_t  num_TLEN_ge_1000;                  // number of insertion size >= 1000
+    uint32_t my_breakpoint_group[6];            // array of unique breakpoints (within 5 bp distance) -> group them together
+    uint8_t  current_breakpoint_count;          // number of breakpoint at this specific position (include those grouped)
     uint16_t num_of_soft_clipping;
     uint16_t num_of_hard_clipping;
-    khash_t(khStrInt) *seen_paired_read_hash;           // names of paired reads which already encountered
-    Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;    // an array of breakpoints in this anchor breakpoint group
 } Paired_Reads_Across_Per_Anchor_Breakpoint_Array;      // for breakpoints on one anchor breakpoint
 
 // key is the breakpoint position as uint32_t, while value is the the array of Paired_Reads_Across_A_Breakpoint

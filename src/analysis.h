@@ -46,7 +46,7 @@ void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wrapper, khash
 
 void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned_data_wrapper, Binned_Data_Wrapper *equal_size_window_wrapper, uint32_t total_lines);
 
-void store_window_results(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wrapper *equal_size_window_wrappers, User_Input *user_inputs, char *binned_string, char *interval_string, uint32_t current_position, uint32_t prev_start);
+void storeWindowResults(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wrapper *equal_size_window_wrappers, User_Input *user_inputs, char *binned_string, char *interval_string, uint32_t current_position, uint32_t prev_start);
 
 void combineAllStartsAndEndsFromOtherSource(AllStartsEndsArray *all_starts_ends_array, khash_t(khIntStr) *hash_in);
 

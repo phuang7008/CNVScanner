@@ -121,10 +121,21 @@ void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean) {
             }
         }
     }
+    if (hash_to_clean)
+        free(hash_to_clean);
 }
 
 bool checkKhashKey(khash_t(khIntStr) *hash_in, uint32_t key) {
     khiter_t iter = kh_get(khIntStr, hash_in, key);
+
+    if (iter == kh_end(hash_in))
+        return false;
+
+    return true;
+}
+
+bool checkm32KhashKey(khash_t(m32) *hash_in, uint32_t key) {
+    khiter_t iter = kh_get(m32, hash_in, key);
 
     if (iter == kh_end(hash_in))
         return false;

@@ -394,6 +394,9 @@ void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned
 
     fprintf(stderr, "total sum of values is %.4f with size of %"PRIu32" with sum of squares is %.4f\n", sum_of_values, average_coverage_array->size, sum_of_squares);
     fprintf(stderr, "number of bins being filtered: %"PRIu32"\n", num_of_filtered);
+
+    // Note the formula from: https://sureshemre.wordpress.com/2012/04/21/how-to-compute-standard-deviation-in-one-pass/
+    //
     the_stats->mean  = sum_of_values / average_coverage_array->size;
     the_stats->stdev = sqrt((sum_of_squares - average_coverage_array->size * pow(the_stats->mean,2)) / (average_coverage_array->size - 1 ));
 

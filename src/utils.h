@@ -141,6 +141,8 @@ void checkMemoryAllocation(void* newly_created_object, char* message);
 
 bool checkKhashKey(khash_t(khIntStr) *hash_in, uint32_t key);
 
+bool checkm32KhashKey(khash_t(m32) *hash_in, uint32_t key);
+
 char* getKhashValue(khash_t(khIntStr) *hash_in, uint32_t key);
 
 /**
