@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
     Breakpoint_Array *breakpoint_array = calloc(1, sizeof(Breakpoint_Array));
     BreakpointArrayInit(breakpoint_array, chrom_tracking);
 
-    Paired_Reads_Across_Breakpoints_Array *preads_x_bpts_array = calloc(1, sizeof(Paired_Reads_Across_Breakpoints_Array));
+    Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(Paired_Reads_Across_Breakpoints_Array*));
     PairedReadsAcrossBreakpointsArrayInit(preads_x_bpts_array, chrom_tracking);
 
     // calculate the whole genome base coverage mean and standard deviation
@@ -399,7 +399,7 @@ int main(int argc, char *argv[]) {
     binnedDataWrapperDestroy(equal_size_window_wrappers, chrom_tracking);
 
     BreakpointArrayDestroy(breakpoint_array);
-    PairedReadsAcrossBreakpointsArrayDestroy(preads_x_bpts_array);
+    PairedReadsAcrossBreakpointsArrayDestroy(preads_x_bpts_array, chrom_tracking);
     //BreakpointStatsArrayDestroy(bpt_stats_array);
 
     if (excluded_bed_info != NULL)

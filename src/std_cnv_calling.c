@@ -210,7 +210,7 @@ void outputCNVArray(CNV_Array **cnv_array, uint32_t number_of_chromosomes) {
 
             uint32_t k;
             for (k=0; k<cnv_array[i]->cnvs[j].size; k++) {
-                fprintf(fp, "\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"%.2f\n", cnv_array[i]->cnvs[j].equal_bin_array[k].start, \
+                fprintf(fp, "\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\n", cnv_array[i]->cnvs[j].equal_bin_array[k].start, \
                         cnv_array[i]->cnvs[j].equal_bin_array[k].end, \
                         cnv_array[i]->cnvs[j].equal_bin_array[k].length, \
                         cnv_array[i]->cnvs[j].equal_bin_array[k].ave_coverage);
