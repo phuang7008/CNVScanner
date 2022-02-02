@@ -26,34 +26,34 @@
 #include "utils.h"
 #include "utility.h"
 
-void BreakpointArrayInit(Breakpoint_Array *breakpoint_array, Chromosome_Tracking *chrom_tracking);
+void BreakpointArrayInit(Breakpoint_Array **breakpoint_array, Chromosome_Tracking *chrom_tracking);
 
-void BreakpointArrayDestroy(Breakpoint_Array *breakpoint_array);
+void BreakpointArrayDestroy(Breakpoint_Array **breakpoint_array, Chromosome_Tracking *chrom_tracking);
 
 void PairedReadsAcrossBreakpointsArrayInit(Paired_Reads_Across_Breakpoints_Array **pread_x_bpts_array, Chromosome_Tracking *chrom_tracking);
 
 void PairedReadsAcrossBreakpointsArrayDestroy(Paired_Reads_Across_Breakpoints_Array **pread_x_bpts_array, Chromosome_Tracking *chrom_tracking);
 
-uint32_t fetchBreakpointArrayChrIndex(Breakpoint_Array *breakpoint_array, char * chrom_id);
+uint32_t fetchBreakpointArrayChrIndex(Breakpoint_Array **breakpoint_array, Chromosome_Tracking *chrom_tracking, uint32_t chrom_idx);
 
 uint32_t fetchPReadsXBreakpointArrayChrIndex(Paired_Reads_Across_Breakpoints_Array **preads_x_bpt_arr, Chromosome_Tracking *chrom_tracking, uint32_t chrom_idx);
 
-void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Breakpoint_Array *breakpoint_array, uint32_t breakpoint_chr_index, khash_t(khStrInt) *breakpoint_pairs_hash, int type);
+void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Breakpoint_Array *bpt_arr, khash_t(khStrInt) *breakpoint_pairs_hash, int type);
 
-void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx, Paired_Reads_Across_Breakpoints_Array *preads_x_bpts_arr, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh);
+void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_Reads_Across_Breakpoints_Array *preads_x_bpts_arr, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh);
 
 void eliminateUnwantedBreakpoints(char* chr_id, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t num_of_anchors);
 
-void outputBreakpointArray(Breakpoint_Array *bpt_arr, char* chr_id);
+void outputBreakpointArray(Breakpoint_Array *bpt_arr);
 
 void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr);
 
-void dynamicBreakpointPerChrArraySizeIncrease(Breakpoints_Per_Chromosome *bpts_per_chr);
+void dynamicBreakpointPerChrArraySizeIncrease(Breakpoint_Array *bpts_per_chr);
 
 void dynamicPairedReadsAcrossABreakpointArraySizeIncrease(Paired_Reads_Across_Per_Anchor_Breakpoint_Array *preads_x_bpts_arr);
 
-void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx);
+void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bpt_arr);
 
-uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx);
+uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr);
 
 #endif

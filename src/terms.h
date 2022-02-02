@@ -207,16 +207,9 @@ typedef struct {
 typedef struct {
     uint32_t size;
     uint32_t capacity;
-    //char * chrom_id;
-    Breakpoint * breakpoints;       // there is a bpt_arr_ind associated with the array
-} Breakpoints_Per_Chromosome;
-
-typedef struct {
-    uint32_t size;
-    //uint32_t bp_array_capacity;
-    char ** chrom_ids;
-    Breakpoints_Per_Chromosome *bpts_per_chr;   // there is a bpt_chr_idx associated with this array
-} Breakpoint_Array;
+    char * chrom_id;
+    Breakpoint *breakpoints;        // there is a bpt_chr_idx associated with this array
+} Breakpoint_Array;                 // all breakpoints are assigned to their own chromosome id
 
 // consolidate all paired reads associated with a breakpoint
 //                      breakpoint

@@ -18,55 +18,39 @@
 
 #include "breakpoints.h"
 
-void BreakpointArrayInit(Breakpoint_Array *breakpoint_array, Chromosome_Tracking *chrom_tracking) {
-    breakpoint_array->size  = chrom_tracking->number_of_chromosomes;
-    breakpoint_array->chrom_ids = calloc(breakpoint_array->size, sizeof(char*));
-    breakpoint_array->bpts_per_chr = calloc(breakpoint_array->size, sizeof(Breakpoints_Per_Chromosome));
-
+void BreakpointArrayInit(Breakpoint_Array **breakpoint_array, Chromosome_Tracking *chrom_tracking) {
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        breakpoint_array->chrom_ids[i] = strdup(chrom_tracking->chromosome_ids[i]);
+        breakpoint_array[i] = calloc(1, sizeof(Breakpoint_Array));
+        breakpoint_array[i]->chrom_id = strdup(chrom_tracking->chromosome_ids[i]);
 
-        breakpoint_array->bpts_per_chr[i].capacity = INIT_SIZE;
-        breakpoint_array->bpts_per_chr[i].size = 0;
-        breakpoint_array->bpts_per_chr[i].breakpoints = 
-                calloc(breakpoint_array->bpts_per_chr[i].capacity, sizeof(Breakpoint));
+        breakpoint_array[i]->size = 0;
+        breakpoint_array[i]->capacity = INIT_SIZE;
+        breakpoint_array[i]->breakpoints = calloc(breakpoint_array[i]->capacity, sizeof(Breakpoint));
     }
 }
 
-void BreakpointArrayDestroy(Breakpoint_Array *breakpoint_array) {
+void BreakpointArrayDestroy(Breakpoint_Array **breakpoint_array, Chromosome_Tracking *chrom_tracking) {
     uint32_t i, j;
-    for (i=0; i<breakpoint_array->size; i++) {
-        // free chromosome ids
-        //
-        if (breakpoint_array->chrom_ids[i] != NULL) {
-            free(breakpoint_array->chrom_ids[i]);
-            breakpoint_array->chrom_ids[i]=NULL;
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        if (breakpoint_array[i]->chrom_id) {
+            free(breakpoint_array[i]->chrom_id);
+            breakpoint_array[i]->chrom_id = NULL;
         }
 
-        // free Breakpoint_Array->bpts_per_chr
-        //
-        for (j=0; j<breakpoint_array->bpts_per_chr[i].size; j++) {
-            if (breakpoint_array->bpts_per_chr[i].breakpoints[j].read_name != NULL) {
-                free(breakpoint_array->bpts_per_chr[i].breakpoints[j].read_name);
-                breakpoint_array->bpts_per_chr[i].breakpoints[j].read_name = NULL;
+        for (j=0; j<breakpoint_array[i]->size; j++) {
+            // free Breakpoint_Array->breakpoints array
+            //
+            if (breakpoint_array[i]->breakpoints[j].read_name != NULL) {
+                free(breakpoint_array[i]->breakpoints[j].read_name);
+                breakpoint_array[i]->breakpoints[j].read_name = NULL;
             }
         }
 
-        if (breakpoint_array->bpts_per_chr[i].breakpoints != NULL) {
-            free(breakpoint_array->bpts_per_chr[i].breakpoints);
-            breakpoint_array->bpts_per_chr[i].breakpoints = NULL;
+        if (breakpoint_array[i]->breakpoints != NULL) {
+            free(breakpoint_array[i]->breakpoints);
+            breakpoint_array[i]->breakpoints = NULL;
         }
-    }
-
-    if (breakpoint_array->chrom_ids != NULL) {
-        free(breakpoint_array->chrom_ids);
-        breakpoint_array->chrom_ids = NULL;
-    }
-
-    if (breakpoint_array->bpts_per_chr != NULL) {
-        free(breakpoint_array->bpts_per_chr);
-        breakpoint_array->bpts_per_chr = NULL;
     }
 
     if (breakpoint_array != NULL) {
@@ -75,21 +59,21 @@ void BreakpointArrayDestroy(Breakpoint_Array *breakpoint_array) {
     }
 }
 
-uint32_t fetchBreakpointArrayChrIndex(Breakpoint_Array *breakpoint_array, char * chrom_id) {
+uint32_t fetchBreakpointArrayChrIndex(Breakpoint_Array **breakpoint_array, Chromosome_Tracking *chrom_tracking, uint32_t chrom_idx) {
     uint32_t i;
-    for (i=0; i<breakpoint_array->size; i++) {
-        if (strcmp(chrom_id, breakpoint_array->chrom_ids[i]) == 0) {
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        if (strcmp(chrom_tracking->chromosome_ids[chrom_idx], breakpoint_array[i]->chrom_id) == 0) {
             return i;
         }
     }
     
-    fprintf(stderr, "Cann't locate the chrom index for the input chromosome %s in function fetchBreakpointArrayChrIndex\n", chrom_id);
+    fprintf(stderr, "Cann't locate the chrom index for the input chromosome %s in function fetchBreakpointArrayChrIndex\n", chrom_tracking->chromosome_ids[chrom_idx]);
     exit(EXIT_FAILURE);
 }
 
 // for type: 1 -> soft clipping while 2 -> hard clipping
 //
-void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx, khash_t(khStrInt) *breakpoint_pairs_hash, int type) {
+void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Breakpoint_Array *bpt_arr, khash_t(khStrInt) *breakpoint_pairs_hash, int type) {
 
     // if paired reads are not on the same chromosome, we won't process it as it is translocation
     //
@@ -97,35 +81,34 @@ void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Break
 
     if (bpt_arr == NULL) return;
 
-    uint32_t bpt_arr_ind = bpt_arr->bpts_per_chr[bpt_chr_idx].size;
-    bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].type = type;
-    bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].current_index = bpt_arr_ind;
-    bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].breakpoint_position = current_ref_pos;
+    bpt_arr->breakpoints[bpt_arr->size].type = type;
+    bpt_arr->breakpoints[bpt_arr->size].current_index = bpt_arr->size;
+    bpt_arr->breakpoints[bpt_arr->size].breakpoint_position = current_ref_pos;
 
     // according to sam.h,  @field  pos: 0-based leftmost coordinate of the current read
     //
-    bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].current_read_start = rec->core.pos;
+    bpt_arr->breakpoints[bpt_arr->size].current_read_start = rec->core.pos;
 
     // according to sam.h, @field  mpos: 0-based leftmost coordinate of next read in template
     //
-    bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].mate_read_start = rec->core.mpos;
+    bpt_arr->breakpoints[bpt_arr->size].mate_read_start = rec->core.mpos;
 
     // according to sam.h, @field  isize: observed template length ("insert size")
     //
-    bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].gap_distance_TLEN = rec->core.isize;
+    bpt_arr->breakpoints[bpt_arr->size].gap_distance_TLEN = rec->core.isize;
 
     // according to sam.h, @field  tid: chromosome ID, defined by sam_hdr_t
     //
-    //bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].current_chr_id = rec->core.tid;
+    //bpt_arr->breakpoints[bpt_arr->size].current_chr_id = rec->core.tid;
 
     // according to sam.h, @field  mtid: chromosome ID of next read in template, defined by sam_hdr_t
     //
-    //bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].mate_chr_id = rec->mtid;
+    //bpt_arr->breakpoints[bpt_arr->size].mate_chr_id = rec->mtid;
 
     // @field  data: all variable-length data, concatenated; structure: qname-cigar-seq-qual-aux
     // the read name should be accessed using bam_get_qname
     //
-    bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].read_name = strdup(bam_get_qname(rec));
+    bpt_arr->breakpoints[bpt_arr->size].read_name = strdup(bam_get_qname(rec));
 
     // now we need to record this read name in the hash table for quick lookup
     //
@@ -137,62 +120,59 @@ void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Break
         iter = kh_put(khStrInt, breakpoint_pairs_hash, bam_get_qname(rec), &absent);
         if (absent) {
             kh_key(breakpoint_pairs_hash, iter) = strdup(bam_get_qname(rec));
-            kh_value(breakpoint_pairs_hash, iter) = bpt_arr_ind;
+            kh_value(breakpoint_pairs_hash, iter) = bpt_arr->size;  // recorded at current index which is the current size
         }
-        bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].mate_index = -1;
+        bpt_arr->breakpoints[bpt_arr->size].mate_index = -1;
     } else {
-        bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[bpt_arr_ind].mate_index = kh_value(breakpoint_pairs_hash, iter);
+        bpt_arr->breakpoints[bpt_arr->size].mate_index = kh_value(breakpoint_pairs_hash, iter);
 
         // now need to go the mate data and reset its mate index
         //
-        bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[kh_value(breakpoint_pairs_hash, iter)].mate_index = bpt_arr_ind;
+        bpt_arr->breakpoints[kh_value(breakpoint_pairs_hash, iter)].mate_index = bpt_arr->size;
     }
 
-    bpt_arr->bpts_per_chr[bpt_chr_idx].size++;
+    bpt_arr->size++;
 
-    if (bpt_arr->bpts_per_chr[bpt_chr_idx].size + 10 >
-            bpt_arr->bpts_per_chr[bpt_chr_idx].capacity) {
+    if (bpt_arr->size + 10 > bpt_arr->capacity) {
 
         // need to dynamically increase the array size
         //
-        dynamicBreakpointPerChrArraySizeIncrease(&bpt_arr->bpts_per_chr[bpt_chr_idx]);
+        dynamicBreakpointPerChrArraySizeIncrease(bpt_arr);
     }
 }
 
-void dynamicBreakpointPerChrArraySizeIncrease(Breakpoints_Per_Chromosome *bpts_per_chr) {
-    if (bpts_per_chr == NULL) return;
+void dynamicBreakpointPerChrArraySizeIncrease(Breakpoint_Array *cur_bpts_array) {
+    if (cur_bpts_array == NULL) return;
 
-    bpts_per_chr->capacity += INIT_SIZE;
+    cur_bpts_array->capacity += INIT_SIZE;
 
-    if (bpts_per_chr->breakpoints) {
-        bpts_per_chr->breakpoints = 
-            realloc(bpts_per_chr->breakpoints, bpts_per_chr->capacity * sizeof(Breakpoint));
+    if (cur_bpts_array->breakpoints) {
+        cur_bpts_array->breakpoints = 
+            realloc(cur_bpts_array->breakpoints, cur_bpts_array->capacity * sizeof(Breakpoint));
 
-        failureExit(bpts_per_chr->breakpoints, "Breakpoints_Per_Chromosome->breakpoints");
+        failureExit(cur_bpts_array->breakpoints, "Breakpoints_Array->breakpoints");
     } else {
-        fprintf(stderr, "Error: The bpts_per_chr.breakpoints is NULL\n");
+        fprintf(stderr, "Error: The cur_bpts_array.breakpoints is NULL\n");
         exit(EXIT_FAILURE);
     }
 }
 
-void outputBreakpointArray(Breakpoint_Array *bpt_arr, char* chr_id) {
+void outputBreakpointArray(Breakpoint_Array *bpt_arr) {
     char filename[100];
-    sprintf(filename, "Breakpoint_Details_for_Debugging_%s.txt", chr_id);
+    sprintf(filename, "Breakpoint_Details_for_Debugging_%s.txt", bpt_arr->chrom_id);
     FILE *fp = fopen(filename, "w");
-    uint32_t i, j;
-    for (i=0; i<bpt_arr->size; i++) {
-        fprintf(fp, "For chromosome: %s\n", bpt_arr->chrom_ids[i]);
+    fprintf(fp, "For chromosome: %s\n", bpt_arr->chrom_id);
 
-        for (j=0; j<bpt_arr->bpts_per_chr[i].size ; j++) {
-            fprintf(fp, "  Type: %d\n", bpt_arr->bpts_per_chr[i].breakpoints[j].type);
-            fprintf(fp, "  breakpoint_position: %"PRIu32"\n", bpt_arr->bpts_per_chr[i].breakpoints[j].breakpoint_position);
-            fprintf(fp, "  read_name:     %s\n", bpt_arr->bpts_per_chr[i].breakpoints[j].read_name);
-            fprintf(fp, "  current_index: %"PRId32"\n", bpt_arr->bpts_per_chr[i].breakpoints[j].current_index);
-            fprintf(fp, "  mate_index:    %"PRId32"\n", bpt_arr->bpts_per_chr[i].breakpoints[j].mate_index);
-            fprintf(fp, "  current_read_start: %"PRIu32"\n", bpt_arr->bpts_per_chr[i].breakpoints[j].current_read_start);
-            fprintf(fp, "  mate_read_start:    %"PRIu32"\n", bpt_arr->bpts_per_chr[i].breakpoints[j].mate_read_start);
-            fprintf(fp, "  gap_distance_TLEN:  %"PRId32"\n", bpt_arr->bpts_per_chr[i].breakpoints[j].gap_distance_TLEN);
-        }
+    uint32_t j;
+    for (j=0; j<bpt_arr->size; j++) {
+        fprintf(fp, "  Type: %d\n", bpt_arr->breakpoints[j].type);
+        fprintf(fp, "  breakpoint_position: %"PRIu32"\n", bpt_arr->breakpoints[j].breakpoint_position);
+        fprintf(fp, "  read_name:     %s\n", bpt_arr->breakpoints[j].read_name);
+        fprintf(fp, "  current_index: %"PRId32"\n", bpt_arr->breakpoints[j].current_index);
+        fprintf(fp, "  mate_index:    %"PRId32"\n", bpt_arr->breakpoints[j].mate_index);
+        fprintf(fp, "  current_read_start: %"PRIu32"\n", bpt_arr->breakpoints[j].current_read_start);
+        fprintf(fp, "  mate_read_start:    %"PRIu32"\n", bpt_arr->breakpoints[j].mate_read_start);
+        fprintf(fp, "  gap_distance_TLEN:  %"PRId32"\n", bpt_arr->breakpoints[j].gap_distance_TLEN);
     }
     fclose(fp);
 }
@@ -240,18 +220,18 @@ uint32_t fetchPReadsXBreakpointArrayChrIndex(Paired_Reads_Across_Breakpoints_Arr
 // This method will process all breakpoints of a chromosome 
 // breakpoints will be grouped if they are 5 bp away
 //
-void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx, Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh) {
+void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh) {
 
     // obtain breakpoint coordinate array and sort it
     //
-    fprintf(stderr, "Total number of breakpoints: %"PRIu32"\n", bpt_arr->bpts_per_chr[bpt_chr_idx].size);
-    uint32_t *sorted_breakpoints = calloc(bpt_arr->bpts_per_chr[bpt_chr_idx].size, sizeof(uint32_t));
-    getSortedBreakpointArray(sorted_breakpoints, bpt_arr, bpt_chr_idx);
+    fprintf(stderr, "Total number of breakpoints: %"PRIu32"\n", bpt_arr->size);
+    uint32_t *sorted_breakpoints = calloc(bpt_arr->size, sizeof(uint32_t));
+    getSortedBreakpointArray(sorted_breakpoints, bpt_arr);
 
     // need to find out the anchor breakpoints for grouping neighboring breakpoints <= 5 bps away
     //
     khash_t(m32) *anchor_breakpoints_hash = kh_init(m32);
-    uint32_t num_of_anchors = recordAnchorBreakpoints(sorted_breakpoints, anchor_breakpoints_hash, bpt_arr, bpt_chr_idx);
+    uint32_t num_of_anchors = recordAnchorBreakpoints(sorted_breakpoints, anchor_breakpoints_hash, bpt_arr);
 
     // need to store the processed breakpoints, so that the breakpoint will be handled only once
     //
@@ -261,10 +241,10 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
     //
     int absent;
     uint32_t k;
-    for (k=0; k<bpt_arr->bpts_per_chr[bpt_chr_idx].size; k++) {
+    for (k=0; k<bpt_arr->size; k++) {
         // breakpoint position is 0-based
         //
-        uint32_t bpt_pos = bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[k].breakpoint_position;
+        uint32_t bpt_pos = bpt_arr->breakpoints[k].breakpoint_position;
         //if (bpt_pos == 245975) {
         //    printf("stop\n");
         // }
@@ -336,7 +316,7 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
             kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->current_breakpoint_count++;
             kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->my_breakpoint_group[counter] = bpt_pos;
             kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->my_group_size++;
-            if (bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[k].type == 1) {
+            if (bpt_arr->breakpoints[k].type == 1) {
                 kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->num_of_soft_clipping++;
             } else {
                 kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->num_of_hard_clipping++;
@@ -346,7 +326,7 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
             //
             kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->current_breakpoint_count++;
 
-            if (bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[k].type == 1) {
+            if (bpt_arr->breakpoints[k].type == 1) {
                 kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->num_of_soft_clipping++;
             } else {
                 kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->num_of_hard_clipping++;
@@ -359,7 +339,7 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
         // For search region, we need to use bpt_pos not the current anchor position
         //
         char region[200];
-        sprintf(region, "%s:%"PRIu32"-%"PRIu32"", bpt_arr->chrom_ids[bpt_chr_idx], bpt_pos, bpt_pos+1);
+        sprintf(region, "%s:%"PRIu32"-%"PRIu32"", bpt_arr->chrom_id, bpt_pos, bpt_pos+1);
         hts_itr_t *hts_itr = sam_itr_querys(sfh_idx, header, region);
 
         if (hts_itr == NULL) {
@@ -412,7 +392,7 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, uint32_t
     kh_destroy(m32, seen_breakpoints_hash);
     kh_destroy(m32, anchor_breakpoints_hash);
 
-    eliminateUnwantedBreakpoints(bpt_arr->chrom_ids[bpt_chr_idx], pread_x_bpts_array, num_of_anchors);
+    eliminateUnwantedBreakpoints(bpt_arr->chrom_id, pread_x_bpts_array, num_of_anchors);
 }
 
 // this method will remove those breakpoints where:
@@ -545,18 +525,18 @@ void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Arr
     fclose(fp);
 }
 
-void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx) {
+void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bpt_arr) {
     uint32_t i;
-    for (i=0; i<bpt_arr->bpts_per_chr[bpt_chr_idx].size; i++) {
-        sorted_breakpoints[i] = bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[i].breakpoint_position;       
+    for (i=0; i<bpt_arr->size; i++) {
+        sorted_breakpoints[i] = bpt_arr->breakpoints[i].breakpoint_position;       
     }
 
-    qsort(sorted_breakpoints, bpt_arr->bpts_per_chr[bpt_chr_idx].size, sizeof(uint32_t), compare);
+    qsort(sorted_breakpoints, bpt_arr->size, sizeof(uint32_t), compare);
 
     // output for debugging
     //
     FILE *fp = fopen("sorted_breakpoints.txt", "w");
-    for (i=0; i<bpt_arr->bpts_per_chr[bpt_chr_idx].size; i++) {
+    for (i=0; i<bpt_arr->size; i++) {
         fprintf(fp, "%"PRIu32"\n", sorted_breakpoints[i]);
     }
     fclose(fp);
@@ -565,18 +545,15 @@ void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bp
 // this method is to set the anchor point for each breakpoint in anchor_breakpoints_hash
 // key: current breakpoint; value: current_anchor
 //
-uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx) {
+uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr) {
     uint32_t i, current_anchor=0, current_breakpoint=0, num_of_anchors=0;
     khash_t(m32) *tmp_anchor_count_hash = kh_init(m32);
     khiter_t iter_h;
     int absent;
     
-    for (i=0; i<bpt_arr->bpts_per_chr[bpt_chr_idx].size; i++) {
-        //current_breakpoint = bpt_arr->bpts_per_chr[bpt_chr_idx].breakpoints[i].breakpoint_position;
+    for (i=0; i<bpt_arr->size; i++) {
+        //current_breakpoint = bpt_arr->breakpoints[i].breakpoint_position;
         current_breakpoint = sorted_breakpoints[i];
-        if (current_breakpoint == 59118983) {
-            printf("stop\n");
-        }
 
         if (current_anchor == 0 || (current_breakpoint - current_anchor > 5)) {
             // starts a new group, need to initialize current breakpoint bucket
@@ -599,7 +576,6 @@ uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anc
                 if (absent) {
                     kh_key(tmp_anchor_count_hash, iter_h) = current_anchor;
                     kh_value(tmp_anchor_count_hash, iter_h) = 1;
-                    if (current_anchor == 59118983) printf("59118983 is added!\n");
                 }
             }
         } else {

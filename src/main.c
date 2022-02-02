@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
     
     // setup the Breakpoint_Array and Paired_Reads_Across_Breakpoints_Array
     //
-    Breakpoint_Array *breakpoint_array = calloc(1, sizeof(Breakpoint_Array));
+    Breakpoint_Array **breakpoint_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(Breakpoint_Array));
     BreakpointArrayInit(breakpoint_array, chrom_tracking);
 
     Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(Paired_Reads_Across_Breakpoints_Array*));
@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
 
             bam1_t *b = bam_init1();
             while (sam_itr_next(sfh[thread_id], iter, b) >= 0) {
-              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, 0, NULL);
+              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL);
             }
             bam_destroy1(b);
             hts_itr_destroy(iter);
@@ -398,7 +398,7 @@ int main(int argc, char *argv[]) {
     binnedDataWrapperDestroy(binned_data_wrappers, chrom_tracking);
     binnedDataWrapperDestroy(equal_size_window_wrappers, chrom_tracking);
 
-    BreakpointArrayDestroy(breakpoint_array);
+    BreakpointArrayDestroy(breakpoint_array, chrom_tracking);
     PairedReadsAcrossBreakpointsArrayDestroy(preads_x_bpts_array, chrom_tracking);
     //BreakpointStatsArrayDestroy(bpt_stats_array);
 
