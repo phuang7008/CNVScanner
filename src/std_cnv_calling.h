@@ -33,7 +33,7 @@ void storeCurrentCNVtoArray(CNV *cnv, uint32_t start, uint32_t end, uint32_t len
 
 void outputCNVArray(CNV_Array **cnv_array, uint32_t number_of_chromosomes);
 
-void dynamicIncreaseBinArraySize(Equal_Window_Bin *merged_equal_bin_array, uint32_t bin_capacity);
+void dynamicIncreaseBinArraySize(Equal_Window_Bin **merged_equal_bin_array, uint32_t bin_capacity);
 
 void cnvArrayInit(CNV_Array **cnv_array, Chromosome_Tracking *chrom_tracking);
 

@@ -41,7 +41,7 @@ SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
 
 # define the executable file
-MAIN = wgs_cnv2
+MAIN = wgs_cnv
 
 #
 # The following part of the makefile is generic; it can be used to 

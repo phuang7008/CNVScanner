@@ -213,12 +213,13 @@ void PairedReadsAcrossBreakpointsArrayInit(Paired_Reads_Across_Breakpoints_Array
 void PairedReadsAcrossBreakpointsArrayDestroy(Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array) {
     uint32_t i;
     for (i=0; i< pread_x_bpts_array->size; i++) {
+        // handle each chromosome
+        //
         if (pread_x_bpts_array->chrom_ids[i] != NULL) {
             free(pread_x_bpts_array->chrom_ids[i]);
             pread_x_bpts_array->chrom_ids[i] = NULL;
         }
 
-        PairedReadsAcrossABreakpointPerAnchorArrayDestroy(pread_x_bpts_array->preads_x_per_anchor_bpt_arr[i]);
         cleanKhashIntPrArray(pread_x_bpts_array->preads_x_per_anchor_bpt_arr[i]);
         kh_destroy(khIntPrArray, pread_x_bpts_array->preads_x_per_anchor_bpt_arr[i]);
     }
@@ -235,18 +236,6 @@ void PairedReadsAcrossBreakpointsArrayDestroy(Paired_Reads_Across_Breakpoints_Ar
 
     if (pread_x_bpts_array)
         free(pread_x_bpts_array);
-}
-
-void PairedReadsAcrossABreakpointPerAnchorArrayDestroy(khash_t(khIntPrArray) * preads_x_per_anchor_bpt_arr) {
-    khint_t k;
-    for (k=kh_begin(preads_x_per_anchor_bpt_arr); k!=kh_end(preads_x_per_anchor_bpt_arr); ++k) {
-        if (kh_exist(preads_x_per_anchor_bpt_arr, k)) {
-            cleanKhashStrInt(kh_value(preads_x_per_anchor_bpt_arr, k)->seen_paired_read_hash);
-            // the followings will be handled at cleanKhashIntPrArray()
-            //free(kh_value(preads_x_per_anchor_bpt_arr, k)->pread_x_a_bpt->read_name);
-            //free(kh_value(preads_x_per_anchor_bpt_arr, k)->pread_x_a_bpt);
-        }
-    }
 }
 
 uint32_t fetchPReadsXBreakpointArrayChrIndex(Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, char * chrom_id) {
@@ -569,64 +558,6 @@ void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Arr
         fprintf(fp, "\n");
     }
     fclose(fp);
-}
-
-void BreakpointStatsArrayInit(Breakpoint_Stats_Array *bpt_stats_array, Chromosome_Tracking *chrom_tracking) {
-    bpt_stats_array->size = chrom_tracking->number_of_chromosomes;
-    bpt_stats_array->chrom_ids = calloc(bpt_stats_array->size, sizeof(char*));
-    bpt_stats_array->bp_stats_per_chr = calloc(bpt_stats_array->size, sizeof(Breakpoint_Stats_Per_Chromosome));
-
-    uint32_t i;
-    for (i=0; i<bpt_stats_array->size; i++) {
-        bpt_stats_array->chrom_ids[i] = strdup(chrom_tracking->chromosome_ids[i]);
-
-        bpt_stats_array->bp_stats_per_chr[i].size = 0;
-        bpt_stats_array->bp_stats_per_chr[i].capacity = INIT_SIZE;
-        bpt_stats_array->bp_stats_per_chr[i].bpts_stats =
-            calloc(bpt_stats_array->bp_stats_per_chr[i].capacity, sizeof(Breakpoint_Stats));
-    }
-}
-
-void BreakpointStatsArrayDestroy(Breakpoint_Stats_Array *bpt_stats_array) {
-    uint32_t i;
-    for (i=0; i< bpt_stats_array->size; i++) {
-        if (bpt_stats_array->chrom_ids[i] != NULL) {
-            free(bpt_stats_array->chrom_ids[i]);
-            bpt_stats_array->chrom_ids[i] = NULL;
-        }
-
-        if (bpt_stats_array->bp_stats_per_chr[i].bpts_stats != NULL) {
-            free(bpt_stats_array->bp_stats_per_chr[i].bpts_stats);
-            bpt_stats_array->bp_stats_per_chr[i].bpts_stats = NULL;
-        }
-    }
-
-    if (bpt_stats_array->chrom_ids != NULL) {
-        free(bpt_stats_array->chrom_ids);
-        bpt_stats_array->chrom_ids = NULL;
-    }
-
-    if (bpt_stats_array->bp_stats_per_chr != NULL) {
-        free(bpt_stats_array->bp_stats_per_chr);
-        bpt_stats_array->bp_stats_per_chr = NULL;
-    }
-    
-    //if (bpt_stats_array->bp_stats_per_chr[i].breakpoints !=NULL) { }  // should be handled by BreakpointArrayDestroy()
-}
-
-void dynamicBreakpointStatsPerChrSizeIncrease(Breakpoint_Stats_Per_Chromosome *bp_stats_per_chr) {
-    if (bp_stats_per_chr == NULL) return;
-
-    bp_stats_per_chr->capacity += INIT_SIZE;
-
-    if (bp_stats_per_chr->bpts_stats) {
-        bp_stats_per_chr->bpts_stats = 
-            realloc(bp_stats_per_chr->bpts_stats, bp_stats_per_chr->capacity * sizeof(Breakpoint_Stats));
-        failureExit(bp_stats_per_chr->bpts_stats, "Breakpoint_Stats_Per_Chromosome->bpts_stats");
-    } else {
-        fprintf(stderr, "Error: The Breakpoint_Stats_Per_Chromosome->bpts_stats is NULL\n");
-        exit(EXIT_FAILURE);
-    }
 }
 
 void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx) {

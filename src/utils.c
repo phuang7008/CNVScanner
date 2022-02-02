@@ -98,10 +98,21 @@ void cleanKhashStrStr(khash_t(khStrStr) * hash_to_clean) {
     if (hash_to_clean) kh_destroy(khStrStr, hash_to_clean);
 }
 
+// For each chromosome's paired reads, there is a hash table to store all paired reads associated with
+// a group of breakpoints keyed by the anchor breakpoint
+//
 void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean) {
-    khint_t k;
+    khint_t k;      // k is anchor iterator
     for (k=kh_begin(hash_to_clean); k!=kh_end(hash_to_clean); ++k) {
         if (kh_exist(hash_to_clean, k)) { 
+            // clean paired reads info here
+            // first clean the seen_paired_read_hash 
+            // kh_destroy will be called inside the cleanKhashStrInt
+            //
+            cleanKhashStrInt(kh_value(hash_to_clean, k)->seen_paired_read_hash);
+
+            // clean the pread_x_a_bpt array with read_name info
+            //
             uint32_t i;
             for (i=0; i<kh_value(hash_to_clean, k)->size; i++) {
                 if (kh_value(hash_to_clean, k)->pread_x_a_bpt[i].read_name != NULL) {
@@ -119,10 +130,10 @@ void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean) {
                 free(kh_value(hash_to_clean, k));
                 kh_value(hash_to_clean, k) = NULL;
             }
+
+            //Note, there is nothing needs to be cleaned for the group info of an achnor breakpoint
         }
     }
-    if (hash_to_clean)
-        free(hash_to_clean);
 }
 
 bool checkKhashKey(khash_t(khIntStr) *hash_in, uint32_t key) {

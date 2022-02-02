@@ -364,11 +364,18 @@ bool getOverlapInfo(User_Input *user_inputs, Stats_Info *stats_info, bam1_t *rec
     return false;
 }
 
-void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned_data_wrapper, Stats *the_stats, Chromosome_Tracking *chrom_tracking) {
+void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking) {
 
     uint32_t i=0, j=0, total_num=0;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        total_num += binned_data_wrapper[i]->size;
+        for (j=0; j<binned_data_wrapper[i]->size; j++) {
+            // Need to skip those windows with repeat maskers, mappbility <0.2, Ns regions etc
+            //
+            if (binned_data_wrapper[i]->data[j].length == 0)
+                continue;
+        
+            total_num++;
+        }
     }
 
     DoubleArray *average_coverage_array = calloc(1, sizeof(DoubleArray));
@@ -380,7 +387,8 @@ void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned
 
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         for (j=0; j<binned_data_wrapper[i]->size; j++) {
-            if (binned_data_wrapper[i]->data[j].weighted_mappability > user_inputs->mappability_cutoff) {
+            //if (binned_data_wrapper[i]->data[j].weighted_mappability > user_inputs->mappability_cutoff) {
+            if (binned_data_wrapper[i]->data[j].length > 0) {
                 sum_of_values += binned_data_wrapper[i]->data[j].ave_coverage;
                 sum_of_squares += pow(binned_data_wrapper[i]->data[j].ave_coverage, 2);
 
@@ -397,14 +405,8 @@ void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned
 
     // Note the formula from: https://sureshemre.wordpress.com/2012/04/21/how-to-compute-standard-deviation-in-one-pass/
     //
-    the_stats->mean  = sum_of_values / average_coverage_array->size;
-    the_stats->stdev = sqrt((sum_of_squares - average_coverage_array->size * pow(the_stats->mean,2)) / (average_coverage_array->size - 1 ));
-
-    if ((average_coverage_array->size + num_of_filtered) != total_num) {
-        fprintf(stderr, "ERROR: the numbers don't match between array->size %"PRIu32" and total_num %"PRIu32"\n",
-                average_coverage_array->size, total_num);
-        exit(EXIT_FAILURE);
-    }
+    the_stats->average_coverage = sum_of_values / average_coverage_array->size;
+    the_stats->stdev = sqrt((sum_of_squares - average_coverage_array->size * pow(the_stats->average_coverage,2)) / (average_coverage_array->size - 1 ));
 
     // now calculate the percentile
     //
@@ -413,6 +415,12 @@ void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned
 
     percentile_cutoff = CalcualtePercentile(average_coverage_array, 98);
     the_stats->ninty_eight_percentile = percentile_cutoff;
+
+    // now calculate the z-score
+    //
+    //the_stats->zScore = 1.645 * the_stats->stdev;   // 90% confident inverval for z score
+    the_stats->zScore = 1.96 * the_stats->stdev;    // 95% confident inverval for z score
+    //the_stats->zScore = 3.00 * the_stats->stdev;    // 99% confident interval for z score
 
     // clean up
     //

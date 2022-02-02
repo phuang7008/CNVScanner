@@ -34,11 +34,7 @@ void PairedReadsAcrossBreakpointsArrayInit(Paired_Reads_Across_Breakpoints_Array
 
 void PairedReadsAcrossBreakpointsArrayDestroy(Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array);
 
-void PairedReadsAcrossABreakpointPerAnchorArrayDestroy(khash_t(khIntPrArray) * preads_x_per_anchor_arr);
-
-void BreakpointStatsArrayInit(Breakpoint_Stats_Array *bpt_stats_array, Chromosome_Tracking *chrom_tracking);
-
-void BreakpointStatsArrayDestroy(Breakpoint_Stats_Array *bpt_stats_array);
+//void PairedReadsAcrossABreakpointPerAnchorArrayDestroy(khash_t(khIntPrArray) * preads_x_per_anchor_arr);
 
 uint32_t fetchBreakpointArrayChrIndex(Breakpoint_Array *breakpoint_array, char * chrom_id);
 
@@ -57,8 +53,6 @@ void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Arr
 void dynamicBreakpointPerChrArraySizeIncrease(Breakpoints_Per_Chromosome *bpts_per_chr);
 
 void dynamicPairedReadsAcrossABreakpointArraySizeIncrease(Paired_Reads_Across_Per_Anchor_Breakpoint_Array *preads_x_bpts_arr);
-
-void dynamicBreakpointStatsPerChrSizeIncrease(Breakpoint_Stats_Per_Chromosome *bp_stats_per_chr);
 
 void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bpt_arr, uint32_t bpt_chr_idx);
 

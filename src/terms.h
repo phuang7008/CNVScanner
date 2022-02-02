@@ -134,15 +134,6 @@ typedef struct {
     double sum_of_base_cov_square;
 } OnePassStdev;
 
-// store mean and stdev info
-//
-typedef struct {
-    double average_coverage;
-    uint32_t total_bases_used;      // excluding N-regsions, Repeat Masks, Mappability Excluded Regions and Seg-Dup
-    double stdev;
-    double outlier_cutoff;
-} Simple_Stats;
-
 // store discovered CNVs
 //
 typedef struct {
@@ -158,7 +149,7 @@ typedef struct {
     uint32_t length;    // note, the length is not necessarily = end - start, as some bases like Ns regions are removed
     double  ave_coverage;
 
-    // store grouped bins 
+    // store merged bins 
     //
     uint32_t size;
     uint32_t capacity;
@@ -171,16 +162,11 @@ typedef struct {
 } CNV;
 
 typedef struct {
-    uint32_t size;
-    uint32_t capacity;
-    CNV *cnvs;
-} CNVs_Per_Chromosome;
-
-typedef struct {
     char *chromosome_id;
     uint32_t size;
-    CNVs_Per_Chromosome* CNVs_per_chromosome;
-} CNV_Array;
+    uint32_t capacity;
+    CNV* cnvs;              // CNV array per chromosome
+} CNV_Array;                // CNV array of array
 
 // store breakpoint info
 // Breakpoint_Array
@@ -297,28 +283,6 @@ typedef struct {
                                                             //      value: Paired_Reads_Across_A_Breakpoint_Per_Anchor_Array
 } Paired_Reads_Across_Breakpoints_Array;                    // For all breakpoints on all chromosomes (one array element for one chromosome)
 
-typedef struct {
-    uint32_t breakpoint_position;
-    uint16_t breakpoint_count;          // number of reads with the current breakpoint in them
-    uint16_t cross_breakpoint_count;    // number of reads cross the breakpoint
-    uint32_t cbda_capacity;             // here the size is the cross_breakpoint_count
-    uint32_t *cross_breakpoint_distance_array;
-    //Breakpoint * breakpoints;
-    //Paired_Reads_Across_Breakpoints * pread_x_bpts;
-} Breakpoint_Stats;
-
-typedef struct {
-    uint32_t size;
-    uint32_t capacity;
-    Breakpoint_Stats *bpts_stats;
-} Breakpoint_Stats_Per_Chromosome;
-
-typedef struct {
-    uint32_t size;
-    char ** chrom_ids;
-    Breakpoint_Stats_Per_Chromosome *bp_stats_per_chr;
-} Breakpoint_Stats_Array;
-
 
 // khIntStr: the key as 32 bit integer, while the value is the string
 KHASH_MAP_INIT_INT(khIntStr, char*)
@@ -386,10 +350,15 @@ typedef struct {
 
 
 typedef struct {
-    double mean;
+    double average_coverage;
     double stdev;
+
+    uint32_t total_bases_used;      // excluding N-regsions, Repeat Masks, Mappability Excluded Regions and Seg-Dup
+
     double ninty_nine_percentile;
     double ninty_eight_percentile;
-} Stats;
+    double zScore;
+    double outlier_cutoff;
+} Simple_Stats;
 
 #endif //TERMS_H

@@ -192,16 +192,13 @@ int main(int argc, char *argv[]) {
     checkMemoryAllocation(equal_size_window_wrappers, "Binned_Data_Wrapper **equal_size_window_wrappers");
     binnedDataWrapperInit(equal_size_window_wrappers, chrom_tracking);
     
-    // setup the Breakpoint_Array, Paired_Reads_Across_Breakpoints_Array and Breakpoint_Stats_Array
+    // setup the Breakpoint_Array and Paired_Reads_Across_Breakpoints_Array
     //
     Breakpoint_Array *breakpoint_array = calloc(1, sizeof(Breakpoint_Array));
     BreakpointArrayInit(breakpoint_array, chrom_tracking);
 
     Paired_Reads_Across_Breakpoints_Array *preads_x_bpts_array = calloc(1, sizeof(Paired_Reads_Across_Breakpoints_Array));
     PairedReadsAcrossBreakpointsArrayInit(preads_x_bpts_array, chrom_tracking);
-
-    //Breakpoint_Stats_Array *bpt_stats_array = calloc(1, sizeof(Breakpoint_Stats_Array));
-    //BreakpointStatsArrayInit(bpt_stats_array, chrom_tracking);
 
     // calculate the whole genome base coverage mean and standard deviation
     //
@@ -373,39 +370,27 @@ int main(int argc, char *argv[]) {
 
     // calculate the statistics here for WGS
     //
-    Stats *the_stats = calloc(1, sizeof(Stats));
+    Simple_Stats *the_stats = calloc(1, sizeof(Simple_Stats));
     calculateMeanAndStdev(user_inputs, equal_size_window_wrappers, the_stats, chrom_tracking);
     //calculateMeanAndStdev(user_inputs, binned_data_wrappers, the_stats, chrom_tracking);
-    fprintf(stderr, "Mean:  %.2f\n", the_stats->mean);
+    fprintf(stderr, "Mean:  %.2f\n", the_stats->average_coverage);
     fprintf(stderr, "Stdev: %.2f\n", the_stats->stdev);
     fprintf(stderr, "99_percentile: %.2f\n", the_stats->ninty_nine_percentile);
     fprintf(stderr, "98_percentile: %.2f\n", the_stats->ninty_eight_percentile);
-    if (the_stats) free(the_stats);
-
-    // Here we are going to calculate the stats for equal-sized bins
-    //
-    //double cutoff_99p = calculate99Percentile(equal_size_window_wrappers, chrom_tracking->number_of_chromosomes);
-    //fprintf(stderr, "The equal window bin coverage cutoff is %.2f\n", cutoff_99p);
-    Simple_Stats *equal_window_stats = calloc(1, sizeof(Simple_Stats));
-    SimpleStatsInit(equal_window_stats);
-    generateStatsForNormalizedData(equal_size_window_wrappers, chrom_tracking->number_of_chromosomes, equal_window_stats);
-    fprintf(stderr, "After calculating equal window bin stats\n");
-    fprintf(stderr, "Equal Bin Mean:   %.2f\n", equal_window_stats->average_coverage);
-    fprintf(stderr, "Equal Bin Stdev:  %.2f\n", equal_window_stats->stdev);
-    fprintf(stderr, "Total number of Equal Bin:  %"PRIu32"\n", equal_window_stats->total_bases_used);
-    fprintf(stderr, "Equal Bin Hap cutoff:  %.2f\n", equal_window_stats->average_coverage - equal_window_stats->outlier_cutoff);
-    fprintf(stderr, "Equal Bin Dup cutoff:  %.2f\n", equal_window_stats->average_coverage + equal_window_stats->outlier_cutoff);
+    fprintf(stderr, "Z Score: %.2f\n", the_stats->zScore);
+    fprintf(stderr, "Haploid cutoff: %.2f\n", the_stats->average_coverage - the_stats->zScore);
+    fprintf(stderr, "Duplicate cutoff: %.2f\n\n", the_stats->average_coverage + the_stats->zScore);
 
     CNV_Array **cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
     checkMemoryAllocation(equal_size_window_wrappers, "CNV_Array **cnv_array");
     cnvArrayInit(cnv_array, chrom_tracking);
-    mergeNeighboringBinsBasedOnZscore(cnv_array, equal_size_window_wrappers, chrom_tracking->number_of_chromosomes, equal_window_stats);
+    mergeNeighboringBinsBasedOnZscore(cnv_array, equal_size_window_wrappers, chrom_tracking->number_of_chromosomes, the_stats);
     outputCNVArray(cnv_array, chrom_tracking->number_of_chromosomes);
 
     // clean up
     //
-    free(equal_window_stats);
-    free(wgs_simple_stats);
+    if (the_stats) free(the_stats);
+    if (wgs_simple_stats) free(wgs_simple_stats);
     cnvArrayDestroy(cnv_array, chrom_tracking->number_of_chromosomes);
     
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);

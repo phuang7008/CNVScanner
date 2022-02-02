@@ -203,7 +203,7 @@ void StdevCalculation(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_
     fprintf(stderr, "Average Coverage: %.2f\n", simple_stats->average_coverage);
     fprintf(stderr, "Standard Deviation: %.2f\n", simple_stats->stdev);
     fprintf(stderr, "Outlier Cutoff: %.2f\n", simple_stats->outlier_cutoff);
-    fprintf(stderr, "Total bases Used: %"PRIu32"\n", simple_stats->total_bases_used);
+    fprintf(stderr, "Total bases Used: %"PRIu32"\n\n", simple_stats->total_bases_used);
 }
 
 void SimpleStatsInit(Simple_Stats *simple_stats) {

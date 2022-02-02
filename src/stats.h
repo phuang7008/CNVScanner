@@ -54,7 +54,7 @@ void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *
 
 bool getOverlapInfo(User_Input *user_inputs, Stats_Info *stats_info, bam1_t *rec, uint32_t *m_pos_r_end);
 
-void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned_data_wraper, Stats *the_stats, Chromosome_Tracking *chrom_tracking);
+void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned_data_wraper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking);
 
 int compareDouble(const void * val1, const void * val2);
 
