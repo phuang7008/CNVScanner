@@ -449,6 +449,11 @@ void eliminateUnwantedBreakpoints(char *chr_id, Paired_Reads_Across_Breakpoints_
 
                 cleanKhashStrInt(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->seen_paired_read_hash);
 
+                if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k) != NULL) {
+                    free(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k));
+                    kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k) = NULL;
+                }
+
                 // remove the key-value pair
                 //
                 kh_del(khIntPrArray, preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k);

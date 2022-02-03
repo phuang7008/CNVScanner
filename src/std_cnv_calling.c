@@ -18,7 +18,9 @@
 
 #include "std_cnv_calling.h"
 
-void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrapper **equal_size_window_wrapper, uint32_t number_of_chromosomes, Simple_Stats *equal_window_stats) {
+// Type 1: raw varying sized bins;  Type 2: Equal window bins
+//
+void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrapper **equal_size_window_wrapper, uint32_t number_of_chromosomes, Simple_Stats *equal_window_stats, int type) {
     uint32_t i,j;
     double hap_cutoff = equal_window_stats->average_coverage - equal_window_stats->zScore;
     double dup_cutoff = equal_window_stats->average_coverage + equal_window_stats->zScore;
@@ -97,7 +99,13 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrappe
                     cur_flag = 2;
                 }
 
-                if (cur_flag == prev_flag && prev_end == equal_size_window_wrapper[i]->data[j].start) {
+                // combine neighboring bins together
+                // For raw bins, if the distance (or gap) between neighboring bins is <= 200, merge them
+                // This 200 value is calculated by averaging all Ns regions, repeatmask regions, low mappability regions etc.
+                //
+                if ((cur_flag == prev_flag) && 
+                        ((type == 2 && equal_size_window_wrapper[i]->data[j].start == prev_end) || 
+                         (type == 1 && equal_size_window_wrapper[i]->data[j].start - prev_end <= 200))) {
                     // elongate bin size by resetting the end position and length
                     //
                     prev_end  = equal_size_window_wrapper[i]->data[j].end;
@@ -198,8 +206,13 @@ void storeCurrentCNVtoArray(CNV *cnv, uint32_t start, uint32_t end, uint32_t len
     }
 }
 
-void outputCNVArray(CNV_Array **cnv_array, uint32_t number_of_chromosomes) {
-    FILE *fp = fopen("CNV_Array.txt", "w");
+void outputCNVArray(CNV_Array **cnv_array, uint32_t number_of_chromosomes, int type) {
+    FILE *fp;
+    if (type == 1) {        // For raw varying size bin output
+        fp = fopen("CNV_Array_raw_bin.txt", "w");
+    } else {                // For equal size window output
+        fp = fopen("CNV_Array_equal_bin.txt", "w");
+    }
     uint32_t i,j;
     for (i=0; i<number_of_chromosomes; i++) {
         for (j=0; j<cnv_array[i]->size; j++) {

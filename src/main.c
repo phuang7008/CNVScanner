@@ -381,17 +381,28 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Haploid cutoff: %.2f\n", the_stats->average_coverage - the_stats->zScore);
     fprintf(stderr, "Duplicate cutoff: %.2f\n\n", the_stats->average_coverage + the_stats->zScore);
 
-    CNV_Array **cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
-    checkMemoryAllocation(equal_size_window_wrappers, "CNV_Array **cnv_array");
-    cnvArrayInit(cnv_array, chrom_tracking);
-    mergeNeighboringBinsBasedOnZscore(cnv_array, equal_size_window_wrappers, chrom_tracking->number_of_chromosomes, the_stats);
-    outputCNVArray(cnv_array, chrom_tracking->number_of_chromosomes);
+    // For Raw varying size bin CNV calls
+    //
+    CNV_Array **raw_bin_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
+    checkMemoryAllocation(binned_data_wrappers, "CNV_Array **raw_bin_cnv_array");
+    cnvArrayInit(raw_bin_cnv_array, chrom_tracking);
+    mergeNeighboringBinsBasedOnZscore(raw_bin_cnv_array, binned_data_wrappers, chrom_tracking->number_of_chromosomes, the_stats, 1);
+    outputCNVArray(raw_bin_cnv_array, chrom_tracking->number_of_chromosomes, 1);
+
+    // for Equal bin window CNV Calls
+    //
+    CNV_Array **equal_bin_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
+    checkMemoryAllocation(equal_size_window_wrappers, "CNV_Array **equal_bin_cnv_array");
+    cnvArrayInit(equal_bin_cnv_array, chrom_tracking);
+    mergeNeighboringBinsBasedOnZscore(equal_bin_cnv_array, equal_size_window_wrappers, chrom_tracking->number_of_chromosomes, the_stats, 2);
+    outputCNVArray(equal_bin_cnv_array, chrom_tracking->number_of_chromosomes, 2);
 
     // clean up
     //
     if (the_stats) free(the_stats);
     if (wgs_simple_stats) free(wgs_simple_stats);
-    cnvArrayDestroy(cnv_array, chrom_tracking->number_of_chromosomes);
+    cnvArrayDestroy(raw_bin_cnv_array, chrom_tracking->number_of_chromosomes);
+    cnvArrayDestroy(equal_bin_cnv_array, chrom_tracking->number_of_chromosomes);
     
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);
 

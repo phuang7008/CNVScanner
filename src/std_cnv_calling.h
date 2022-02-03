@@ -23,15 +23,11 @@
 #include "terms.h"
 #include "utils.h"
 
-double calculate99Percentile(Binned_Data_Wrapper **equal_size_window_wrapper, uint32_t number_of_chromosomes);
-
-void generateStatsForNormalizedData(Binned_Data_Wrapper **equal_size_window_wrapper, uint32_t number_of_chromosomes, Simple_Stats *equal_window_stats);
-
-void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrapper **equal_size_window_wrapper, uint32_t number_of_chromosomes, Simple_Stats *equal_window_stats);
+void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrapper **equal_size_window_wrapper, uint32_t number_of_chromosomes, Simple_Stats *equal_window_stats, int type);
 
 void storeCurrentCNVtoArray(CNV *cnv, uint32_t start, uint32_t end, uint32_t length, double coverage, Equal_Window_Bin *merged_equal_bin_array, uint32_t bin_size);
 
-void outputCNVArray(CNV_Array **cnv_array, uint32_t number_of_chromosomes);
+void outputCNVArray(CNV_Array **cnv_array, uint32_t number_of_chromosomes, int type);
 
 void dynamicIncreaseBinArraySize(Equal_Window_Bin **merged_equal_bin_array, uint32_t bin_capacity);
 
