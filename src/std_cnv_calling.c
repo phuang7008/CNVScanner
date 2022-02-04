@@ -32,10 +32,20 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrappe
         uint32_t cnv_counter=0, bin_counter=0, bin_capacity=0;
         uint32_t prev_start=0, prev_end=0, prev_len;
         double total_coverage=0;
+        uint32_t conseutive_0_length_bins = 0;      // bins with length 0 means the bins are Ns-regions or repeatmasks etc.
         Equal_Window_Bin *merged_equal_bin_array = NULL;
 
         for (j=0; j<equal_size_window_wrapper[i]->size; j++) {
             if (equal_size_window_wrapper[i]->data[j].length == 0) {
+                if (prev_flag == 0) {
+                    conseutive_0_length_bins = 0;
+                    continue;
+                } else {
+                    conseutive_0_length_bins += equal_size_window_wrapper[i]->data[j].end - equal_size_window_wrapper[i]->data[j].start;
+                }
+            }
+
+            /*if (equal_size_window_wrapper[i]->data[j].length == 0) {
                 // store current CNV if pass the length criteria
                 //
                 if (prev_end - prev_start >= 1000) { 
@@ -57,8 +67,10 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrappe
                     prev_flag = 0;
                 }
                 continue;
-            }
+            }*/
 
+            // starts a new CNV
+            //
             if (prev_flag == 0) {
                 if (equal_size_window_wrapper[i]->data[j].ave_coverage <= hap_cutoff) {
                     prev_flag = 1;
@@ -91,7 +103,9 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrappe
                 merged_equal_bin_array[bin_counter].ave_coverage =  equal_size_window_wrapper[i]->data[j].ave_coverage;
                 bin_counter++;
             } else {
-                if (equal_size_window_wrapper[i]->data[j].ave_coverage <= hap_cutoff) {
+                if (equal_size_window_wrapper[i]->data[j].length == 0) {
+                    cur_flag = prev_flag;
+                } else if (equal_size_window_wrapper[i]->data[j].ave_coverage <= hap_cutoff) {
                     cur_flag = 1;
                 } else if (equal_size_window_wrapper[i]->data[j].ave_coverage >= dup_cutoff) {
                     cur_flag = 3;
@@ -103,7 +117,7 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrappe
                 // For raw bins, if the distance (or gap) between neighboring bins is <= 200, merge them
                 // This 200 value is calculated by averaging all Ns regions, repeatmask regions, low mappability regions etc.
                 //
-                if ((cur_flag == prev_flag) && 
+                if ((cur_flag == prev_flag) && (conseutive_0_length_bins <= 500) && 
                         ((type == 2 && equal_size_window_wrapper[i]->data[j].start == prev_end) || 
                          (type == 1 && equal_size_window_wrapper[i]->data[j].start - prev_end <= 200))) {
                     // elongate bin size by resetting the end position and length

@@ -416,8 +416,13 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     // now we need to divide the average coverage by total length to get the real average coverage
     //
     for (i=0; i<equal_size_window_wrapper->size; i++) {
-        equal_size_window_wrapper->data[i].weighted_mappability /= equal_size_window_wrapper->data[i].length;
-        equal_size_window_wrapper->data[i].ave_coverage /= equal_size_window_wrapper->data[i].length;
+        if (equal_size_window_wrapper->data[i].length == 0) {
+            equal_size_window_wrapper->data[i].ave_coverage = 0;
+            equal_size_window_wrapper->data[i].weighted_mappability = 0;
+        } else {
+            equal_size_window_wrapper->data[i].weighted_mappability /= equal_size_window_wrapper->data[i].length;
+            equal_size_window_wrapper->data[i].ave_coverage /= equal_size_window_wrapper->data[i].length;
+        }
     }
 }
 
