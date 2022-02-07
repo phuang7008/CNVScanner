@@ -95,10 +95,19 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
 
                     chromosomeTrackingUpdate(chrom_tracking, chrom_tracking->chromosome_lengths[chrom_index], chrom_index);
 
+                    int result = 0;
                     bam1_t *b = bam_init1();
-                    while (sam_itr_next(sfh[thread_id], iter, b) >= 0) {
+                    while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
                         processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], breakpoint_pairs_hash);
                     }
+
+                    if (result < -1) {
+                        fprintf(stderr, "ERROR: bam1_t read has error with less than -1 result: %d\n", result);
+                        exit(EXIT_FAILURE);
+                    } else if (result <0 && result > -1) {
+                        fprintf(stderr, "ERROR: bam1_r read has 0-1 error %.2d\n", result);
+                    }
+
                     bam_destroy1(b);
                     hts_itr_destroy(iter);
                     cleanKhashStrInt(breakpoint_pairs_hash);
@@ -130,23 +139,17 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                 } // omp task
             } // for loop
 #pragma omp taskwait
-
-            // now need to combine all the stats_info for the final results
-            //
-#pragma omp critical
-            {
-                StdevCalculation(one_pass_stdev, chrom_tracking, simple_stats);
-
-                for (chrom_index=0; chrom_index<chrom_tracking->number_of_chromosomes; ++chrom_index) {
-                    // clean up the stats info per chromosome
-                    //
-                    if (stats_info_per_chr[chrom_index])
-                        statsInfoDestroy(stats_info_per_chr[chrom_index]);
-                }
-            }
-
         } // omp single
     } // omp parallel
+
+    StdevCalculation(one_pass_stdev, chrom_tracking, simple_stats);
+
+    for (chrom_index=0; chrom_index<chrom_tracking->number_of_chromosomes; ++chrom_index) {
+        // clean up the stats info per chromosome
+        //
+        if (stats_info_per_chr[chrom_index])
+            statsInfoDestroy(stats_info_per_chr[chrom_index]);
+    }
 
     // clean-up
     //

@@ -23,9 +23,13 @@
 #include "terms.h"
 #include "utils.h"
 
-void mergeNeighboringBinsBasedOnZscore(CNV_Array **cnv_array, Binned_Data_Wrapper **equal_size_window_wrapper, uint32_t number_of_chromosomes, Simple_Stats *equal_window_stats, int type);
+void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, uint32_t number_of_chromosomes, Simple_Stats *equal_window_stats, User_Input *user_inputs);
+
+void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper *equal_size_window_wrapper, Simple_Stats *the_stats, int type);
 
 void storeCurrentCNVtoArray(CNV *cnv, uint32_t start, uint32_t end, uint32_t length, double coverage, Equal_Window_Bin *merged_equal_bin_array, uint32_t bin_size);
+
+void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Array *cnv_array, Simple_Stats *equal_window_stats);
 
 void outputCNVArray(CNV_Array **cnv_array, uint32_t number_of_chromosomes, int type);
 

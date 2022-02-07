@@ -254,10 +254,19 @@ int main(int argc, char *argv[]) {
 
             chromosomeTrackingUpdate(chrom_tracking, chrom_tracking->chromosome_lengths[chrom_index], chrom_index);
 
+            int result=0;
             bam1_t *b = bam_init1();
-            while (sam_itr_next(sfh[thread_id], iter, b) >= 0) {
+            while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
               processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL);
             }
+
+            if (result < -1) {
+                fprintf(stderr, "ERROR: bam1_t read has error with less than -1 result: %d\n", result);
+                exit(EXIT_FAILURE);
+            } else if (result <0 && result > -1) {
+                fprintf(stderr, "ERROR: bam1_r read has 0-1 error %.2d\n", result);
+            }
+
             bam_destroy1(b);
             hts_itr_destroy(iter);
 
@@ -340,21 +349,16 @@ int main(int argc, char *argv[]) {
         } // for loop
 #pragma omp taskwait
 
-        // now need to combine all the stats_info for the final results
-        //
-#pragma omp critical
-        {
-            for (chrom_index=0; chrom_index<chrom_tracking->number_of_chromosomes; ++chrom_index) {
-                combineCoverageStats(stats_info, stats_info_per_chr[chrom_index]);
-
-                if (stats_info_per_chr[chrom_index])
-                    statsInfoDestroy(stats_info_per_chr[chrom_index]);
-            }
-        }
-
         fflush(stdout);
       } // omp single
     } // omp parallel
+
+    for (chrom_index=0; chrom_index<chrom_tracking->number_of_chromosomes; ++chrom_index) {
+        combineCoverageStats(stats_info, stats_info_per_chr[chrom_index]);
+
+        if (stats_info_per_chr[chrom_index])
+            statsInfoDestroy(stats_info_per_chr[chrom_index]);
+    }
 
     // output report for debugging
     //
@@ -383,25 +387,28 @@ int main(int argc, char *argv[]) {
 
     // For Raw varying size bin CNV calls
     //
-    CNV_Array **raw_bin_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
-    checkMemoryAllocation(binned_data_wrappers, "CNV_Array **raw_bin_cnv_array");
-    cnvArrayInit(raw_bin_cnv_array, chrom_tracking);
-    mergeNeighboringBinsBasedOnZscore(raw_bin_cnv_array, binned_data_wrappers, chrom_tracking->number_of_chromosomes, the_stats, 1);
-    outputCNVArray(raw_bin_cnv_array, chrom_tracking->number_of_chromosomes, 1);
+    //CNV_Array **raw_bin_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
+    //checkMemoryAllocation(binned_data_wrappers, "CNV_Array **raw_bin_cnv_array");
+    //cnvArrayInit(raw_bin_cnv_array, chrom_tracking);
+    //mergeNeighboringBinsBasedOnZscore(raw_bin_cnv_array, binned_data_wrappers, chrom_tracking->number_of_chromosomes, the_stats, 1);
+    //outputCNVArray(raw_bin_cnv_array, chrom_tracking->number_of_chromosomes, 1);
 
     // for Equal bin window CNV Calls
     //
     CNV_Array **equal_bin_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
     checkMemoryAllocation(equal_size_window_wrappers, "CNV_Array **equal_bin_cnv_array");
     cnvArrayInit(equal_bin_cnv_array, chrom_tracking);
-    mergeNeighboringBinsBasedOnZscore(equal_bin_cnv_array, equal_size_window_wrappers, chrom_tracking->number_of_chromosomes, the_stats, 2);
+
+    // merge and expand the CNV calls using raw bin data
+    //
+    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, chrom_tracking->number_of_chromosomes, the_stats, user_inputs);
     outputCNVArray(equal_bin_cnv_array, chrom_tracking->number_of_chromosomes, 2);
 
     // clean up
     //
     if (the_stats) free(the_stats);
     if (wgs_simple_stats) free(wgs_simple_stats);
-    cnvArrayDestroy(raw_bin_cnv_array, chrom_tracking->number_of_chromosomes);
+    //cnvArrayDestroy(raw_bin_cnv_array, chrom_tracking->number_of_chromosomes);
     cnvArrayDestroy(equal_bin_cnv_array, chrom_tracking->number_of_chromosomes);
     
     TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);
