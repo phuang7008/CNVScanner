@@ -31,6 +31,8 @@ void storeCurrentCNVtoArray(CNV *cnv, uint32_t start, uint32_t end, uint32_t len
 
 void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Array *cnv_array, Simple_Stats *equal_window_stats);
 
+void addRawBinToCNV(Binned_Data_Wrapper *binned_data_wrapper, uint32_t raw_bin_index, CNV *cnv, uint32_t cnv_index);
+
 void outputCNVArray(CNV_Array **cnv_array, uint32_t number_of_chromosomes, int type);
 
 void dynamicIncreaseBinArraySize(Equal_Window_Bin **merged_equal_bin_array, uint32_t bin_capacity);
