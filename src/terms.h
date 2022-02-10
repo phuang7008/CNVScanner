@@ -46,6 +46,7 @@
 #define DIFF_COV_TO_MERGE 5
 #define SMALL_LENGTH_CUTOFF 50
 #define EQUAL_BIN_SIZE 20
+#define DISTANCE_CUTOFF 200     // this is the average length of the excluded regions (such as Ns-regions, repeatmasks etc.)
 
 // We need to declared the followings as glabal since the program will change these values!!!
 // The naming convention for this type of data is CAPTICAL_WORD1_WORD2_WORD3...extern bool EXCLUDED_FILE_PROVIDED;
@@ -141,6 +142,7 @@ typedef struct {
     uint32_t end;
     uint32_t length;
     double   ave_coverage;
+    char type;                  // E: equal bin; R: raw bin
 } Equal_Window_Bin;
 
 typedef struct {
@@ -157,8 +159,15 @@ typedef struct {
 
     // store related nearby breakpoint info
     //
-    //uint32_t left_breakpoint;
-    //uint32_t right_breakpoint;
+    uint32_t left_breakpoint;
+    uint8_t left_num_of_TLEN_ge_1000;   // number of paired reads span more than 1000 bp
+    uint8_t left_num_of_breakpoints;    // how many breakpoints associated with this CNV
+    uint32_t final_start;               // after adjusting with the breakpoint
+
+    uint32_t right_breakpoint;
+    uint8_t right_num_of_TLEN_ge_1000;  // number of paired reads span more than 1000 bp
+    uint8_t right_num_of_breakpoints;   // how many breakpoints associated with this CNV
+    uint32_t final_end;                 // after adjusting with the breakpoint
 } CNV;
 
 typedef struct {

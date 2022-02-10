@@ -273,7 +273,8 @@ void addValueToKhashBucket32(khash_t(m32) *hash_in, uint32_t pos_key, uint32_t v
 
     kh_value(hash_in, k_iter) += val;
 	//if (pos_key == 1 && kh_value(hash_in, k_iter)%1000000 == 0) printf("key 1 value is %"PRIu32"\n", kh_value(hash_in, k_iter));
-	if (kh_value(hash_in, k_iter) > 4294967290) printf("larger value %"PRIu32"\n", kh_value(hash_in, k_iter));
+    // this is when data overflow
+	if (kh_value(hash_in, k_iter) > 4294967290) printf("larger value %"PRIu32" overflow\n", kh_value(hash_in, k_iter));
 
     return;
 }

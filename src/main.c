@@ -385,14 +385,6 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Haploid cutoff: %.2f\n", the_stats->average_coverage - the_stats->zScore);
     fprintf(stderr, "Duplicate cutoff: %.2f\n\n", the_stats->average_coverage + the_stats->zScore);
 
-    // For Raw varying size bin CNV calls
-    //
-    //CNV_Array **raw_bin_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
-    //checkMemoryAllocation(binned_data_wrappers, "CNV_Array **raw_bin_cnv_array");
-    //cnvArrayInit(raw_bin_cnv_array, chrom_tracking);
-    //mergeNeighboringBinsBasedOnZscore(raw_bin_cnv_array, binned_data_wrappers, chrom_tracking->number_of_chromosomes, the_stats, 1);
-    //outputCNVArray(raw_bin_cnv_array, chrom_tracking->number_of_chromosomes, 1);
-
     // for Equal bin window CNV Calls
     //
     CNV_Array **equal_bin_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
@@ -401,8 +393,7 @@ int main(int argc, char *argv[]) {
 
     // merge and expand the CNV calls using raw bin data
     //
-    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, chrom_tracking->number_of_chromosomes, the_stats, user_inputs);
-    outputCNVArray(equal_bin_cnv_array, chrom_tracking->number_of_chromosomes, 2);
+    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, preads_x_bpts_array, chrom_tracking->number_of_chromosomes, the_stats, user_inputs);
 
     // clean up
     //
