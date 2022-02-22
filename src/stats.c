@@ -418,8 +418,8 @@ void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned
 
     // now calculate the z-score
     //
-    //the_stats->zScore = 1.645 * the_stats->stdev;   // 90% confident inverval for z score
-    the_stats->zScore = 1.96 * the_stats->stdev;    // 95% confident inverval for z score
+    the_stats->zScore = 1.645 * the_stats->stdev;   // 90% confident inverval for z score
+    //the_stats->zScore = 1.96 * the_stats->stdev;    // 95% confident inverval for z score
     //the_stats->zScore = 3.00 * the_stats->stdev;    // 99% confident interval for z score
 
     // clean up

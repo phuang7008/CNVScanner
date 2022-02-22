@@ -54,8 +54,8 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
     for (i=begin; i<begin+length; i++) {
         uint32_t start=0, end=0;
         uint64_t cov_total=0;
-        //if (i==6818612) {
-        //    printf("6818612 stopped!");
+        //if (i==19834399) {
+        //    printf("19834425 stopped!");
         //}
 
         // check if the size is approach the capacity
