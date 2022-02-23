@@ -191,7 +191,7 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
                         // if both ends connected with excluded regions (Ns regions, repeatmaskers etc.)
                         //
                         storeCurrentCNVtoArray(cnv_array, prev_start, prev_end, prev_len, \
-                                                    coverage, merged_equal_bin_array, bin_counter, cnv_counter);
+                                                    coverage, merged_equal_bin_array, bin_counter, cnv_counter, prev_flag);
                         extendBothEndsByOneBin(cnv_array, equal_size_window_wrapper, cnv_counter, bin_counter, j);
                         cnv_counter += combineNeighboringCNVs(cnv_array, cnv_counter);
                         cnv_counter++;
@@ -265,16 +265,16 @@ void extendBothEndsByOneBin(CNV_Array *cnv_array, Binned_Data_Wrapper *equal_siz
     // **NOTE**: the start_index need to be set here as the num_of_bin_used might be increased 
     //
     int32_t start_index = end_index - num_of_bin_used - 1;      // using signed int as it might go to negative
-    if (cnv_array->cnvs[cnv_index].start == 20713500)
+    if (cnv_array->cnvs[cnv_index].equal_bin_start == 20713500)
         printf("debug stopped\n");
 
     // check the bin just after the CNV
     //
     if (equal_size_window_wrapper->data[end_index].length == 0 && 
-            cnv_array->cnvs[cnv_index].end == equal_size_window_wrapper->data[end_index+1].start) {
-        cnv_array->cnvs[cnv_index].end = equal_size_window_wrapper->data[end_index+1].end;
-        cnv_array->cnvs[cnv_index].equal_bin_array[num_of_bin_used].start  = equal_size_window_wrapper->data[end_index].start;
-        cnv_array->cnvs[cnv_index].equal_bin_array[num_of_bin_used].end    = equal_size_window_wrapper->data[end_index].end;
+            cnv_array->cnvs[cnv_index].equal_bin_end == equal_size_window_wrapper->data[end_index+1].start) {
+        cnv_array->cnvs[cnv_index].equal_bin_end = equal_size_window_wrapper->data[end_index+1].end;
+        cnv_array->cnvs[cnv_index].equal_bin_array[num_of_bin_used].start = equal_size_window_wrapper->data[end_index].start;
+        cnv_array->cnvs[cnv_index].equal_bin_array[num_of_bin_used].end   = equal_size_window_wrapper->data[end_index].end;
         cnv_array->cnvs[cnv_index].equal_bin_array[num_of_bin_used].length = equal_size_window_wrapper->data[end_index].length;
         cnv_array->cnvs[cnv_index].equal_bin_array[num_of_bin_used].type   = 'X';
         cnv_array->cnvs[cnv_index].equal_bin_array[num_of_bin_used].ave_coverage = \
@@ -285,8 +285,8 @@ void extendBothEndsByOneBin(CNV_Array *cnv_array, Binned_Data_Wrapper *equal_siz
     // check the bin just before the CNV
     //
     if (start_index >= 0 && equal_size_window_wrapper->data[start_index].length == 0 &&
-            cnv_array->cnvs[cnv_index].start == equal_size_window_wrapper->data[start_index].end) {
-        cnv_array->cnvs[cnv_index].start = equal_size_window_wrapper->data[start_index].start;
+            cnv_array->cnvs[cnv_index].equal_bin_start == equal_size_window_wrapper->data[start_index].end) {
+        cnv_array->cnvs[cnv_index].equal_bin_start = equal_size_window_wrapper->data[start_index].start;
 
         // re-order th equal bin array
         //
@@ -314,13 +314,21 @@ void extendBothEndsByOneBin(CNV_Array *cnv_array, Binned_Data_Wrapper *equal_siz
 // The method will first check to see if the previous CNV should be merged with the current CNV 
 // if their distance is <= 1000 bp away; if not, it will add the new one
 //
-void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, uint32_t length, double coverage, Equal_Window_Bin *merged_equal_bin_array, uint32_t bin_size, uint32_t cnv_index) {
+void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, uint32_t length, double coverage, Equal_Window_Bin *merged_equal_bin_array, uint32_t bin_size, uint32_t cnv_index, uint8_t cnv_flag) {
     uint32_t k;
 
-    cnv_array->cnvs[cnv_index].start  = start;
-    cnv_array->cnvs[cnv_index].end    = end; 
+    cnv_array->cnvs[cnv_index].equal_bin_start  = start;
+    cnv_array->cnvs[cnv_index].equal_bin_end    = end; 
     cnv_array->cnvs[cnv_index].length = length;
     cnv_array->cnvs[cnv_index].ave_coverage = coverage;
+
+    if (cnv_flag == 1) {
+        cnv_array->cnvs[cnv_index].cnv_type = 'L';
+    } else if (cnv_flag == 3) {
+        cnv_array->cnvs[cnv_index].cnv_type = 'P';
+    } else {
+        fprintf(stderr, "ERROR: cnv type %"PRIu8" is niether dup nor del\n", cnv_flag);
+    }
 
     // store all equal window bin info to the current CNV
     //
@@ -338,24 +346,26 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
 
     // initialize other variables. It is only need to be done once!
     //
+    cnv_array->cnvs[cnv_index].raw_bin_start = 0; 
+    cnv_array->cnvs[cnv_index].raw_bin_end   = 0; 
     cnv_array->cnvs[cnv_index].left_breakpoint = 0;
     cnv_array->cnvs[cnv_index].left_num_of_TLEN_ge_1000 = 0;
     cnv_array->cnvs[cnv_index].left_num_of_breakpoints = 0;
-    cnv_array->cnvs[cnv_index].final_start = 0;
+    //cnv_array->cnvs[cnv_index].final_start = 0;
     cnv_array->cnvs[cnv_index].right_breakpoint = 0;
     cnv_array->cnvs[cnv_index].right_num_of_TLEN_ge_1000 = 0;
     cnv_array->cnvs[cnv_index].right_num_of_breakpoints = 0;
-    cnv_array->cnvs[cnv_index].final_end = 0;
+    //cnv_array->cnvs[cnv_index].final_end = 0;
 
 }
 
 int combineNeighboringCNVs(CNV_Array *cnv_array, uint32_t cnv_index) {
     if (cnv_index > 0) {
-        if (cnv_array->cnvs[cnv_index].start <= cnv_array->cnvs[cnv_index-1].end + 1000 && 
-                cnv_array->cnvs[cnv_index-1].end + 1000 <= cnv_array->cnvs[cnv_index].end) {
+        if (cnv_array->cnvs[cnv_index].equal_bin_start <= cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 && 
+                cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 <= cnv_array->cnvs[cnv_index].equal_bin_end) {
             // merge with the previous one and re-calculate the coverage
             //
-            cnv_array->cnvs[cnv_index-1].end = cnv_array->cnvs[cnv_index].end;
+            cnv_array->cnvs[cnv_index-1].equal_bin_end = cnv_array->cnvs[cnv_index].equal_bin_end;
             cnv_array->cnvs[cnv_index-1].ave_coverage = cnv_array->cnvs[cnv_index].length * cnv_array->cnvs[cnv_index].ave_coverage + \
                         cnv_array->cnvs[cnv_index-1].length * cnv_array->cnvs[cnv_index-1].ave_coverage;
             cnv_array->cnvs[cnv_index-1].length += cnv_array->cnvs[cnv_index].length;
@@ -408,7 +418,7 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
     uint32_t i, j, raw_bin_start=0;
 
     for (i=0; i<cnv_array->size;i++) {
-        if (cnv_array->cnvs[i].start == 11231000) {
+        if (cnv_array->cnvs[i].equal_bin_start == 11231000) {
             printf("stop3\n");
         }
         for (j=raw_bin_start; j<binned_data_wrapper->size; j++) {
@@ -419,37 +429,46 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
             // 200 bp is the average length of all excluded regions (such as Ns regions, repeatmasks)
             // This is defined in terms.h
             //
-            if (cnv_array->cnvs[i].start > binned_data_wrapper->data[j].end + DISTANCE_CUTOFF) { 
+            if (cnv_array->cnvs[i].equal_bin_start > binned_data_wrapper->data[j].end + DISTANCE_CUTOFF) { 
                 // no intersect, record restart position and then skip
                 //
                 continue;
-            } else if (cnv_array->cnvs[i].end + DISTANCE_CUTOFF < binned_data_wrapper->data[j].start) {
+            } else if (cnv_array->cnvs[i].equal_bin_end + DISTANCE_CUTOFF < binned_data_wrapper->data[j].start) {
                 // no intersect. The current raw bin has pass the current CNV bin
                 // no need to continue, just break out
                 //
                 break;
             } else {
+                // they intersect
+                //
                 raw_bin_start = j;
                 uint32_t p;
 
                 // because we added DISTANCE_CUTOFF to the ends of the CNVs
                 // check which raw bin index is the closest to the current CNV's start position
                 //
-                if (binned_data_wrapper->data[j].start <= cnv_array->cnvs[i].start) { 
-                    // let's move to the right to find the left most raw bin for the current CNV
+                if (binned_data_wrapper->data[j].start <= cnv_array->cnvs[i].equal_bin_start) { 
+                    // Handle left hand side to find the left most raw bin for the current CNV
                     //
                     for (p=j+1; p<binned_data_wrapper->size; p++) {
-                        if (cnv_array->cnvs[i].start < binned_data_wrapper->data[p].start)
+                        // raw bin passes the start position of current CNV, so stop looping
+                        //
+                        if (cnv_array->cnvs[i].equal_bin_start < binned_data_wrapper->data[p].start)
                             break;
                     }
                     j = p - 1;      // we find the left most raw bin index
                     raw_bin_start = j;
 
-                    if (binned_data_wrapper->data[j].start <= cnv_array->cnvs[i].start &&
-                            cnv_array->cnvs[i].start <= binned_data_wrapper->data[j].end) {
+                    // need to use a tmp variable tmp_raw_bin_start for the testing and looping
+                    //
+                    uint32_t tmp_raw_bin_start = cnv_array->cnvs[i].equal_bin_start;
+
+                    if (binned_data_wrapper->data[j].start <= tmp_raw_bin_start &&
+                            tmp_raw_bin_start <= binned_data_wrapper->data[j].end) {
                         // they intersect, record it
                         //
-                        cnv_array->cnvs[i].start = binned_data_wrapper->data[j].start;
+                        cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].start;
+                        tmp_raw_bin_start = cnv_array->cnvs[i].raw_bin_start;
                         addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
                         j--;
                     }
@@ -461,8 +480,9 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                                         && cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
                            (binned_data_wrapper->data[j].ave_cov_map_gc_normalized >= dup_cutoff 
                                         && cnv_array->cnvs[i].ave_coverage >= dup_cutoff)) {
-                        if (cnv_array->cnvs[i].start - binned_data_wrapper->data[j].end <= DISTANCE_CUTOFF) {
-                            cnv_array->cnvs[i].start = binned_data_wrapper->data[j].start;
+                        if (tmp_raw_bin_start - binned_data_wrapper->data[j].end <= DISTANCE_CUTOFF) {
+                            cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].start;
+                            tmp_raw_bin_start = cnv_array->cnvs[i].raw_bin_start;
                             addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
                             j--;
                         } else {
@@ -477,9 +497,12 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                 // the current j will be the raw bin index that is the closest to the current CNV
                 // first, check if they intersect
                 //
-                if (binned_data_wrapper->data[j].start <= cnv_array->cnvs[i].end &&
-                        cnv_array->cnvs[i].end <= binned_data_wrapper->data[j].end) {
-                    cnv_array->cnvs[i].end = binned_data_wrapper->data[j].end;
+                uint32_t tmp_raw_bin_end = cnv_array->cnvs[i].equal_bin_end;
+
+                if (binned_data_wrapper->data[j].start <= tmp_raw_bin_end &&
+                        tmp_raw_bin_end <= binned_data_wrapper->data[j].end) {
+                    cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].end;
+                    tmp_raw_bin_end = cnv_array->cnvs[i].raw_bin_end;
                     addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
                     j++;
                 }
@@ -493,8 +516,9 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     // check if the distance is within 200bp away
                     // 200 bp is the average length of all excluded regions (such as Ns regions, repeatmasks)
                     //
-                    if (binned_data_wrapper->data[j].start - cnv_array->cnvs[i].end <= DISTANCE_CUTOFF) {
-                        cnv_array->cnvs[i].end = binned_data_wrapper->data[j].end;
+                    if (binned_data_wrapper->data[j].start - tmp_raw_bin_end <= DISTANCE_CUTOFF) {
+                        cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].end;
+                        tmp_raw_bin_end = cnv_array->cnvs[i].raw_bin_end;
                         addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
                         j++;
                         raw_bin_start = j;
@@ -560,31 +584,36 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
             if (anchor_breakpoints[j] == 12698930) {
                 printf("stop\n");
             }
-            if (anchor_breakpoints[j] + DISTANCE_CUTOFF < cnv_array->cnvs[i].start) {
+            uint32_t tmp_start = (cnv_array->cnvs[i].raw_bin_start > 0) ? \
+                                    cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
+            uint32_t tmp_end = (cnv_array->cnvs[i].raw_bin_end > 0) ? \
+                                    cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
+
+            if (anchor_breakpoints[j] + DISTANCE_CUTOFF < tmp_start) {
                 continue;
-            } else if (cnv_array->cnvs[i].end + DISTANCE_CUTOFF < anchor_breakpoints[j]) {
+            } else if (tmp_end + DISTANCE_CUTOFF < anchor_breakpoints[j]) {
                 break;
             } else {
                 // we consider they intersect.
                 // Now we need to find out the breakpoint on the current CNV
                 //
-                if (anchor_breakpoints[j] == cnv_array->cnvs[i].start) {
+                if (anchor_breakpoints[j] == tmp_start) {
                     addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 1);
-                } else if (anchor_breakpoints[j] == cnv_array->cnvs[i].end) {
+                } else if (anchor_breakpoints[j] == tmp_end) {
                     addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 2);
-                } else if (cnv_array->cnvs[i].start < anchor_breakpoints[j] && anchor_breakpoints[j] < cnv_array->cnvs[i].end) {
-                    if (anchor_breakpoints[j] - cnv_array->cnvs[i].start < cnv_array->cnvs[i].end - anchor_breakpoints[j]) {
+                } else if (tmp_start < anchor_breakpoints[j] && anchor_breakpoints[j] < tmp_end) {
+                    if (anchor_breakpoints[j] - tmp_start < tmp_end - anchor_breakpoints[j]) {
                         // closer to the start position
                         //
                         addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 1);
                     } else {
                         addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 2);
                     }
-                } else if ((anchor_breakpoints[j] >= cnv_array->cnvs[i].start - DISTANCE_CUTOFF) && 
-                            (anchor_breakpoints[j] <= cnv_array->cnvs[i].start + DISTANCE_CUTOFF)) {
+                } else if ((anchor_breakpoints[j] >= tmp_start - DISTANCE_CUTOFF) && 
+                            (anchor_breakpoints[j] <= tmp_start + DISTANCE_CUTOFF)) {
                     addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 1);
-                } else if ((cnv_array->cnvs[i].end + DISTANCE_CUTOFF >= anchor_breakpoints[j]) &&
-                            (cnv_array->cnvs[i].end - DISTANCE_CUTOFF <= anchor_breakpoints[j])) {
+                } else if ((tmp_end + DISTANCE_CUTOFF >= anchor_breakpoints[j]) &&
+                            (tmp_end - DISTANCE_CUTOFF <= anchor_breakpoints[j])) {
                     addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 2);
                 } else {
                     fprintf(stderr, "Warning: anchor breakpoint %"PRIu32" shouldn't be here\n", anchor_breakpoints[j]);
@@ -603,12 +632,12 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
         //
         if (pos_type == 1) {
             cnv_array->cnvs[cnv_index].left_breakpoint  = anchor_breakpoint;
-            cnv_array->cnvs[cnv_index].final_start  = anchor_breakpoint;
+            //cnv_array->cnvs[cnv_index].final_start  = anchor_breakpoint;
             cnv_array->cnvs[cnv_index].left_num_of_TLEN_ge_1000 = kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->num_TLEN_ge_1000;
             cnv_array->cnvs[cnv_index].left_num_of_breakpoints  = kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->current_breakpoint_count;
         } else {
             cnv_array->cnvs[cnv_index].right_breakpoint = anchor_breakpoint;
-            cnv_array->cnvs[cnv_index].final_end = anchor_breakpoint;
+            //cnv_array->cnvs[cnv_index].final_end = anchor_breakpoint;
             cnv_array->cnvs[cnv_index].right_num_of_TLEN_ge_1000 = kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->num_TLEN_ge_1000;
             cnv_array->cnvs[cnv_index].right_num_of_breakpoints  = kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->current_breakpoint_count;
         }
@@ -628,9 +657,13 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
         sprintf(filename, "%s_CNV_Array_equal_bin.txt", chrom_id);
         fp = fopen(filename, "w");
     }
+    fprintf(fp, "chr\tstart\tend\tlength\tCNV-call\tAvg_Cov\tbkpt_L\t#bkpt_L\t#Insert_size_L>=1000\t");
+    fprintf(fp, "bkpt_R\t#bkpt_R\t#Insert_Size_R>=1000\tStart_Eq\tEnd_Eq\tLen_Eq\tLen_Eq_Based_used\tavg_cov_Eq\tBin_Type\t");
+    fprintf(fp, "Start_Raw\tEnd_Raw\tLen_Raw\tavg_cov_Raw\tBin_Type\n");
+
     uint32_t j;
     for (j=0; j<cnv_array->size; j++) {
-        if (cnv_array->cnvs[j].final_start > 0 || cnv_array->cnvs[j].final_end > 0) {
+        if (cnv_array->cnvs[j].left_breakpoint > 0 || cnv_array->cnvs[j].right_breakpoint > 0) {
             if (cnv_array->cnvs[j].left_num_of_breakpoints <=2 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 <=1 &&
                     cnv_array->cnvs[j].right_num_of_breakpoints == 0 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 == 0)
                 continue;
@@ -639,22 +672,45 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
                 cnv_array->cnvs[j].right_num_of_breakpoints <=2 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 <= 1)
                 continue;
 
-            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\n", chrom_id, \
-                    cnv_array->cnvs[j].start, cnv_array->cnvs[j].end, cnv_array->cnvs[j].end - cnv_array->cnvs[j].start,\
+            uint32_t cnv_start = (cnv_array->cnvs[j].left_breakpoint > 0) ? cnv_array->cnvs[j].left_breakpoint : \
+                        (cnv_array->cnvs[j].raw_bin_start > 0) ? cnv_array->cnvs[j].raw_bin_start : cnv_array->cnvs[j].equal_bin_start;
+            uint32_t cnv_end = (cnv_array->cnvs[j].right_breakpoint > 0) ? cnv_array->cnvs[j].right_breakpoint : \
+                        (cnv_array->cnvs[j].raw_bin_end > 0) ? cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
+
+            char CNV[10];
+            (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "DUP");
+
+            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%s\t%.2f\t", chrom_id, \
+                    cnv_start, cnv_end, cnv_end-cnv_start, CNV, cnv_array->cnvs[j].ave_coverage);
+
+            fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", cnv_array->cnvs[j].left_breakpoint, \
+                    cnv_array->cnvs[j].left_num_of_breakpoints, cnv_array->cnvs[j].left_num_of_TLEN_ge_1000);
+
+            fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", cnv_array->cnvs[j].right_breakpoint, \
+                    cnv_array->cnvs[j].right_num_of_breakpoints, cnv_array->cnvs[j].right_num_of_TLEN_ge_1000);
+
+            fprintf(fp, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t", cnv_array->cnvs[j].equal_bin_start, \
+                    cnv_array->cnvs[j].equal_bin_end, cnv_array->cnvs[j].equal_bin_end - cnv_array->cnvs[j].equal_bin_start,\
                     cnv_array->cnvs[j].length, cnv_array->cnvs[j].ave_coverage);
 
-            fprintf(fp,"\tLeft breakpoint:  %"PRIu32" with count: %"PRIu8"\tnumber_of_insertion_size>=1000bp: %"PRIu8"\n", \
-                    cnv_array->cnvs[j].final_start, cnv_array->cnvs[j].left_num_of_breakpoints, \
-                    cnv_array->cnvs[j].left_num_of_TLEN_ge_1000);
-            fprintf(fp,"\tRight breakpoint: %"PRIu32" with count: %"PRIu8"\tnumber_of_insertion_size>=1000bp: %"PRIu8"\n", \
-                    cnv_array->cnvs[j].final_end, cnv_array->cnvs[j].right_num_of_breakpoints, \
-                    cnv_array->cnvs[j].right_num_of_TLEN_ge_1000);
+            fprintf(fp, "\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\n", cnv_array->cnvs[j].raw_bin_start, \
+                    cnv_array->cnvs[j].raw_bin_end, cnv_array->cnvs[j].raw_bin_end - cnv_array->cnvs[j].raw_bin_start,\
+                    cnv_array->cnvs[j].length, cnv_array->cnvs[j].ave_coverage);
 
             uint32_t k;
             for (k=0; k<cnv_array->cnvs[j].size; k++) {
-                fprintf(fp, "\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%c\n", cnv_array->cnvs[j].equal_bin_array[k].start, \
-                        cnv_array->cnvs[j].equal_bin_array[k].end, cnv_array->cnvs[j].equal_bin_array[k].length, \
-                        cnv_array->cnvs[j].equal_bin_array[k].ave_coverage, cnv_array->cnvs[j].equal_bin_array[k].type);
+                if (cnv_array->cnvs[j].equal_bin_array[k].type == 'E') {
+                    fprintf(fp, "\t\t\t\t\t\t\t\t\t\t\t\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%c\n", 
+                        cnv_array->cnvs[j].equal_bin_array[k].start, cnv_array->cnvs[j].equal_bin_array[k].end, \
+                        cnv_array->cnvs[j].equal_bin_array[k].end - cnv_array->cnvs[j].equal_bin_array[k].start,
+                        cnv_array->cnvs[j].equal_bin_array[k].length, cnv_array->cnvs[j].equal_bin_array[k].ave_coverage, \
+                        cnv_array->cnvs[j].equal_bin_array[k].type);
+                } else {
+                    fprintf(fp, "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%c\n",
+                            cnv_array->cnvs[j].equal_bin_array[k].start, cnv_array->cnvs[j].equal_bin_array[k].end, \
+                            cnv_array->cnvs[j].equal_bin_array[k].length, cnv_array->cnvs[j].equal_bin_array[k].ave_coverage, \
+                            cnv_array->cnvs[j].equal_bin_array[k].type);
+                }
             }
             fprintf(fp, "\n");
         }

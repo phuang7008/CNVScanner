@@ -146,10 +146,13 @@ typedef struct {
 } Equal_Window_Bin;
 
 typedef struct {
-    uint32_t start;
-    uint32_t end;
+    uint32_t equal_bin_start;
+    uint32_t equal_bin_end;
+    uint32_t raw_bin_start;
+    uint32_t raw_bin_end;
     uint32_t length;    // note, the length is not necessarily = end - start, as some bases like Ns regions are removed
     double  ave_coverage;
+    char cnv_type;      // L: for deletion, while P for Dup
 
     // store merged bins 
     //
@@ -162,12 +165,12 @@ typedef struct {
     uint32_t left_breakpoint;
     uint8_t left_num_of_TLEN_ge_1000;   // number of paired reads span more than 1000 bp
     uint8_t left_num_of_breakpoints;    // how many breakpoints associated with this CNV
-    uint32_t final_start;               // after adjusting with the breakpoint
+    //uint32_t final_start;               // after adjusting with the breakpoint
 
     uint32_t right_breakpoint;
     uint8_t right_num_of_TLEN_ge_1000;  // number of paired reads span more than 1000 bp
     uint8_t right_num_of_breakpoints;   // how many breakpoints associated with this CNV
-    uint32_t final_end;                 // after adjusting with the breakpoint
+    //uint32_t final_end;                 // after adjusting with the breakpoint
 } CNV;
 
 typedef struct {
