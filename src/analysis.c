@@ -29,7 +29,7 @@
 #include "user_inputs.h"
 #include "fileProcessing.h"
 
-void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, khash_t(khIntStr) *starts, khash_t(khIntStr) *ends, uint32_t total_lines, int type) {
+void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, khash_t(khIntStr) *starts, khash_t(khIntStr) *ends, uint32_t total_lines, Simple_Stats *wgs_simple_stats, int type) {
     // create an all starts and ends array, the size will be dynamically increased later
     //
     AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
@@ -102,7 +102,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
 
                 if (binned_string && map_gc_string) {
                     performNormalizationForCurrentBin(binned_data_wraper, user_inputs,
-                        binned_string, map_gc_string, all_starts_ends_array->array[i], prev_start1, type);
+                        binned_string, map_gc_string, all_starts_ends_array->array[i], prev_start1, wgs_simple_stats, type);
                 } else {
                     fprintf(stderr, "Something is wrong: Binned_string=%s; mapping_gc_string=%s with index %"PRIu32"\n",
                             binned_string, map_gc_string, i);
@@ -172,7 +172,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     cleanKhashIntStr(binned_ends);
 }
 
-void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, char *bin_string, char* map_gc_string, uint32_t current_position, uint32_t prev_start, int type) {
+void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, char *bin_string, char* map_gc_string, uint32_t current_position, uint32_t prev_start, Simple_Stats *wgs_simple_stats, int type) {
     StringArray *binned_array = calloc(1, sizeof(StringArray));
     stringArrayInit(binned_array, 10);
     splitStringToArray(bin_string, binned_array);       // bin_string has 5 entries: index,chr,start,end,ave_cov
@@ -200,6 +200,8 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale += ((double) length / (double)orig_len) * scale_ratio;
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized = 
             ave * binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale;
+        if (binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized > wgs_simple_stats->outlier_cutoff)
+            binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized = wgs_simple_stats->outlier_cutoff;
 
         // output for debugging
         //
@@ -210,6 +212,9 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += ((double) length / (double)orig_len) * scale_ratio;
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized =
             ave / binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability;
+
+        if (binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized > wgs_simple_stats->outlier_cutoff)
+            binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized = wgs_simple_stats->outlier_cutoff;
 
         // output for debugging
         //

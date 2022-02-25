@@ -360,6 +360,9 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
 }
 
 int combineNeighboringCNVs(CNV_Array *cnv_array, uint32_t cnv_index) {
+    if (cnv_array->cnvs[cnv_index].equal_bin_start == 20679000) {
+        printf("stop\n");
+    }
     if (cnv_index > 0) {
         if (cnv_array->cnvs[cnv_index].equal_bin_start <= cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 && 
                 cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 <= cnv_array->cnvs[cnv_index].equal_bin_end) {
