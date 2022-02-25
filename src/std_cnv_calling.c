@@ -147,8 +147,8 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
             }
 
             // combine neighboring bins together
-            // For raw bins, if the distance (or gap) between neighboring bins is <= 200, merge them
-            // This 200 value is calculated by averaging all Ns regions, repeatmask regions, low mappability regions etc.
+            // For raw bins, if the distance (or gap) between neighboring bins is <= 300, merge them
+            // This value of 300 is based on 2 x seq-length = 2 x 150 = 300 (Qiaoyan's suggestion)
             // This value is defined in the terms.h
             //
             if (cur_flag == prev_flag) {
@@ -425,8 +425,8 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
             if (binned_data_wrapper->data[j].start == 11230812) {
                 printf("stop4\n");
             }
-            // check if the distance is within 200bp away
-            // 200 bp is the average length of all excluded regions (such as Ns regions, repeatmasks)
+            // check if the distance is within 300bp away
+            // the value of 300 bp is based on seq-length (150bp) x 2 (Qiaoyan's suggestion)
             // This is defined in terms.h
             //
             if (cnv_array->cnvs[i].equal_bin_start > binned_data_wrapper->data[j].end + DISTANCE_CUTOFF) { 
@@ -513,8 +513,8 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                                         && cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
                        (binned_data_wrapper->data[j].ave_coverage >= dup_cutoff
                                         && cnv_array->cnvs[i].ave_coverage >= dup_cutoff)) {
-                    // check if the distance is within 200bp away
-                    // 200 bp is the average length of all excluded regions (such as Ns regions, repeatmasks)
+                    // check if the distance is within 300bp away
+                    // This value of 300 is based on 2 x seq-length = 2 x 150 = 300 (Qiaoyan's suggestion)
                     //
                     if (binned_data_wrapper->data[j].start - tmp_raw_bin_end <= DISTANCE_CUTOFF) {
                         cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].end;
