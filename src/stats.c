@@ -364,7 +364,7 @@ bool getOverlapInfo(User_Input *user_inputs, Stats_Info *stats_info, bam1_t *rec
     return false;
 }
 
-void calculateMeanAndStdev(User_Input *user_inputs, Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking) {
+void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking) {
 
     uint32_t i=0, j=0, total_num=0;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {

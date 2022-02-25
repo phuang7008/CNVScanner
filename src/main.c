@@ -375,8 +375,7 @@ int main(int argc, char *argv[]) {
     // calculate the statistics here for WGS
     //
     Simple_Stats *the_stats = calloc(1, sizeof(Simple_Stats));
-    calculateMeanAndStdev(user_inputs, equal_size_window_wrappers, the_stats, chrom_tracking);
-    //calculateMeanAndStdev(user_inputs, binned_data_wrappers, the_stats, chrom_tracking);
+    calculateMeanAndStdev(equal_size_window_wrappers, the_stats, chrom_tracking);
     fprintf(stderr, "Mean:  %.2f\n", the_stats->average_coverage);
     fprintf(stderr, "Stdev: %.2f\n", the_stats->stdev);
     fprintf(stderr, "99_percentile: %.2f\n", the_stats->ninty_nine_percentile);

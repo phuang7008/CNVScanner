@@ -40,9 +40,9 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
     //       haploid             diploid               duplication               10x of haploid         anything > 10x of haploid
     //  [0x –– Dip*0.66)  [Dip*0.66 – Dip*1.32)  [Dip*1.32 – Dip + Dip *0.6) [Dip + Dip*0.6 – 10xHap]            > 10xHap
     //
-    double hap_upper  = user_inputs->average_coverage * 0.66;   // from paper
-    double dip_upper  = user_inputs->average_coverage * 1.32;   // from paper
-    double dup_upper = user_inputs->average_coverage * 10 / 2;
+    double hap_upper  = wgs_simple_stats->average_coverage * 0.66;   // from paper
+    double dip_upper  = wgs_simple_stats->average_coverage * 1.32;   // from paper
+    //double dup_upper  = wgs_simple_stats->average_coverage * 10 / 2;
 
     fprintf(stderr, "For chromosome %s using thread %d\n", chrom_tracking->chromosome_ids[chrom_idx], thread_id);
     /*fprintf(stderr, "\t#haploid upper bound is:\t%f \n", hap_upper);
@@ -113,7 +113,7 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
             if (start <= end) {
                 processBinnedData(start, end, cov_total, binned_data_wrapper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
             }
-        } else if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] < dup_upper)) {
+        /*} else if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] < dup_upper)) {
             start = i;
             while( i < begin+length && (dip_upper <= chrom_tracking->coverage[chrom_idx][i]) &&
                     (chrom_tracking->coverage[chrom_idx][i] < dup_upper)) {
@@ -126,10 +126,10 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
 
             if (start <= end) {
                 processBinnedData(start, end, cov_total, binned_data_wrapper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
-            }
+            }*/
         } else {
             start = i;
-            while( i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= dup_upper) &&
+            while( i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= dip_upper) &&
                         (chrom_tracking->coverage[chrom_idx][i] < wgs_simple_stats->outlier_cutoff)) {
                 cov_total += chrom_tracking->coverage[chrom_idx][i];
                 i++;

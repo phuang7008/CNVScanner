@@ -42,7 +42,7 @@ void usage() {
     printf("--input_bam          -i  BAM/CRAM alignment file (multiple files are not allowed!).\n");
     printf("                         It Is Mandatory\n");
     printf("--output_dir         -o  output directory. It Is Mandatory\n");
-    printf("--average_coverage   -a  the average coverage of current sample. It Is Mandatory\n");
+    //printf("--average_coverage   -a  the average coverage of current sample. It Is Mandatory\n");
     printf("--mappability_file   -M  the genomic mappability file. It Is Mandatory\n");
     printf("--gc_content_file    -G  the genomic GC%% file. It Is Mandatory\n");
     printf("--equal_size_window  -w  the equal size window bed file. It Is Mandatory\n");
@@ -105,7 +105,6 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             {"excluded_regions",    required_argument,  0,  'e'},
             {"equal_bin_size",      required_argument,  0,  'S'},
             {"equal_size_window",   required_argument,  0,  'w'},
-            {"average_coverage",    required_argument,  0,  'a'},
             {"mappability_cutoff",  required_argument,  0,  'c'},
             {"threads",             required_argument,  0,  'T'},
             {"duplicate",           no_argument,  0,  'd'},
@@ -127,9 +126,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
 
         //printf("User options for %c is %s\n", arg, optarg);
         switch(arg) {
-            case 'a':
+            /*case 'a':
                 user_inputs->average_coverage = atoi(optarg);
                 break;
+            */
             case 'b':
                 if (!isNumber(optarg)) {
                     fprintf (stderr, "ERROR: Entered base quality filter score %s is not a number\n", optarg);
@@ -237,10 +237,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         input_error_flag=true;
     }
 
-    if (user_inputs->average_coverage == -1) {
+    /*if (user_inputs->average_coverage == -1) {
         fprintf(stderr, "ERROR: --average_coverage (or -a)\toption is mandatory!\n");
         input_error_flag=true;
-    }
+    }*/
 
     if (user_inputs->mappability_file == NULL) {
         fprintf(stderr, "ERROR: --mappability_file (or -M)\toption is mandatory!\n");
@@ -416,7 +416,7 @@ User_Input * userInputInit() {
     }
 
     user_inputs->percentage = 1.0;
-    user_inputs->average_coverage = -1;
+    //user_inputs->average_coverage = -1;
     user_inputs->min_map_quality  = 0;
     user_inputs->min_base_quality = 0;
     user_inputs->num_of_threads   = 3;
