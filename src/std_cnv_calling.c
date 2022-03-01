@@ -57,6 +57,7 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
             checkBreakpointForEachCNV(equal_bin_cnv_array[cnv_array_index], preads_x_bpts_array[pr_x_bpts_arr_index]);
 
             outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 2);
+            outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 3);
 
           } // end task 
         } // end for loop
@@ -176,7 +177,7 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
                         dynamicIncreaseBinArraySize(&merged_equal_bin_array, bin_capacity);
                     }
                 } else {
-
+                    fprintf(stderr, "WARNING: failed to elongate CNV using equal bins");
                 }
             } else {
                 // the previous bin flag differs from current bin flag. 
@@ -195,6 +196,11 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
                         extendBothEndsByOneBin(cnv_array, equal_size_window_wrapper, cnv_counter, bin_counter, j);
                         cnv_counter += combineNeighboringCNVs(cnv_array, cnv_counter);
                         cnv_counter++;
+                        if (cnv_counter + 3 >= cnv_array->capacity) {
+                            cnv_array->capacity += PR_INIT_SIZE * 2;
+                            cnv_array->cnvs = realloc(cnv_array->cnvs, cnv_array->capacity * sizeof(CNV));
+                            failureExit(cnv_array->cnvs, "mergeNeighboringBinsBasedOnZscore cnv_array->cnvs memory realloc failed\n");
+                        }
                     } else {
                         if (user_inputs->debug_ON)
                             fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.f\texclude_0.25\n", chrom_id, prev_start, \
@@ -360,9 +366,6 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
 }
 
 int combineNeighboringCNVs(CNV_Array *cnv_array, uint32_t cnv_index) {
-    if (cnv_array->cnvs[cnv_index].equal_bin_start == 20679000) {
-        printf("stop\n");
-    }
     if (cnv_index > 0) {
         if (cnv_array->cnvs[cnv_index].equal_bin_start <= cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 && 
                 cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 <= cnv_array->cnvs[cnv_index].equal_bin_end) {
@@ -656,23 +659,27 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
     if (type == 1) {        // For raw varying size bin output
         sprintf(filename, "%s_CNV_Array_raw_bin.txt", chrom_id);
         fp = fopen(filename, "w");
-    } else {                // For equal size window output
-        sprintf(filename, "%s_CNV_Array_equal_bin.txt", chrom_id);
+    } else if (type == 2) {                // For equal size window output
+        sprintf(filename, "%s_CNV_Array_equal_bin_filtered.txt", chrom_id);
+        fp = fopen(filename, "w");
+    } else {
+        sprintf(filename, "%s_CNV_Array_equal_bin_all.txt", chrom_id);
         fp = fopen(filename, "w");
     }
+
     fprintf(fp, "chr\tstart\tend\tlength\tCNV-call\tAvg_Cov\tbkpt_L\t#bkpt_L\t#Insert_size_L>=1000\t");
     fprintf(fp, "bkpt_R\t#bkpt_R\t#Insert_Size_R>=1000\tStart_Eq\tEnd_Eq\tLen_Eq\tLen_Eq_Based_used\tavg_cov_Eq\tBin_Type\t");
     fprintf(fp, "Start_Raw\tEnd_Raw\tLen_Raw\tavg_cov_Raw\tBin_Type\n");
 
     uint32_t j;
     for (j=0; j<cnv_array->size; j++) {
-        if (cnv_array->cnvs[j].left_breakpoint > 0 || cnv_array->cnvs[j].right_breakpoint > 0) {
-            if (cnv_array->cnvs[j].left_num_of_breakpoints <=2 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 <=1 &&
-                    cnv_array->cnvs[j].right_num_of_breakpoints == 0 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 == 0)
+        if (cnv_array->cnvs[j].left_breakpoint > 0 || cnv_array->cnvs[j].right_breakpoint > 0 || type == 3) {
+            if (type != 3 && cnv_array->cnvs[j].left_num_of_breakpoints <=2 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 <=1
+                    && cnv_array->cnvs[j].right_num_of_breakpoints == 0 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 == 0)
                 continue;
 
-            if (cnv_array->cnvs[j].left_num_of_breakpoints == 0 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 == 0 &&
-                cnv_array->cnvs[j].right_num_of_breakpoints <=2 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 <= 1)
+            if (type != 3 && cnv_array->cnvs[j].left_num_of_breakpoints == 0 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 == 0
+                    && cnv_array->cnvs[j].right_num_of_breakpoints <=2 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 <= 1)
                 continue;
 
             uint32_t cnv_start = (cnv_array->cnvs[j].left_breakpoint > 0) ? cnv_array->cnvs[j].left_breakpoint : \
@@ -700,19 +707,21 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
                     cnv_array->cnvs[j].raw_bin_end, cnv_array->cnvs[j].raw_bin_end - cnv_array->cnvs[j].raw_bin_start,\
                     cnv_array->cnvs[j].length, cnv_array->cnvs[j].ave_coverage);
 
-            uint32_t k;
-            for (k=0; k<cnv_array->cnvs[j].size; k++) {
-                if (cnv_array->cnvs[j].equal_bin_array[k].type == 'E') {
-                    fprintf(fp, "\t\t\t\t\t\t\t\t\t\t\t\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%c\n", 
-                        cnv_array->cnvs[j].equal_bin_array[k].start, cnv_array->cnvs[j].equal_bin_array[k].end, \
-                        cnv_array->cnvs[j].equal_bin_array[k].end - cnv_array->cnvs[j].equal_bin_array[k].start,
-                        cnv_array->cnvs[j].equal_bin_array[k].length, cnv_array->cnvs[j].equal_bin_array[k].ave_coverage, \
-                        cnv_array->cnvs[j].equal_bin_array[k].type);
-                } else {
-                    fprintf(fp, "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%c\n",
+            if (type != 3) {
+                uint32_t k;
+                for (k=0; k<cnv_array->cnvs[j].size; k++) {
+                    if (cnv_array->cnvs[j].equal_bin_array[k].type == 'E') {
+                        fprintf(fp, "\t\t\t\t\t\t\t\t\t\t\t\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%c\n", 
                             cnv_array->cnvs[j].equal_bin_array[k].start, cnv_array->cnvs[j].equal_bin_array[k].end, \
+                            cnv_array->cnvs[j].equal_bin_array[k].end - cnv_array->cnvs[j].equal_bin_array[k].start,
                             cnv_array->cnvs[j].equal_bin_array[k].length, cnv_array->cnvs[j].equal_bin_array[k].ave_coverage, \
                             cnv_array->cnvs[j].equal_bin_array[k].type);
+                    } else {
+                        fprintf(fp, "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%c\n",
+                                cnv_array->cnvs[j].equal_bin_array[k].start, cnv_array->cnvs[j].equal_bin_array[k].end, \
+                                cnv_array->cnvs[j].equal_bin_array[k].length, cnv_array->cnvs[j].equal_bin_array[k].ave_coverage, \
+                                cnv_array->cnvs[j].equal_bin_array[k].type);
+                    }
                 }
             }
             fprintf(fp, "\n");
