@@ -220,18 +220,18 @@ uint32_t fetchPReadsXBreakpointArrayChrIndex(Paired_Reads_Across_Breakpoints_Arr
 // This method will process all breakpoints of a chromosome 
 // breakpoints will be grouped if they are 5 bp away
 //
-void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh) {
+void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_Reads_Across_Breakpoints_Array *pread_x_bpts_array, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh, User_Input *user_inputs) {
 
     // obtain breakpoint coordinate array and sort it
     //
-    fprintf(stderr, "Total number of breakpoints: %"PRIu32"\n", bpt_arr->size);
+    //fprintf(stderr, "Total number of breakpoints: %"PRIu32"\n", bpt_arr->size);
     uint32_t *sorted_breakpoints = calloc(bpt_arr->size, sizeof(uint32_t));
-    getSortedBreakpointArray(sorted_breakpoints, bpt_arr);
+    getSortedBreakpointArray(sorted_breakpoints, bpt_arr, user_inputs);
 
     // need to find out the anchor breakpoints for grouping neighboring breakpoints <= 5 bps away
     //
     khash_t(m32) *anchor_breakpoints_hash = kh_init(m32);
-    uint32_t num_of_anchors = recordAnchorBreakpoints(sorted_breakpoints, anchor_breakpoints_hash, bpt_arr);
+    uint32_t num_of_anchors = recordAnchorBreakpoints(sorted_breakpoints, anchor_breakpoints_hash, bpt_arr, user_inputs);
 
     // need to store the processed breakpoints, so that the breakpoint will be handled only once
     //
@@ -401,9 +401,10 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_R
 //
 void eliminateUnwantedBreakpoints(char *chr_id, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t num_of_anchors) {
     char filename[50];
-    sprintf(filename, "%s_breakpoints_sorted.bed", chr_id);
+    sprintf(filename, "breakpoints_sorted_%s.bed", chr_id);
 
     FILE *fp = fopen(filename, "w");
+    fileOpenError(fp, filename);
 
     uint32_t *anchor_breakpoints = calloc(num_of_anchors, sizeof(uint32_t));
     uint32_t counter=0;
@@ -492,6 +493,7 @@ void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Arr
     char filename[100];
     sprintf(filename, "Paired_Reads_Across_Breakpoints_Array_%s.txt", preads_x_bpt_arr->chrom_id);
     FILE *fp = fopen(filename ,"w");
+    fileOpenError(fp, filename);
 
     //fprintf(fp, "For chromosome: %s\n", preads_x_bpt_arr->chrom_id);
 
@@ -530,7 +532,7 @@ void outputPairedReadsAcrossBreakpointsArray(Paired_Reads_Across_Breakpoints_Arr
     fclose(fp);
 }
 
-void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bpt_arr) {
+void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bpt_arr, User_Input *user_inputs) {
     uint32_t i;
     for (i=0; i<bpt_arr->size; i++) {
         sorted_breakpoints[i] = bpt_arr->breakpoints[i].breakpoint_position;       
@@ -540,17 +542,23 @@ void getSortedBreakpointArray(uint32_t *sorted_breakpoints, Breakpoint_Array *bp
 
     // output for debugging
     //
-    FILE *fp = fopen("sorted_breakpoints.txt", "w");
-    for (i=0; i<bpt_arr->size; i++) {
-        fprintf(fp, "%"PRIu32"\n", sorted_breakpoints[i]);
+    if (user_inputs->debug_ON) {
+        char filename[100];
+        sprintf(filename, "sorted_breakpoints_%s.txt", bpt_arr->chrom_id);
+        FILE *fp = fopen(filename, "w");
+        fileOpenError(fp, filename);
+
+        for (i=0; i<bpt_arr->size; i++) {
+            fprintf(fp, "%"PRIu32"\n", sorted_breakpoints[i]);
+        }
+        fclose(fp);
     }
-    fclose(fp);
 }
 
 // this method is to set the anchor point for each breakpoint in anchor_breakpoints_hash
 // key: current breakpoint; value: current_anchor
 //
-uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr) {
+uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anchor_breakpoints_hash, Breakpoint_Array *bpt_arr, User_Input *user_inputs) {
     uint32_t i, current_anchor=0, current_breakpoint=0, num_of_anchors=0;
     khash_t(m32) *tmp_anchor_count_hash = kh_init(m32);
     khiter_t iter_h;
@@ -617,47 +625,56 @@ uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anc
     // output anchor breakpoint grouping info for debugging purpose
     // and get rid of anchors with only single breakpoint
     //
-    FILE *fp = fopen("Anchor_Breakpoint_Details_Unique.txt", "w");
-    khint_t k;
-    for (k=kh_begin(anchor_breakpoints_hash); k!=kh_end(anchor_breakpoints_hash); ++k) {
-        if (kh_exist(anchor_breakpoints_hash, k)) {
-            fprintf(fp, "%d\t%d\n", kh_key(anchor_breakpoints_hash, k), kh_value(anchor_breakpoints_hash, k));
+    if (user_inputs->debug_ON) {
+        khint_t k;
+        char *filename = calloc(strlen(bpt_arr->chrom_id) + 100, sizeof(char));
 
-            iter_h = kh_get(m32, tmp_anchor_count_hash, kh_value(anchor_breakpoints_hash, k));
-            if (iter_h == kh_end(tmp_anchor_count_hash)) {
-                fprintf(stderr, "ERROR: current anchor %"PRIu32" doesn't exist at 2!\n", current_anchor);
-                exit(EXIT_FAILURE);
-            } else {
-                if (kh_value(tmp_anchor_count_hash, iter_h) == 1)
-                    kh_del(m32, anchor_breakpoints_hash, k);
-            }
-        }
-    }
-    fclose(fp);
-    kh_destroy(m32, tmp_anchor_count_hash);
+        sprintf(filename, "Anchor_Breakpoint_Details_Unique_%s.txt", bpt_arr->chrom_id);
+        FILE *fp = fopen(filename, "w");
+        fileOpenError(fp, filename);
 
-    // now output shrinked anchor hash
-    //
-    fp = fopen("Anchor_Breakpoint_Used_For_CNV_Detection.txt", "w");
-    khash_t(m32) *seen_anchors_hash = kh_init(m32);
+        for (k=kh_begin(anchor_breakpoints_hash); k!=kh_end(anchor_breakpoints_hash); ++k) {
+            if (kh_exist(anchor_breakpoints_hash, k)) {
+                fprintf(fp, "%d\t%d\n", kh_key(anchor_breakpoints_hash, k), kh_value(anchor_breakpoints_hash, k));
 
-    for (k=kh_begin(anchor_breakpoints_hash); k!=kh_end(anchor_breakpoints_hash); ++k) {
-        if (kh_exist(anchor_breakpoints_hash, k)) {
-            fprintf(fp, "%d\t%d\n", kh_key(anchor_breakpoints_hash, k), kh_value(anchor_breakpoints_hash, k));
-            
-            iter_h = kh_get(m32, seen_anchors_hash, kh_value(anchor_breakpoints_hash, k));
-            if (iter_h == kh_end(seen_anchors_hash)) {
-                iter_h = kh_put(m32, seen_anchors_hash, kh_value(anchor_breakpoints_hash, k), &absent);
-                if (absent) {
-                    kh_key(seen_anchors_hash, iter_h) = kh_value(anchor_breakpoints_hash, k);
-                    kh_value(seen_anchors_hash, iter_h) = 1;
-                    num_of_anchors++;
+                iter_h = kh_get(m32, tmp_anchor_count_hash, kh_value(anchor_breakpoints_hash, k));
+                if (iter_h == kh_end(tmp_anchor_count_hash)) {
+                    fprintf(stderr, "ERROR: current anchor %"PRIu32" doesn't exist at 2!\n", current_anchor);
+                    exit(EXIT_FAILURE);
+                } else {
+                    if (kh_value(tmp_anchor_count_hash, iter_h) == 1)
+                        kh_del(m32, anchor_breakpoints_hash, k);
                 }
             }
         }
+        fclose(fp);
+        kh_destroy(m32, tmp_anchor_count_hash);
+
+        // now output shrinked anchor hash
+        //
+        sprintf(filename, "Anchor_Breakpoint_Used_For_CNV_Detection_%s.txt", bpt_arr->chrom_id);
+        fp = fopen(filename, "w");
+        fileOpenError(fp, filename);
+        khash_t(m32) *seen_anchors_hash = kh_init(m32);
+
+        for (k=kh_begin(anchor_breakpoints_hash); k!=kh_end(anchor_breakpoints_hash); ++k) {
+            if (kh_exist(anchor_breakpoints_hash, k)) {
+                fprintf(fp, "%d\t%d\n", kh_key(anchor_breakpoints_hash, k), kh_value(anchor_breakpoints_hash, k));
+            
+                iter_h = kh_get(m32, seen_anchors_hash, kh_value(anchor_breakpoints_hash, k));
+                if (iter_h == kh_end(seen_anchors_hash)) {
+                    iter_h = kh_put(m32, seen_anchors_hash, kh_value(anchor_breakpoints_hash, k), &absent);
+                    if (absent) {
+                        kh_key(seen_anchors_hash, iter_h) = kh_value(anchor_breakpoints_hash, k);
+                        kh_value(seen_anchors_hash, iter_h) = 1;
+                        num_of_anchors++;
+                    }
+                }
+            }
+        }
+        fclose(fp);
+        kh_destroy(m32, seen_anchors_hash);
     }
-    fclose(fp);
-    kh_destroy(m32, seen_anchors_hash);
 
     return num_of_anchors;
 }

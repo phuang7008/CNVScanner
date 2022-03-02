@@ -161,7 +161,7 @@ void cleanAllStartsEndsArray(AllStartsEndsArray *all_starts_ends_array);
  */
 void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input *user_inputs, Chromosome_Tracking *chrom_tracking, int type);
 
-void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user_inputs, int type);
+void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user_inputs, int type, char *chrom_id);
 
 /*
  * this function clears the debugging output file produced in early runs

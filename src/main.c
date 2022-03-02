@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) {
           {
             //int num_of_threads = omp_get_num_threads();
             int thread_id = omp_get_thread_num();
-            printf("Current thread id: %d\n", thread_id);
+            printf("In Main: current thread id: %d for chr %s\n", thread_id, chrom_tracking->chromosome_ids[chrom_index]);
 
             // get the iterator for the current chromosome
             //
@@ -280,7 +280,7 @@ int main(int argc, char *argv[]) {
 
             coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrappers[chrom_index], chrom_index, wgs_simple_stats, thread_id);
             if (user_inputs->debug_ON)
-                outputBinnedData(binned_data_wrappers[chrom_index], user_inputs, 1);
+                outputBinnedData(binned_data_wrappers[chrom_index], user_inputs, 1, chrom_tracking->chromosome_ids[chrom_index]);
 
             // clean-up array
             //
@@ -300,9 +300,10 @@ int main(int argc, char *argv[]) {
                         user_inputs->gc_content_file, gc_starts, gc_ends, NULL);
                 
                 printf("The total number of GC%% lines is %i\n", total_lines);
-                outputHashTable(gc_starts, 1, user_inputs);
+                outputHashTable(gc_starts, 1, user_inputs, chrom_tracking->chromosome_ids[chrom_index]);
 
-                mappabilityGcNormalization(binned_data_wrappers[chrom_index], user_inputs, gc_starts, gc_ends, total_lines, wgs_simple_stats, 1);
+                mappabilityGcNormalization(binned_data_wrappers[chrom_index], user_inputs, gc_starts, \
+                        gc_ends, total_lines, wgs_simple_stats, 1, chrom_tracking->chromosome_ids[chrom_index]);
 
                 // clean-up
                 //
@@ -319,10 +320,10 @@ int main(int argc, char *argv[]) {
               total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index],
                                         user_inputs->mappability_file, map_starts, map_ends, NULL);
               printf("The total number of mappability lines is %i\n", total_lines);
-              outputHashTable(map_starts, 2, user_inputs);
+              outputHashTable(map_starts, 2, user_inputs, chrom_tracking->chromosome_ids[chrom_index]);
 
-              mappabilityGcNormalization(binned_data_wrappers[chrom_index], 
-                                         user_inputs, map_starts, map_ends, total_lines, wgs_simple_stats, 2);
+              mappabilityGcNormalization(binned_data_wrappers[chrom_index], user_inputs, map_starts, \
+                      map_ends, total_lines, wgs_simple_stats, 2, chrom_tracking->chromosome_ids[chrom_index]);
 
               // clean-up
               //
@@ -337,8 +338,8 @@ int main(int argc, char *argv[]) {
             total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->equal_size_window, 
                                         window_starts, window_ends, equal_size_window_wrappers[chrom_index]);
 
-            generateEqualSizedBins(user_inputs, binned_data_wrappers[chrom_index],
-                                        equal_size_window_wrappers[chrom_index],  total_lines);
+            generateEqualSizedBins(user_inputs, binned_data_wrappers[chrom_index], \
+                    equal_size_window_wrappers[chrom_index],  total_lines, chrom_tracking->chromosome_ids[chrom_index]);
 
             // clean-up
             //

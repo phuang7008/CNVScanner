@@ -34,7 +34,6 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
         // skip if it is a new line only or comment line
         //
         if (*line == '\n' || line[0] == '#') continue;
-        total_items++;
 
         // remove the new line character
         //
@@ -52,6 +51,9 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
                 i++;
                 if (strcmp(chrom_id, tokPtr) != 0)
                     break;
+
+                total_items++;
+
             } else if (i == 1) {
                 start = (uint32_t) strtol(tokPtr, NULL, 10);
 
@@ -98,16 +100,19 @@ void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value) {
     }
 }
 
-void outputHashTable(khash_t(khIntStr) * khash_in, int type, User_Input *user_inputs) {
+void outputHashTable(khash_t(khIntStr) * khash_in, int type, User_Input *user_inputs, char *chrom_id) {
+    char *filename=NULL;
     FILE *out_file;
     if (type == 1) {
-        out_file = fopen(user_inputs->mappability_outfile, "a");
-        if (out_file == NULL) fprintf(stderr, "Open mappability output file writing/appending failed\n");
+        filename = calloc(strlen(user_inputs->mappability_outfile) + strlen(chrom_id) + 10, sizeof(char));
+        sprintf(filename, "%s%s.txt", user_inputs->mappability_outfile, chrom_id);
+        out_file = fopen(filename, "w");
     } else {
-        out_file = fopen(user_inputs->gc_content_outfile, "a");
-        if (out_file == NULL) fprintf(stderr, "Open gc content output file writing/appending failed\n");
+        filename = calloc(strlen(user_inputs->gc_content_outfile) + strlen(chrom_id) + 10, sizeof(char));
+        sprintf(filename, "%s%s.txt", user_inputs->gc_content_outfile, chrom_id);
+        out_file = fopen(filename, "w");
     }
-    fileOpenError(out_file, "mappability output file or gc content output file");
+    fileOpenError(out_file, filename);
 
 
     //fprintf(stderr, "start writing\n");
@@ -118,6 +123,7 @@ void outputHashTable(khash_t(khIntStr) * khash_in, int type, User_Input *user_in
         }
     }
     fclose(out_file);
+    if (filename) free(filename);
 }
 
 void forDebug() {

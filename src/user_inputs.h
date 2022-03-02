@@ -55,4 +55,6 @@ void userInputDestroy(User_Input *user_inputs);
 
 void setupOutputReportFiles(User_Input *user_inputs);
 
+void generateFileName(char *output_dir, char *base_name, char **file_in, char *string_to_append);
+
 #endif //USER_INPUTS_H

@@ -89,9 +89,9 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
     Equal_Window_Bin *merged_equal_bin_array = NULL;
 
     for (j=0; j<equal_size_window_wrapper->size; j++) {
-        if ( equal_size_window_wrapper->data[j].start == 20621000) {
-            printf("stop\n");
-        }
+        //if ( equal_size_window_wrapper->data[j].start == 20621000) {
+        //    printf("stop\n");
+        //}
         if (equal_size_window_wrapper->data[j].length == 0) {
             if (prev_flag == 0) {
                 continue;
@@ -271,8 +271,8 @@ void extendBothEndsByOneBin(CNV_Array *cnv_array, Binned_Data_Wrapper *equal_siz
     // **NOTE**: the start_index need to be set here as the num_of_bin_used might be increased 
     //
     int32_t start_index = end_index - num_of_bin_used - 1;      // using signed int as it might go to negative
-    if (cnv_array->cnvs[cnv_index].equal_bin_start == 20713500)
-        printf("debug stopped\n");
+    //if (cnv_array->cnvs[cnv_index].equal_bin_start == 20713500)
+    //    printf("debug stopped\n");
 
     // check the bin just after the CNV
     //
@@ -388,7 +388,7 @@ int combineNeighboringCNVs(CNV_Array *cnv_array, uint32_t cnv_index) {
             uint32_t i=0, k=0;
             for (k=cnv_array->cnvs[cnv_index-1].size; k<tmp_size; k++) {
                 i = k - cnv_array->cnvs[cnv_index-1].size;
-                fprintf(stderr, "i value is %"PRIu32" while k value is %"PRIu32"\n", i, k);
+                //fprintf(stderr, "i value is %"PRIu32" while k value is %"PRIu32"\n", i, k);
                 cnv_array->cnvs[cnv_index-1].equal_bin_array[k].start  = cnv_array->cnvs[cnv_index].equal_bin_array[i].start;
                 cnv_array->cnvs[cnv_index-1].equal_bin_array[k].end    = cnv_array->cnvs[cnv_index].equal_bin_array[i].end;
                 cnv_array->cnvs[cnv_index-1].equal_bin_array[k].length = cnv_array->cnvs[cnv_index].equal_bin_array[i].length;
@@ -424,13 +424,10 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
     uint32_t i, j, raw_bin_start=0;
 
     for (i=0; i<cnv_array->size;i++) {
-        if (cnv_array->cnvs[i].equal_bin_start == 11231000) {
-            printf("stop3\n");
-        }
+        //if (cnv_array->cnvs[i].equal_bin_start == 11231000) {
+        //    printf("stop3\n");
+        //}
         for (j=raw_bin_start; j<binned_data_wrapper->size; j++) {
-            if (binned_data_wrapper->data[j].start == 11230812) {
-                printf("stop4\n");
-            }
             // check if the distance is within 300bp away
             // the value of 300 bp is based on seq-length (150bp) x 2 (Qiaoyan's suggestion)
             // This is defined in terms.h
@@ -587,9 +584,6 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
 
     for (i=0; i<cnv_array->size;i++) {
         for (j=breakpoint_start; j<counter; j++) {
-            if (anchor_breakpoints[j] == 12698930) {
-                printf("stop\n");
-            }
             uint32_t tmp_start = (cnv_array->cnvs[i].raw_bin_start > 0) ? \
                                     cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
             uint32_t tmp_end = (cnv_array->cnvs[i].raw_bin_end > 0) ? \

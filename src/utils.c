@@ -510,15 +510,21 @@ void outputFinalBinnedData(Binned_Data_Wrapper **binned_data_wrapper, User_Input
     if (fp) fclose(fp);
 }
 
-void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user_inputs, int type) {
+void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user_inputs, int type, char *chrom_id) {
+    char *filename=NULL;
     FILE *binned_coverage_fp;
     if (type == 1) {
-        binned_coverage_fp = fopen(user_inputs->merged_bin_file, "a");
+        filename = calloc(strlen(user_inputs->merged_bin_file)+strlen(chrom_id)+10, sizeof(char));
+        sprintf(filename, "%s%s.txt", user_inputs->merged_bin_file, chrom_id);
+        binned_coverage_fp = fopen(filename, "w");
+        fileOpenError(binned_coverage_fp, filename);
     } else {
-        binned_coverage_fp = fopen("Raw_equal_window_bins.txt", "a");
+        filename = calloc(strlen(chrom_id)+50, sizeof(char));
+        sprintf(filename, "Raw_equal_window_bins_%s.txt", chrom_id);
+        binned_coverage_fp = fopen(filename, "w");
+        fileOpenError(binned_coverage_fp, filename);
     }
-    fileOpenError(binned_coverage_fp, "Raw_window_bins_w_index.txt or user_inputs->merged_bin_file");
-                    
+
     uint32_t i;
     for (i=0; i<binned_data_wrapper->size; i++) {
         fprintf(binned_coverage_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t%.2f\n",
@@ -527,6 +533,7 @@ void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user
     }
 
     if (binned_coverage_fp) fclose(binned_coverage_fp);
+    if (filename) free(filename);
 }
 
 void removeDebugFiles(User_Input *user_inputs) {

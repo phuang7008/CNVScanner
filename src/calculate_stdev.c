@@ -74,7 +74,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
 #pragma omp task
                 {
                     int thread_id = omp_get_thread_num();
-                    printf("Current thread id: %d\n", thread_id);
+                    printf("In One PASS: current thread id: %d for chr %s\n", thread_id, chrom_tracking->chromosome_ids[chrom_index]);
 
                     // get the iterator for the current chromosome
                     //
@@ -130,12 +130,14 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     //
                     uint32_t preads_x_bpt_chr_idx = 
                         fetchPReadsXBreakpointArrayChrIndex(preads_x_bpts_array, chrom_tracking, chrom_index);
-                    storePairedReadsAcrossBreakpointsPerChr(breakpoint_array[bpt_chr_idx], preads_x_bpts_array[preads_x_bpt_chr_idx], header[thread_id], sfh_idx[thread_id], sfh[thread_id]);
+                    storePairedReadsAcrossBreakpointsPerChr(breakpoint_array[bpt_chr_idx], preads_x_bpts_array[preads_x_bpt_chr_idx], header[thread_id], sfh_idx[thread_id], sfh[thread_id], user_inputs);
 
                     // output breakpoint array and paired_reads across breakpointsfor debugging
                     //
-                    outputBreakpointArray(breakpoint_array[bpt_chr_idx]);
-                    outputPairedReadsAcrossBreakpointsArray(preads_x_bpts_array[preads_x_bpt_chr_idx]);
+                    if (user_inputs->debug_ON) {
+                        outputBreakpointArray(breakpoint_array[bpt_chr_idx]);
+                        outputPairedReadsAcrossBreakpointsArray(preads_x_bpts_array[preads_x_bpt_chr_idx]);
+                    }
                 } // omp task
             } // for loop
 #pragma omp taskwait

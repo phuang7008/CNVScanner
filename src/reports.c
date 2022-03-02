@@ -26,12 +26,15 @@
 #include "reports.h"
 
 void coverageBinningWrapper(Chromosome_Tracking *chrom_tracking, User_Input *user_inputs, Stats_Info *stats_info, Binned_Data_Wrapper *binned_data_wrapper, int32_t chrom_idx, Simple_Stats *wgs_simple_stats, int thread_id) {
-    FILE *wgs_binned_coverage_fp = fopen(user_inputs->wgs_binning_file, "a");
-    fileOpenError(wgs_binned_coverage_fp, user_inputs->wgs_binning_file);
+    char *filename = calloc(strlen(user_inputs->wgs_binning_file)+strlen(chrom_tracking->chromosome_ids[chrom_idx])+10, sizeof(char));
+    sprintf(filename, "%s%s.txt", user_inputs->wgs_binning_file, chrom_tracking->chromosome_ids[chrom_idx]);
+    FILE *wgs_binned_coverage_fp = fopen(filename, "w");
+    fileOpenError(wgs_binned_coverage_fp, filename);
 
     writeCoverageBins(0, chrom_tracking->chromosome_lengths[chrom_idx], chrom_tracking, chrom_idx, user_inputs, stats_info, wgs_binned_coverage_fp, binned_data_wrapper, wgs_simple_stats, thread_id);
 
     fclose(wgs_binned_coverage_fp);
+    if (filename) free(filename);
 }
 
 void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, User_Input *user_inputs, Stats_Info *stats_info, FILE *fh_binned_coverage, Binned_Data_Wrapper *binned_data_wrapper, Simple_Stats *wgs_simple_stats, int thread_id) {
@@ -280,7 +283,7 @@ void reportStatsForDebugging(Stats_Info *stats_info, User_Input *user_inputs) {
 
     // open WGS coverage summary report file handle
     //
-    FILE *out_fp = fopen(user_inputs->wgs_cov_report, "a");
+    FILE *out_fp = fopen(user_inputs->wgs_cov_report, "w");
     fileOpenError(out_fp, user_inputs->wgs_cov_report);
 
     average_coverage = (double) stats_info->wgs_cov_stats->total_genome_coverage/ (double) total_genome_non_Ns_bases;

@@ -29,11 +29,10 @@
 #include "user_inputs.h"
 #include "fileProcessing.h"
 
-void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, khash_t(khIntStr) *starts, khash_t(khIntStr) *ends, uint32_t total_lines, Simple_Stats *wgs_simple_stats, int type) {
+void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, khash_t(khIntStr) *starts, khash_t(khIntStr) *ends, uint32_t total_lines, Simple_Stats *wgs_simple_stats, int type, char *chrom_id) {
     // create an all starts and ends array, the size will be dynamically increased later
     //
     AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
-    //all_starts_ends_array->capacity = binned_data_wraper->size * 4 + total_lines * 4;
     all_starts_ends_array->capacity = binned_data_wraper->size * 2 + total_lines * 2 + 10;
     all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
     all_starts_ends_array->size = 0;
@@ -62,6 +61,14 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     if (user_inputs->debug_ON)
         //outputAllPositionArray(all_starts_ends_array, 2);
         fprintf(stderr, "After sorting, all_starts_ends_array size is %"PRIu32"\n", all_starts_ends_array->size);
+
+    // output for debugging
+    //
+    char *filename = calloc(strlen(user_inputs->map_gc_details_file) + strlen(chrom_id) + 10, sizeof(char));
+    sprintf(filename, "%s%s.txt", user_inputs->map_gc_details_file, chrom_id);
+    FILE *map_gc_detail_fp=fopen(filename, "w");
+    fileOpenError(map_gc_detail_fp, filename);
+    free(filename);
 
     // do intersect
     //
@@ -101,8 +108,8 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
                 }
 
                 if (binned_string && map_gc_string) {
-                    performNormalizationForCurrentBin(binned_data_wraper, user_inputs,
-                        binned_string, map_gc_string, all_starts_ends_array->array[i], prev_start1, wgs_simple_stats, type);
+                    performNormalizationForCurrentBin(binned_data_wraper, user_inputs, binned_string, map_gc_string,\
+                                all_starts_ends_array->array[i], prev_start1, wgs_simple_stats, type, map_gc_detail_fp);
                 } else {
                     fprintf(stderr, "Something is wrong: Binned_string=%s; mapping_gc_string=%s with index %"PRIu32"\n",
                             binned_string, map_gc_string, i);
@@ -165,6 +172,8 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
         }
     }
 
+    if (map_gc_detail_fp) fclose(map_gc_detail_fp);
+
     // clean-up
     //
     cleanAllStartsEndsArray(all_starts_ends_array);
@@ -172,7 +181,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     cleanKhashIntStr(binned_ends);
 }
 
-void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, char *bin_string, char* map_gc_string, uint32_t current_position, uint32_t prev_start, Simple_Stats *wgs_simple_stats, int type) {
+void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, char *bin_string, char* map_gc_string, uint32_t current_position, uint32_t prev_start, Simple_Stats *wgs_simple_stats, int type, FILE *map_gc_detail_fp) {
     StringArray *binned_array = calloc(1, sizeof(StringArray));
     stringArrayInit(binned_array, 10);
     splitStringToArray(bin_string, binned_array);       // bin_string has 5 entries: index,chr,start,end,ave_cov
@@ -188,14 +197,6 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
     double ave = strtod(binned_array->theArray[4], NULL);
     double scale_ratio = strtod(map_gc_array->theArray[3], NULL);
 
-    // output for debugging
-    //
-    FILE *fp=NULL;
-    if (user_inputs->debug_ON) {
-        fp = fopen(user_inputs->map_gc_details_file, "a");
-        fileOpenError(fp, user_inputs->map_gc_details_file);
-    }
-
     if (type == 1) {
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale += ((double) length / (double)orig_len) * scale_ratio;
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized = 
@@ -206,7 +207,7 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
         // output for debugging
         //
         if (user_inputs->debug_ON)
-            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized);
+            fprintf(map_gc_detail_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized);
 
     } else {
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += ((double) length / (double)orig_len) * scale_ratio;
@@ -219,10 +220,8 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
         // output for debugging
         //
         if (user_inputs->debug_ON)
-            fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized);
+            fprintf(map_gc_detail_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized);
     }
-
-    if (fp != NULL) fclose(fp);
 
     // clean up
     //
@@ -271,7 +270,7 @@ void generateHashFromDynamicBins(Binned_Data_Wrapper *binned_data_wrapper, khash
     if (insert_value) free(insert_value);
 }
 
-void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned_data_wrapper, Binned_Data_Wrapper *equal_size_window_wrapper, uint32_t total_lines) {
+void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned_data_wrapper, Binned_Data_Wrapper *equal_size_window_wrapper, uint32_t total_lines, char *chrom_id) {
     // create an all starts and ends array, the size will be dynamically increased later
     //
     AllStartsEndsArray *all_starts_ends_array = calloc(1, sizeof(AllStartsEndsArray));
@@ -293,7 +292,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     //
     if (user_inputs->debug_ON) {
         fprintf(stderr, "Before output raw window bins\n");
-        outputBinnedData(equal_size_window_wrapper, user_inputs, 2);
+        outputBinnedData(equal_size_window_wrapper, user_inputs, 2, chrom_id);
         fprintf(stderr, "After output raw window bins\n");
     }
 
@@ -304,6 +303,14 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     //
     qsort(all_starts_ends_array->array, all_starts_ends_array->size, sizeof(uint32_t), compare);
     fprintf(stderr, "the sorted all starts and ends array has the size as %"PRIu32"\n", all_starts_ends_array->size);
+
+    // output for debugging
+    //
+    char *filename = calloc(strlen(user_inputs->window_details_file) + strlen(chrom_id) + 10, sizeof(char));
+    sprintf(filename, "%s%s.txt", user_inputs->window_details_file, chrom_id);
+    FILE *equal_window_fp=fopen(filename, "w");
+    fileOpenError(equal_window_fp, filename);
+    free(filename);
 
     // do intersect
     //
@@ -344,7 +351,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
 
                 if (binned_string && interval_string) {
                     storeWindowResults(binned_data_wrapper, equal_size_window_wrapper, user_inputs,
-                            binned_string, interval_string, all_starts_ends_array->array[i], prev_start1);
+                            binned_string, interval_string, all_starts_ends_array->array[i], prev_start1, equal_window_fp);
 
                 } else {
                     fprintf(stderr, "Something is wrong: Binned_string=%s; interval_string=%s with index %"PRIu32"\n",
@@ -410,6 +417,8 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
         }
     }
 
+    if (equal_window_fp) fclose(equal_window_fp);
+
     // clean-up
     //
     cleanAllStartsEndsArray(all_starts_ends_array);
@@ -431,7 +440,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     }
 }
 
-void storeWindowResults(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wrapper *equal_size_window_wrapper, User_Input *user_inputs, char *binned_string, char *interval_string, uint32_t current_position, uint32_t prev_start) {
+void storeWindowResults(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wrapper *equal_size_window_wrapper, User_Input *user_inputs, char *binned_string, char *interval_string, uint32_t current_position, uint32_t prev_start, FILE *equal_window_fp) {
     StringArray *binned_array = calloc(1, sizeof(StringArray));
     stringArrayInit(binned_array, 10);
     splitStringToArray(binned_string, binned_array);    // bin_string has 6 entries: index,chr,start,end,mapp,ave_cov_normalized
@@ -447,24 +456,14 @@ void storeWindowResults(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wra
     double ave = strtod(binned_array->theArray[5], NULL);
     double mappability = strtod(binned_array->theArray[4], NULL);
 
-    // output for debugging
-    //
-    FILE *fp=NULL;
-    if (user_inputs->debug_ON) {
-        fp = fopen(user_inputs->window_details_file, "a");
-        fileOpenError(fp, user_inputs->window_details_file);
-    }
-
     equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].length += length;
     //equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage += length * ave;
     equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage += length * ave;
     equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].weighted_mappability += length * mappability;
 
     if (user_inputs->debug_ON) {
-        fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%"PRIu32"\t%.2f\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, binned_string, interval_string, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].length, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].weighted_mappability);
+        fprintf(equal_window_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%"PRIu32"\t%.2f\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, binned_string, interval_string, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].length, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].weighted_mappability);
     }
-
-    if (fp) fclose(fp);
 
     //clean-up
     //

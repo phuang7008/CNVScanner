@@ -299,39 +299,41 @@ void setupOutputReportFiles(User_Input *user_inputs) {
         exit(EXIT_FAILURE);
     }
 
-    char string_to_add[350];
+    char string_to_add[1000];
 
     // output WGS coverage summary report
     //
     sprintf(string_to_add, ".WGS_Coverage_Summary_Report.txt");
     createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_cov_report, string_to_add, VERSION_);
 
-    // output the binned data file for Uniformity Analysis
+    // output the binned data to files, which needs to be multi-threaded
     //
-    sprintf(string_to_add, ".WGS_binned_data_REPORT.txt");
-    createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_binning_file, string_to_add, VERSION_);
+    sprintf(string_to_add, ".WGS_binned_data_REPORT_");
+    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_binning_file, string_to_add);
 
-    // output normalized binned result fil
+    // output normalized binned result file at the end of the program. so no needs multi-threading here
     //
     sprintf(string_to_add, ".WGS_normalized_binned_results.txt");
     createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->normalized_result_file, string_to_add, VERSION_);
 
-    sprintf(string_to_add, ".WGS_equal_window_details.txt");
-    createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->window_details_file, string_to_add, VERSION_);
+    // the output info here needs to be multi-threaded. 
+    //
+    sprintf(string_to_add, ".WGS_equal_window_details_");
+    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->window_details_file, string_to_add);
 
     // for whole genome (wgs) file name
     if (user_inputs->Write_WGS_cov_fasta) {
-        createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_cov_file, ".WGS_cov.fasta", VERSION_);
+        generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_cov_file, ".WGS_cov_");
         //printf("Create wgs file name %s\n", user_inputs->wgs_file);
     }
 
-    // output the mappability and gc% detailed calculation results
+    // output the mappability and gc% detailed calculation results, needs to be multi-threaded!
     //
     if (user_inputs->debug_ON) {
-        createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->map_gc_details_file, ".map_gc_calculation_details.txt", VERSION_);
-        createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->merged_bin_file, ".merged_bins.txt", VERSION_);
-        createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->mappability_outfile, ".mappability_details.txt", VERSION_);
-        createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->gc_content_outfile, ".gc_details.txt", VERSION_);
+        generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->map_gc_details_file, ".map_gc_calculation_details_");
+        generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->merged_bin_file, ".merged_bins_");
+        generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->mappability_outfile, ".mappability_details_");
+        generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->gc_content_outfile, ".gc_details_");
     }
 
     // KEEP the following Please!
@@ -344,6 +346,14 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     //}
 
     // string_to_add is declared at the stack, so no need to free it!
+}
+
+void generateFileName(char *output_dir, char *base_name, char **file_in, char *string_to_append) {
+    *file_in = calloc(strlen(output_dir)+strlen(base_name)+strlen(string_to_append)+2,  sizeof(char));
+    strcpy(*file_in, output_dir);
+    strcat(*file_in, "/");
+    strcat(*file_in, base_name);
+    strcat(*file_in, string_to_append);
 }
 
 void outputUserInputOptions(User_Input *user_inputs) {
