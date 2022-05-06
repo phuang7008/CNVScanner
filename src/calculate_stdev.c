@@ -91,14 +91,14 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     // create a lookup table for paired reads of each breakpoint
                     // key: read name (str), while value: the index in the breakpoint array for this chromosome
                     //
-                    khash_t(khStrInt) *breakpoint_pairs_hash = kh_init(khStrInt);
+                    //khash_t(khStrInt) *breakpoint_pairs_hash = kh_init(khStrInt);
 
                     chromosomeTrackingUpdate(chrom_tracking, chrom_tracking->chromosome_lengths[chrom_index], chrom_index);
 
                     int result = 0;
                     bam1_t *b = bam_init1();
                     while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-                        processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], breakpoint_pairs_hash);
+                        processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx]);
                     }
 
                     if (result < -1) {
@@ -110,7 +110,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
 
                     bam_destroy1(b);
                     hts_itr_destroy(iter);
-                    cleanKhashStrInt(breakpoint_pairs_hash);
+                    //cleanKhashStrInt(breakpoint_pairs_hash);
 
                     if (user_inputs->excluded_region_file)
                         zeroAllNsRegions(chrom_tracking->chromosome_ids[chrom_index], excluded_bed_info, chrom_tracking, target_buffer_status, -1);

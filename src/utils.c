@@ -109,7 +109,8 @@ void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean) {
             // first clean the seen_paired_read_hash 
             // kh_destroy will be called inside the cleanKhashStrInt
             //
-            cleanKhashStrInt(kh_value(hash_to_clean, k)->seen_paired_read_hash);
+            if (kh_value(hash_to_clean, k)->seen_paired_read_hash)
+                cleanKhashStrInt(kh_value(hash_to_clean, k)->seen_paired_read_hash);
 
             // clean the pread_x_a_bpt array with read_name info
             //
@@ -538,7 +539,7 @@ void outputBinnedData(Binned_Data_Wrapper *binned_data_wrapper, User_Input *user
 
 void removeDebugFiles(User_Input *user_inputs) {
     if (user_inputs->debug_ON) {
-        if (user_inputs->merged_bin_file && checkFile(user_inputs->merged_bin_file))
+        /*if (user_inputs->merged_bin_file && checkFile(user_inputs->merged_bin_file))
             remove(user_inputs->merged_bin_file);
         
         if (user_inputs->map_gc_details_file && checkFile(user_inputs->map_gc_details_file))
@@ -552,6 +553,7 @@ void removeDebugFiles(User_Input *user_inputs) {
 
         if (user_inputs->gc_content_outfile && checkFile(user_inputs->gc_content_outfile))
             remove(user_inputs->gc_content_outfile);
+        */
     }
 }
 

@@ -28,7 +28,7 @@ void findDebugPoint() {
     printf("for debugging\n");
 }
 
-void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array, khash_t(khStrInt) *breakpoint_pairs_hash) {
+void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array) {
 
     if(user_inputs->percentage < 1.0) {
         // set random seed and only need to be set ONCE
@@ -97,12 +97,12 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
     if (strcmp("*", header->target_name[rec->core.tid]) == 0)
         return;
 
-    processRecord(user_inputs, tmp_stats_info, rec, chrom_tracking, chrom_index, breakpoint_array, breakpoint_pairs_hash);
+    processRecord(user_inputs, tmp_stats_info, rec, chrom_tracking, chrom_index, breakpoint_array);
 
     //printf("Done read bam for thread %d\n", thread_id);
 }
 
-void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *rec, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *bpt_arr, khash_t(khStrInt) *breakpoint_pairs_hash) {
+void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *rec, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *bpt_arr) {
     uint32_t i=0;
     uint32_t chrom_len = chrom_tracking->chromosome_lengths[chrom_index];
 
@@ -192,7 +192,7 @@ void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *
             // need to store the soft clip breakpoint here
             //
             if (bpt_arr != NULL)
-                storeCurrentReadBreakpointInfo(pos_r, rec, bpt_arr, breakpoint_pairs_hash, 1);
+                storeCurrentReadBreakpointInfo(pos_r, rec, bpt_arr, 1);
 
         } else if (cop == BAM_CINS) {
             // as they are not part of the reference, we will not advance the pos_r
@@ -228,7 +228,7 @@ void processRecord(User_Input *user_inputs, Stats_Info *tmp_stats_info, bam1_t *
             //
 
             if (cop == BAM_CHARD_CLIP && bpt_arr != NULL)
-                storeCurrentReadBreakpointInfo(pos_r, rec, bpt_arr, breakpoint_pairs_hash, 2);
+                storeCurrentReadBreakpointInfo(pos_r, rec, bpt_arr, 2);
 
         } else {
             if (user_inputs->debug_ON)
@@ -344,7 +344,7 @@ bool getOverlapInfo(User_Input *user_inputs, Stats_Info *stats_info, bam1_t *rec
             uint32_t start = (pos_r >= m_pos_r)? pos_r : m_pos_r;
             uint32_t end = (pos_r_end <= *m_pos_r_end) ? pos_r_end : *m_pos_r_end;
             if ((end - start + 1) == 0) {
-                printf("handle [(end - start + 1) == 0] as no overlapping %s\n", rec->data);
+                //printf("handle [(end - start + 1) == 0] as no overlapping %s\n", rec->data);
 
                 return false;
             } else if (end < start) {

@@ -100,10 +100,12 @@ void khashInsertion(khash_t(khIntStr) *khash_in, uint32_t key, char* value) {
     }
 }
 
+// for type: gc => 1, while mappability => 2
+//
 void outputHashTable(khash_t(khIntStr) * khash_in, int type, User_Input *user_inputs, char *chrom_id) {
     char *filename=NULL;
     FILE *out_file;
-    if (type == 1) {
+    if (type == 2) {
         filename = calloc(strlen(user_inputs->mappability_outfile) + strlen(chrom_id) + 10, sizeof(char));
         sprintf(filename, "%s%s.txt", user_inputs->mappability_outfile, chrom_id);
         out_file = fopen(filename, "w");

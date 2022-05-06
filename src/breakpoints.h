@@ -38,7 +38,7 @@ uint32_t fetchBreakpointArrayChrIndex(Breakpoint_Array **breakpoint_array, Chrom
 
 uint32_t fetchPReadsXBreakpointArrayChrIndex(Paired_Reads_Across_Breakpoints_Array **preads_x_bpt_arr, Chromosome_Tracking *chrom_tracking, uint32_t chrom_idx);
 
-void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Breakpoint_Array *bpt_arr, khash_t(khStrInt) *breakpoint_pairs_hash, int type);
+void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Breakpoint_Array *bpt_arr, int type);
 
 void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_Reads_Across_Breakpoints_Array *preads_x_bpts_arr, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh, User_Input *user_inputs);
 

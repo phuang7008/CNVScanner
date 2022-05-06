@@ -201,13 +201,9 @@ typedef struct {
 typedef struct {
     int type;                       //1: soft-clip;   2: hard-clip;
     uint32_t breakpoint_position;
-    char * read_name;                 // samtools' qname: the current query name
-    //int32_t current_chr_id;         // samtools' rname: Reference name (or tid for target id)
-    //int32_t mate_chr_id;            // samtools' rnext: Mate's reference name (or mtid for next name)
-    //bool left_read;                 // if it is the read from left side (true) or from right side (false)
-    //char * cigar;                   // samtools' CIGAR: the detailed map info
-    int32_t current_index;          // the breakpoint index of itself in the breakpoint array
-    int32_t mate_index;             // the breakpoint index of its mate in the breakpoint array
+    //char * read_name;                 // samtools' qname: the current query name
+    //int32_t current_index;          // the breakpoint index of itself in the breakpoint array
+    //int32_t mate_index;             // the breakpoint index of its mate in the breakpoint array
     uint32_t current_read_start;    // samtools' pos:   Alignment position (1-based)
     uint32_t mate_read_start;       // samtools' pnext: Mate's alignment position (1-based)
     int32_t gap_distance_TLEN;      // samtools' tlen:  Template length (insert size)
@@ -270,11 +266,12 @@ typedef struct {
 typedef struct {
     // paired reads info
     //
-    uint32_t size;                              // number of paired reads for this anchor breakpoint
+    uint32_t total_paired_reads;                // number of total paired reads for this anchor breakpoint
+    uint32_t size;                              // number of paired reads with tlen >= 1000 for this anchor breakpoint
     uint32_t capacity;
     uint8_t  num_TLEN_ge_1000;                  // number of paired reads with insertion size >= 1000
     khash_t(khStrInt) *seen_paired_read_hash;           // names of paired reads which already encountered
-    Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;    // an array of paired reads in this anchor breakpoint group
+    Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;    // an array of paired reads with tlen >= 1000 in this anchor breakpoint group
 
     // breakpoint info
     //

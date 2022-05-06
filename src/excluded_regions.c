@@ -36,7 +36,7 @@ void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *st
     
     // load target file or Ns bed file again and store the information (starts, stops and chromosome ids)
     //
-    uint32_t total_size = loadBedFiles(user_inputs->reference_version, bedfile_name, bed_info->coords, wanted_chromosome_hash, "");
+    uint32_t total_size = loadBedFiles(user_inputs->reference_version, bedfile_name, bed_info, wanted_chromosome_hash, "");
     //printf("total size is %"PRIu32"\n", total_size);
 
     // Now we are going to generate target-buffer lookup table for all the loaded targets

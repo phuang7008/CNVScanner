@@ -48,9 +48,9 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
 
     // before sorting
     //
-    if (user_inputs->debug_ON)
+    //if (user_inputs->debug_ON)
         //outputAllPositionArray(all_starts_ends_array, 1);
-        fprintf(stderr, "Before sorting, all_starts_ends_array size is %"PRIu32"\n", all_starts_ends_array->size);
+        //fprintf(stderr, "Before sorting, all_starts_ends_array size is %"PRIu32"\n", all_starts_ends_array->size);
 
     // sort the all_starts_ends_array
     //
@@ -58,9 +58,9 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
 
     // after sorting
     //
-    if (user_inputs->debug_ON)
+    //if (user_inputs->debug_ON)
         //outputAllPositionArray(all_starts_ends_array, 2);
-        fprintf(stderr, "After sorting, all_starts_ends_array size is %"PRIu32"\n", all_starts_ends_array->size);
+        //fprintf(stderr, "After sorting, all_starts_ends_array size is %"PRIu32"\n", all_starts_ends_array->size);
 
     // output for debugging
     //
@@ -290,11 +290,11 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     
     // for debugging, output the equal_size_window_wrapper
     //
-    if (user_inputs->debug_ON) {
-        fprintf(stderr, "Before output raw window bins\n");
+    /*if (user_inputs->debug_ON) {
+        //fprintf(stderr, "Before output raw window bins\n");
         outputBinnedData(equal_size_window_wrapper, user_inputs, 2, chrom_id);
-        fprintf(stderr, "After output raw window bins\n");
-    }
+        //fprintf(stderr, "After output raw window bins\n");
+    }*/
 
     //combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, window_starts);
     //combineAllStartsAndEndsFromOtherSource(all_starts_ends_array, window_ends);
@@ -302,7 +302,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     // sort the all_starts_ends_array
     //
     qsort(all_starts_ends_array->array, all_starts_ends_array->size, sizeof(uint32_t), compare);
-    fprintf(stderr, "the sorted all starts and ends array has the size as %"PRIu32"\n", all_starts_ends_array->size);
+    //fprintf(stderr, "the sorted all starts and ends array has the size as %"PRIu32"\n", all_starts_ends_array->size);
 
     // output for debugging
     //
