@@ -89,7 +89,7 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
     Equal_Window_Bin *merged_equal_bin_array = NULL;
 
     for (j=0; j<equal_size_window_wrapper->size; j++) {
-        //if ( equal_size_window_wrapper->data[j].start == 20621000) {
+        //if ( equal_size_window_wrapper->data[j].start == 192872500) {
         //    printf("stop\n");
         //}
         if (equal_size_window_wrapper->data[j].length == 0) {
@@ -329,9 +329,9 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
     cnv_array->cnvs[cnv_index].ave_coverage = coverage;
 
     if (cnv_flag == 1) {
-        cnv_array->cnvs[cnv_index].cnv_type = 'L';
+        cnv_array->cnvs[cnv_index].cnv_type = 'L';      // for DEL
     } else if (cnv_flag == 3) {
-        cnv_array->cnvs[cnv_index].cnv_type = 'P';
+        cnv_array->cnvs[cnv_index].cnv_type = 'P';      // for DUP
     } else {
         fprintf(stderr, "ERROR: cnv type %"PRIu8" is niether dup nor del\n", cnv_flag);
     }
@@ -368,7 +368,8 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
 int combineNeighboringCNVs(CNV_Array *cnv_array, uint32_t cnv_index) {
     if (cnv_index > 0) {
         if (cnv_array->cnvs[cnv_index].equal_bin_start <= cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 && 
-                cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 <= cnv_array->cnvs[cnv_index].equal_bin_end) {
+                cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 <= cnv_array->cnvs[cnv_index].equal_bin_end &&
+                cnv_array->cnvs[cnv_index-1].cnv_type == cnv_array->cnvs[cnv_index].cnv_type) {
             // merge with the previous one and re-calculate the coverage
             //
             cnv_array->cnvs[cnv_index-1].equal_bin_end = cnv_array->cnvs[cnv_index].equal_bin_end;
