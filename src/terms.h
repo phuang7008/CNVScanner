@@ -28,7 +28,6 @@
 #include <unistd.h>     // for getopt() and usleep()
 #include <math.h>
 #include <zlib.h>
-#include <mysql.h>
 #include <sys/stat.h>
 #include <stdio.h>      // for file read and write
 
@@ -40,7 +39,8 @@
 #include "coverage_tracking.h"
 
 // The followings are defined as macro/constants. The program should never try to change their values
-#define VERSION_ "##WGS CNV v1.0.0"
+#define VERSION_ "##WGS_CNV_v1.0.0"
+#define SOURCE_ "WGS_CNV_v1.0.0"
 #define INIT_SIZE 500000
 #define PR_INIT_SIZE 200        // the init size for number of paired reads across a breakpoint
 #define DIFF_COV_TO_MERGE 5
@@ -84,6 +84,8 @@ typedef struct {
     char * window_details_file;         // output equal size window intersect details
     char * merged_bin_file;             // output the merged binned data from raw binned data
     char * normalized_result_file;
+    char * vcf_output_file;             // produce output CNV file in VCF format
+    char * sample_name;
     int16_t equal_bin_size;
     int8_t min_map_quality;
     int8_t min_base_quality;

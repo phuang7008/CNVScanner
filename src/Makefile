@@ -1,11 +1,9 @@
 IDIR=/opt/rh/devtoolset-8/root/usr/include
 CODEDIR=/stornext/snfs130/NGIRD/scratch/phuang/repo/wgs_cnv/src
 HTSDIR=/stornext/snfs130/NGIRD/scratch/phuang/htslib/
-MYSQLDIR=/usr/include/mysql
-MYSQLLIB=/usr/lib64
 MYLIB=/stornext/snfs130/NGIRD/scratch/phuang/repo/common_libs
-CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
-#CC=/hgsc_software/gcc/gcc-7.3.0/bin/gcc
+#CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
+CC=gcc
 
 # no compiler optimization
 CFLAGS= -g -Wall -Wextra -fopenmp
@@ -15,13 +13,13 @@ CFLAGS= -g -Wall -Wextra -fopenmp
 #CFLAGS= -g3 -gdwarf-2 -fvar-tracking -fvar-tracking-assignments -Wall -O0 -fopenmp
 
 # define any directories containing header files other than /usr/bin
-INCLUDES = -I$(IDIR) -I$(HTSDIR) -I$(MYSQLDIR) -I$(MYLIB)
+INCLUDES = -I$(IDIR) -I$(HTSDIR) -I$(MYLIB)
 
 # define library paths in addition to /usr/lib
-LFLAGS = -L$(HTSDIR) -L$(MYSQLLIB) -L$(MYLIB)
+LFLAGS = -L$(HTSDIR) -L$(MYLIB)
 
 # define any libraries to be link into executables:
-LIBS =  $(HTSDIR)/libhts.a $(MYLIB)/libcov_tracking.a -lm -lz -lpthread -lmysqlclient_r -lrt -lssl -lcrypto -ldl -lcurl -llzma -lbz2
+LIBS =  $(HTSDIR)/libhts.a $(MYLIB)/libcov_tracking.a -lm -lz -lpthread -lrt -lssl -lcrypto -ldl -lcurl -llzma -lbz2
 
 # define dependent header files
 _DEPS = $(wildcard *.h)

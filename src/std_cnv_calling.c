@@ -20,13 +20,13 @@
 
 #include <omp.h>
 
-void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array, uint32_t number_of_chromosomes, Simple_Stats *the_stats, User_Input *user_inputs) {
+void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, User_Input *user_inputs) {
 #pragma omp parallel shared(the_stats) num_threads(user_inputs->num_of_threads)
     {
 #pragma omp single
       {
         uint32_t cnv_array_index;
-        for (cnv_array_index=0; cnv_array_index<number_of_chromosomes; ++cnv_array_index) {
+        for (cnv_array_index=0; cnv_array_index<chrom_tracking->number_of_chromosomes; ++cnv_array_index) {
 #pragma omp task
           {
             int thread_id = omp_get_thread_num();
@@ -35,17 +35,17 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
             // find the corresponding index in equal_size_window_wrappers, raw_bin_data_wrappers and preads_x_bpts_array
             //
             uint32_t equal_bin_index, raw_bin_index, pr_x_bpts_arr_index;
-            for (equal_bin_index=0; equal_bin_index<number_of_chromosomes; equal_bin_index++) {
+            for (equal_bin_index=0; equal_bin_index<chrom_tracking->number_of_chromosomes; equal_bin_index++) {
                 if (strcmp(equal_size_window_wrappers[equal_bin_index]->chromosome_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
                     break;
             }
 
-            for (raw_bin_index=0; raw_bin_index<number_of_chromosomes; raw_bin_index++) {
+            for (raw_bin_index=0; raw_bin_index<chrom_tracking->number_of_chromosomes; raw_bin_index++) {
                 if (strcmp(raw_bin_data_wrappers[raw_bin_index]->chromosome_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
                     break;
             }
 
-            for (pr_x_bpts_arr_index=0; pr_x_bpts_arr_index<number_of_chromosomes; pr_x_bpts_arr_index++) {
+            for (pr_x_bpts_arr_index=0; pr_x_bpts_arr_index<chrom_tracking->number_of_chromosomes; pr_x_bpts_arr_index++) {
                 if (strcmp(preads_x_bpts_array[pr_x_bpts_arr_index]->chrom_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
                     break;
             }
@@ -65,6 +65,12 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
       } // end single
     } // end parallel
+
+    // produce vcf file
+    //
+    FILE *fh = fopen(user_inputs->vcf_output_file, "w");
+    generateVCF_MetaData(user_inputs, chrom_tracking, fh);
+    generateVCFresults(equal_bin_cnv_array, chrom_tracking, fh);
 }
 
 // Type 1: raw varying sized bins;  Type 2: Equal window bins
@@ -683,7 +689,7 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
                         (cnv_array->cnvs[j].raw_bin_end > 0) ? cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
 
             char CNV[10];
-            (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "DUP");
+            (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "INS");
 
             fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%s\t%.2f\t", chrom_id, \
                     cnv_start, cnv_end, cnv_end-cnv_start, CNV, cnv_array->cnvs[j].ave_coverage);
@@ -723,6 +729,84 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
         }
     }
     fclose(fp);
+}
+
+void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tracking, FILE *fh) {
+    fprintf(fh, "##fileformat=VCFv4.2\n");
+    fprintf(fh, "##source=%s\n", SOURCE_);
+    fprintf(fh, "##reference=%s\n", user_inputs->reference_file);
+
+    // for chromosome ids
+    //
+    uint32_t i;
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        fprintf(fh, "##contig=<ID=%s,length=%"PRIu32">\n", chrom_tracking->chromosome_ids[i], chrom_tracking->chromosome_lengths[i]);
+    }
+
+    fprintf(fh, "##ALT=<ID=CNV,Description=\"Copy Number Variant\">\n");
+    fprintf(fh, "##ALT=<ID=DEL,Description=\"Deletion relative to the reference\">\n");
+    fprintf(fh, "##ALT=<ID=DUP,Description=\"Insertion/Duplication relative to the reference\">\n");
+    fprintf(fh, "##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the structural variant\">\n");
+    fprintf(fh, "##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of SV:DEL=Deletion, DUP=Duplication\">\n");
+    fprintf(fh, "##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">\n");
+    fprintf(fh, "##INFO=<ID=AVGCOV,Number=.,Type=Float,Description=\"Average Coverage of the CNV\">\n");
+    fprintf(fh, "##INFO=<ID=BPTL,Number=1,Type=Integer,Description=\"Breakpoint position at the left side of the CNV\">\n");
+    fprintf(fh, "##INFO=<ID=BPTR,Number=1,Type=Integer,Description=\"Breakpoint position at the right side of the CNV\">\n");
+    fprintf(fh, "##INFO=<ID=BPTLCOUNT,Number=1,Type=Integer,Description=\"Number of breakpoints at the left side of the CNV\">\n");
+    fprintf(fh, "##INFO=<ID=BPTRCOUNT,Number=1,Type=Integer,Description=\"Number of breakpoints at the right side of the CNV\">\n");
+    fprintf(fh, "##INFO=<ID=BPTLTLEN,Number=1,Type=Integer,Description=\"Number of Reads with Insertion size >= 1000bp across the breakpoints at the end of left side of the CNV\">\n");
+    fprintf(fh, "##INFO=<ID=BPTRTLEN,Number=1,Type=Integer,Description=\"Number of Reads with Insertion size >= 1000bp across the breakpoints at the end of right side of the CNV\">\n");
+    fprintf(fh, "##FILTER=<ID=noBreakpoint,Description=\"CNV without breakpoint support\">\n");
+    fprintf(fh, "##FILTER=<ID=littleBreakpointSupport,Description=\"CNV has breakpoint support, but the support is too little to be useful\">\n");
+    fprintf(fh, "##FILTER=<ID=PASS,Description=\"CNV pass the filter\">\n");
+    fprintf(fh, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
+    fprintf(fh, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", user_inputs->sample_name);
+    //fprintf(fh, "");
+}
+
+void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, FILE *fp) {
+    // walk through chromosome list
+    //
+    uint32_t i, j, cnv_start, cnv_end;
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        CNV_Array *cnv_array = equal_bin_cnv_array[i];      // pointer assignment, don't need to be free-ed
+        for (j=0; j<cnv_array->size; j++) {
+            cnv_start = (cnv_array->cnvs[j].left_breakpoint > 0) ? cnv_array->cnvs[j].left_breakpoint : \
+                    (cnv_array->cnvs[j].raw_bin_start > 0) ? cnv_array->cnvs[j].raw_bin_start : cnv_array->cnvs[j].equal_bin_start;
+
+            cnv_end = (cnv_array->cnvs[j].right_breakpoint > 0) ? cnv_array->cnvs[j].right_breakpoint : \
+                    (cnv_array->cnvs[j].raw_bin_end > 0) ? cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
+
+            char CNV[10];
+            (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "DUP");
+
+            char FILTER[30];
+            strcpy(FILTER, "PASS");
+
+            char GT[10];
+            strcpy(GT, "./1");
+
+            if (cnv_array->cnvs[j].left_breakpoint > 0 || cnv_array->cnvs[j].right_breakpoint > 0) {
+                if (cnv_array->cnvs[j].left_num_of_breakpoints <=2 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 <=1
+                        && cnv_array->cnvs[j].right_num_of_breakpoints == 0 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 == 0) {
+                    strcpy(FILTER, "littleBreakpointSupport");
+                    strcpy(GT, "./.");
+                }
+
+                if (cnv_array->cnvs[j].left_num_of_breakpoints == 0 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 == 0
+                        && cnv_array->cnvs[j].right_num_of_breakpoints <=2 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 <= 1) {
+                    strcpy(FILTER, "littleBreakpointSupport");
+                    strcpy(GT, "./.");
+                }
+            } else {
+                strcpy(FILTER, "noBreakpoint");;
+                strcpy(GT, "./.");
+            }
+
+            fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t.\t%s\tEND=%"PRIu32";SVLEN=%"PRIu32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8"\tGT\t%s\n", \
+                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, FILTER, cnv_end, cnv_end-cnv_start, CNV, cnv_array->cnvs[j].ave_coverage, cnv_array->cnvs[j].left_breakpoint, cnv_array->cnvs[j].left_num_of_breakpoints, cnv_array->cnvs[j].left_num_of_TLEN_ge_1000, cnv_array->cnvs[j].right_breakpoint, cnv_array->cnvs[j].right_num_of_breakpoints, cnv_array->cnvs[j].right_num_of_TLEN_ge_1000, GT);
+        } // end equal_bin_cnv_array
+    } // end chromosome list
 }
 
 void dynamicIncreaseBinArraySize(Equal_Window_Bin **merged_equal_bin_array, uint32_t bin_capacity) {

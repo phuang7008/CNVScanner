@@ -393,7 +393,7 @@ int main(int argc, char *argv[]) {
 
     // merge and expand the CNV calls using raw bin data
     //
-    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, preads_x_bpts_array, chrom_tracking->number_of_chromosomes, the_stats, user_inputs);
+    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, preads_x_bpts_array, chrom_tracking, the_stats, user_inputs);
 
     // clean up
     //

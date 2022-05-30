@@ -42,7 +42,7 @@ void usage() {
     printf("--input_bam          -i  BAM/CRAM alignment file (multiple files are not allowed!).\n");
     printf("                         It Is Mandatory\n");
     printf("--output_dir         -o  output directory. It Is Mandatory\n");
-    //printf("--average_coverage   -a  the average coverage of current sample. It Is Mandatory\n");
+    printf("--sample_name        -N  the sample name to be processed. It Is Mandatory\n");
     printf("--mappability_file   -M  the genomic mappability file. It Is Mandatory\n");
     printf("--gc_content_file    -G  the genomic GC%% file. It Is Mandatory\n");
     printf("--equal_size_window  -w  the equal size window bed file. It Is Mandatory\n");
@@ -98,6 +98,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             {"min_map_qual",        required_argument,  0,  'm'},
             {"output_dir",          required_argument,  0,  'o'},
             {"reference",           required_argument,  0,  'R'},
+            {"sample_name",         required_argument,  0,  'N'},
             {"mappability_file",    required_argument,  0,  'M'},
             {"gc_content_file",     required_argument,  0,  'G'},
             {"ref_version",         required_argument,  0,  'V'},
@@ -119,7 +120,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arg = getopt_long_only (argc, argv, "b:c:de:gG:hi:m:M:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
+        arg = getopt_long_only (argc, argv, "b:c:de:gG:hi:m:M:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (arg == -1) break;
@@ -170,6 +171,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             case 'M':
                 user_inputs->mappability_file = calloc(strlen(optarg)+1, sizeof(char));
                 strcpy(user_inputs->mappability_file, optarg);
+                break;
+            case 'N':
+                user_inputs->sample_name = calloc(strlen(optarg)+1, sizeof(char));
+                strcpy(user_inputs->sample_name, optarg);
                 break;
             case 'o':
                 user_inputs->output_dir = (char *) malloc((strlen(optarg)+1) * sizeof(char));
@@ -237,10 +242,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         input_error_flag=true;
     }
 
-    /*if (user_inputs->average_coverage == -1) {
-        fprintf(stderr, "ERROR: --average_coverage (or -a)\toption is mandatory!\n");
+    if (user_inputs->sample_name == NULL) {
+        fprintf(stderr, "ERROR: --sample_name (or -N)\toption is mandatory!\n");
         input_error_flag=true;
-    }*/
+    }
 
     if (user_inputs->mappability_file == NULL) {
         fprintf(stderr, "ERROR: --mappability_file (or -M)\toption is mandatory!\n");
@@ -335,6 +340,11 @@ void setupOutputReportFiles(User_Input *user_inputs) {
         generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->mappability_outfile, ".mappability_details_");
         generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->gc_content_outfile, ".gc_details_");
     }
+
+    // output the final CNVs in VCF file format
+    //
+    sprintf(string_to_add, ".WGS_CNV.vcf");
+    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->vcf_output_file, string_to_add);
 
     // KEEP the following Please!
     // free the memory
@@ -439,10 +449,12 @@ User_Input * userInputInit() {
 
     user_inputs->bam_file = NULL;
     user_inputs->output_dir = NULL;
+    user_inputs->sample_name = NULL;
     user_inputs->reference_file = NULL;
     user_inputs->merged_bin_file  = NULL;
-    user_inputs->mappability_file = NULL;
     user_inputs->gc_content_file  = NULL;
+    user_inputs->vcf_output_file  = NULL;
+    user_inputs->mappability_file = NULL;
     user_inputs->equal_size_window = NULL;
     user_inputs->mappability_outfile  = NULL;
     user_inputs->gc_content_outfile   = NULL;
@@ -475,6 +487,9 @@ void userInputDestroy(User_Input *user_inputs) {
 
     if (user_inputs->output_dir)
         free(user_inputs->output_dir);
+
+    if (user_inputs->sample_name)
+        free(user_inputs->sample_name);
 
     if (user_inputs->excluded_region_file)
         free(user_inputs->excluded_region_file);
@@ -516,6 +531,9 @@ void userInputDestroy(User_Input *user_inputs) {
 
     if (user_inputs->map_gc_details_file)
         free(user_inputs->map_gc_details_file);
+
+    if (user_inputs->vcf_output_file)
+        free(user_inputs->vcf_output_file);
 
     if (user_inputs->normalized_result_file)
         free(user_inputs->normalized_result_file);
