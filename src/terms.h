@@ -71,7 +71,7 @@ typedef struct {
     // For whole genome (WGS) related outputs
     char * wgs_cov_file;        // output the whole genome coverage count information
     char * wgs_cov_report;      // output the whole genome coverage summary report    
-    char * wgs_binning_file;    // for whole genome smoothly binned data file
+    char * wgs_binning_file;    // for whole genome raw binned data file
 
     //misc
     char * reference_version;
