@@ -122,11 +122,6 @@ int main(int argc, char *argv[]) {
     //
     Chromosome_Tracking *chrom_tracking = calloc(1, sizeof(Chromosome_Tracking));
 
-    // Target_Buffer_Status need to be set even though there is no target or Ns region specified
-    // It is because one of the method processRecord() need chromosome lengths information to be set
-    //
-    Target_Buffer_Status *target_buffer_status = NULL;
-
     // setup a variable to store chromosomes that specified by the user
     //
     khash_t(khStrInt) *wanted_chromosome_hash = kh_init(khStrInt);
@@ -144,16 +139,11 @@ int main(int argc, char *argv[]) {
         //
         checkNamingConvention(header[0], wanted_chromosome_hash);
 
-        target_buffer_status = calloc(chrom_tracking->number_of_chromosomes, sizeof(Target_Buffer_Status));
-        TargetBufferStatusInit2(target_buffer_status, wanted_chromosome_hash);
     } else {
         stats_info->wgs_cov_stats->total_genome_bases = 
             loadGenomeInfoFromBamHeader(wanted_chromosome_hash, header[0], user_inputs->reference_version);
         chrom_tracking->number_of_chromosomes = header[0]->n_targets;
         chromosomeTrackingInit1(chrom_tracking, wanted_chromosome_hash, header[0]);
-
-        target_buffer_status = calloc(chrom_tracking->number_of_chromosomes, sizeof(Target_Buffer_Status));
-        TargetBufferStatusInit(target_buffer_status, header[0]);
     }
 
     fprintf(stderr, "The total genome bases is %"PRIu64"\n", stats_info->wgs_cov_stats->total_genome_bases);
@@ -173,8 +163,8 @@ int main(int argc, char *argv[]) {
 
     if (user_inputs->excluded_region_file) {
         excluded_bed_info = calloc(1, sizeof(Bed_Info));
-        processBedFiles(user_inputs, excluded_bed_info, stats_info, target_buffer_status,
-                wanted_chromosome_hash, user_inputs->excluded_region_file, chrom_tracking->number_of_chromosomes); 
+        processBedFiles(user_inputs, excluded_bed_info, stats_info,
+                wanted_chromosome_hash, user_inputs->excluded_region_file); 
         fprintf(stderr, "The Ns base is %"PRIu32"\n", stats_info->wgs_cov_stats->total_excluded_bases);
     }
 
@@ -191,7 +181,7 @@ int main(int argc, char *argv[]) {
     Binned_Data_Wrapper **equal_size_window_wrappers = calloc(chrom_tracking->number_of_chromosomes, sizeof(Binned_Data_Wrapper*));
     checkMemoryAllocation(equal_size_window_wrappers, "Binned_Data_Wrapper **equal_size_window_wrappers");
     binnedDataWrapperInit(equal_size_window_wrappers, chrom_tracking);
-    
+
     // setup the Breakpoint_Array and Paired_Reads_Across_Breakpoints_Array
     //
     Breakpoint_Array **breakpoint_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(Breakpoint_Array));
@@ -204,7 +194,7 @@ int main(int argc, char *argv[]) {
     //
     Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
     SimpleStatsInit(wgs_simple_stats);
-    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, target_buffer_status, breakpoint_array, preads_x_bpts_array);
+    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, preads_x_bpts_array);
 
     // The following is for debugging purpose
     //
@@ -272,7 +262,7 @@ int main(int argc, char *argv[]) {
 
             //printf("Set all excluded region bases to -1\n");
             if (user_inputs->excluded_region_file)
-            zeroAllNsRegions(chrom_tracking->chromosome_ids[chrom_index], excluded_bed_info, chrom_tracking, target_buffer_status, -1);
+                zeroAllExcludedRegions(chrom_tracking, chrom_index, excluded_bed_info);
 
             // now need to do the binning
             //
@@ -402,8 +392,6 @@ int main(int argc, char *argv[]) {
     //cnvArrayDestroy(raw_bin_cnv_array, chrom_tracking->number_of_chromosomes);
     cnvArrayDestroy(equal_bin_cnv_array, chrom_tracking->number_of_chromosomes);
     
-    TargetBufferStatusDestroy(target_buffer_status, chrom_tracking->number_of_chromosomes);
-
     binnedDataWrapperDestroy(binned_data_wrappers, chrom_tracking);
     binnedDataWrapperDestroy(equal_size_window_wrappers, chrom_tracking);
 

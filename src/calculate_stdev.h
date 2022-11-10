@@ -27,9 +27,10 @@
 #include "breakpoints.h"
 #include "data_structure.h"
 #include "coverage_tracking.h"
+#include "excluded_regions.h"
 #include "utility.h"
 
-void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Target_Buffer_Status *target_buffer_status, Breakpoint_Array **breakpoint_array, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array);
+void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array);
 
 void OnePassStdevInit(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking);
 

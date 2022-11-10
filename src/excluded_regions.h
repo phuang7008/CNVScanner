@@ -33,16 +33,17 @@
  * @param stat_info, statistical information for the reads/bases
  * @param header, the bam/sam/cram header pointer that hold the length info of each chromosome
  */
-void generateBedBufferStats(Bed_Info * bed_info, Stats_Info *stats_info, Target_Buffer_Status *target_status, khash_t(khStrInt)* wanted_chromosome_hash, int number_of_chromosomes);
+void generateBedBufferStats(Bed_Info * bed_info, Stats_Info *stats_info, khash_t(khStrInt)* wanted_chromosome_hash);
 
 /**
  * process bed-formatted file and populate the coordinates and lookup hash table
  * @param user_inputs: contains all the user inputs including the target or Ns bed file names
  * @param bed_info: the storage of bed coordinates and the size of the bed file
  * @param stats_info: a variable that contains various statistical information
- * @param target_buffer_status: a variable to store target/buffer info
  */
-void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *stats_info, Target_Buffer_Status *target_buffer_status, khash_t(khStrInt)* wanted_chromosome_hash, char* bedfile_name, int number_of_chromosomes);
+void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *stats_info, khash_t(khStrInt)* wanted_chromosome_hash, char* bedfile_name);
+
+void zeroAllExcludedRegions(Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Bed_Info *excluded_bed_info);
 
 /**
  * just to output some information for debugging

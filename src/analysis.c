@@ -207,7 +207,7 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
         // output for debugging
         //
         if (user_inputs->debug_ON)
-            fprintf(map_gc_detail_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized);
+            fprintf(map_gc_detail_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized);
 
     } else {
         binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability += ((double) length / (double)orig_len) * scale_ratio;
@@ -220,7 +220,7 @@ void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, 
         // output for debugging
         //
         if (user_inputs->debug_ON)
-            fprintf(map_gc_detail_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized);
+            fprintf(map_gc_detail_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, bin_string, map_gc_string, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_map_gc_normalized);
     }
 
     // clean up

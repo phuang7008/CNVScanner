@@ -18,7 +18,7 @@
 
 #include "calculate_stdev.h"
 
-void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info, Simple_Stats *simple_stats, Target_Buffer_Status *target_buffer_status, Breakpoint_Array **breakpoint_array, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array) {
+void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info, Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array) {
     // for tmp stats info
     //
     Stats_Info *stats_info = calloc(1, sizeof(Stats_Info));
@@ -113,7 +113,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     //cleanKhashStrInt(breakpoint_pairs_hash);
 
                     if (user_inputs->excluded_region_file)
-                        zeroAllNsRegions(chrom_tracking->chromosome_ids[chrom_index], excluded_bed_info, chrom_tracking, target_buffer_status, -1);
+                        zeroAllExcludedRegions(chrom_tracking, chrom_index, excluded_bed_info);
 
                     // walk through each base for coverage info
                     //

@@ -24,7 +24,7 @@
 #include <time.h>
 #include "utils.h"
 
-void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *stats_info, Target_Buffer_Status *target_buffer_status, khash_t(khStrInt)* wanted_chromosome_hash, char* bedfile_name, int number_of_chromosomes) {
+void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *stats_info, khash_t(khStrInt)* wanted_chromosome_hash, char* bedfile_name) {
     // First, let's get the total number of lines(items or count) within the target file
     //
     bed_info->size = getLineCount(bedfile_name);
@@ -42,7 +42,7 @@ void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *st
     // Now we are going to generate target-buffer lookup table for all the loaded targets
     // we will store targets and buffers information based on chromosome ID
     //
-    generateBedBufferStats(bed_info, stats_info, target_buffer_status, wanted_chromosome_hash, number_of_chromosomes);
+    generateBedBufferStats(bed_info, stats_info, wanted_chromosome_hash);
 
     // Here we need to check if the bed file is merged and uniqued by comparing two different ways of addition of bases
     //
@@ -63,9 +63,8 @@ void outputForDebugging(Bed_Info *bed_info) {
     }
 }
 
-void generateBedBufferStats(Bed_Info * bed_info, Stats_Info *stats_info, Target_Buffer_Status *target_buffer_status, khash_t(khStrInt)* wanted_chromosome_hash, int number_of_chromosomes) {
-    uint32_t i=0, j=0, k=0, chrom_len=0;
-    int idx = -1;
+void generateBedBufferStats(Bed_Info * bed_info, Stats_Info *stats_info, khash_t(khStrInt)* wanted_chromosome_hash) {
+    uint32_t i=0, j=0, chrom_len=0;
     char cur_chrom_id[50];
     strcpy(cur_chrom_id, "something");
 
@@ -75,26 +74,12 @@ void generateBedBufferStats(Bed_Info * bed_info, Stats_Info *stats_info, Target_
         //
         if (wanted_chromosome_hash != NULL) {
             khiter_t iter_p = kh_get(khStrInt, wanted_chromosome_hash, bed_info->coords[i].chrom_id);
-            if (iter_p == kh_end(wanted_chromosome_hash))
+            if (iter_p == kh_end(wanted_chromosome_hash)) {
                 continue;
-        }
-
-        if (strcmp(bed_info->coords[i].chrom_id, cur_chrom_id) != 0) {
-            strcpy(cur_chrom_id, bed_info->coords[i].chrom_id);
-
-            // get the index for the target_buffer_status
-            //
-            for(k=0; k<(uint32_t)number_of_chromosomes; k++) {
-                if (strcmp(target_buffer_status[k].chrom_id, cur_chrom_id) == 0) {
-                    idx = k;
-                    chrom_len = target_buffer_status[k].size;
-                    target_buffer_status[k].index = k;
-                    break;
-                }
+            } else {
+                chrom_len = kh_value(wanted_chromosome_hash, iter_p);
             }
         }
-
-        if (idx == -1) return;
 
         for (j=bed_info->coords[i].start; j<bed_info->coords[i].end; j++) {
             if (j >= chrom_len) continue;
@@ -109,6 +94,22 @@ void generateBedBufferStats(Bed_Info * bed_info, Stats_Info *stats_info, Target_
 
                 if ((strcmp(bed_info->coords[i].chrom_id, "chrY") == 0) || (strcmp(bed_info->coords[i].chrom_id, "Y") == 0))
                     stats_info->wgs_cov_stats->total_excluded_bases_on_chrY += 1;
+            }
+        }
+    }
+}
+
+void zeroAllExcludedRegions(Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Bed_Info *excluded_bed_info) {
+    uint32_t i=0, j=0;
+
+    for (i=0; i<excluded_bed_info->size; i++) {
+        if (strcmp(excluded_bed_info->coords[i].chrom_id, chrom_tracking->chromosome_ids[chrom_index]) == 0) {
+            for (j=excluded_bed_info->coords[i].start; j<excluded_bed_info->coords[i].end; j++) {
+                if (j>=chrom_tracking->chromosome_lengths[chrom_index]) continue;
+
+                // set all excluded bases to -1
+                //
+                chrom_tracking->coverage[chrom_index][j] = -1;
             }
         }
     }
