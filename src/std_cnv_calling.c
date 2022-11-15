@@ -95,9 +95,10 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
     Equal_Window_Bin *merged_equal_bin_array = NULL;
 
     for (j=0; j<equal_size_window_wrapper->size; j++) {
-        //if ( equal_size_window_wrapper->data[j].start == 192872500) {
-        //    printf("stop\n");
-        //}
+        //if ( equal_size_window_wrapper->data[j].start == 46202770) {
+        if ( equal_size_window_wrapper->data[j].start == 46202500) {
+            printf("stop\n");
+        }
         if (equal_size_window_wrapper->data[j].length == 0) {
             if (prev_flag == 0) {
                 continue;
@@ -431,21 +432,23 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
     uint32_t i, j, raw_bin_start=0;
 
     for (i=0; i<cnv_array->size;i++) {
-        //if (cnv_array->cnvs[i].equal_bin_start == 11231000) {
-        //    printf("stop3\n");
-        //}
+        if (cnv_array->cnvs[i].equal_bin_start == 46202500) {
+            printf("stop3\n");
+        }
         for (j=raw_bin_start; j<binned_data_wrapper->size; j++) {
             // check if the distance is within 300bp away
             // the value of 300 bp is based on seq-length (150bp) x 2 (Qiaoyan's suggestion)
             // This is defined in terms.h
             //
-            if (cnv_array->cnvs[i].equal_bin_start > binned_data_wrapper->data[j].end + DISTANCE_CUTOFF) { 
-                // no intersect, record restart position and then skip
-                //
+            if (binned_data_wrapper->data[j].end + DISTANCE_CUTOFF < cnv_array->cnvs[i].equal_bin_start) { 
+                // no intersect, just skip
+                // ------=----------------------------------------=---------
+                // Raw-bin-end    +    DISTANCE_CUTOFF    <    CNV-start
                 continue;
             } else if (cnv_array->cnvs[i].equal_bin_end + DISTANCE_CUTOFF < binned_data_wrapper->data[j].start) {
-                // no intersect. The current raw bin has pass the current CNV bin
-                // no need to continue, just break out
+                // no intersect. The current raw bin has pass the current CNV bin,  just break out
+                // ------=----------------------------------------=---------
+                //  CNV-end    +    DISTANCE_CUTOFF    <    Raw_bin_start
                 //
                 break;
             } else {
@@ -461,38 +464,48 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     // Handle left hand side to find the left most raw bin for the current CNV
                     //
                     for (p=j+1; p<binned_data_wrapper->size; p++) {
-                        // raw bin passes the start position of current CNV, so stop looping
-                        //
-                        if (cnv_array->cnvs[i].equal_bin_start < binned_data_wrapper->data[p].start)
+                        if ((cnv_array->cnvs[i].equal_bin_start + DISTANCE_CUTOFF >= binned_data_wrapper->data[p].start)
+                                && binned_data_wrapper->data[p].start > cnv_array->cnvs[i].equal_bin_start) {
+                            // ------=-----------------=------------------------=---------------
+                            //   CNV-start       Raw-bin-start      CNV-start + DISTANCE_CUTOFF
+                            //
+                            cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].start;
+                            addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
+                        } else {
+                            // raw bin passes the start position of current CNV + DISTANCE_CUTOFF, so stop looping
+                            //
                             break;
+                        }
                     }
                     j = p - 1;      // we find the left most raw bin index
                     raw_bin_start = j;
 
-                    // need to use a tmp variable tmp_raw_bin_start for the testing and looping
+                    // need to use a tmp variable tmp_cnv_bin_start for the testing and looping
                     //
-                    uint32_t tmp_raw_bin_start = cnv_array->cnvs[i].equal_bin_start;
+                    uint32_t tmp_cnv_bin_start = cnv_array->cnvs[i].equal_bin_start;
 
-                    if (binned_data_wrapper->data[j].start <= tmp_raw_bin_start &&
-                            tmp_raw_bin_start <= binned_data_wrapper->data[j].end) {
+                    if (binned_data_wrapper->data[j].start <= tmp_cnv_bin_start &&
+                            tmp_cnv_bin_start <= binned_data_wrapper->data[j].end) {
                         // they intersect, record it
+                        // ------=----------------=-----------------------=---------
+                        // Raw-bin-start     CNV-start            Raw-bin-end      
                         //
                         cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].start;
-                        tmp_raw_bin_start = cnv_array->cnvs[i].raw_bin_start;
+                        tmp_cnv_bin_start = cnv_array->cnvs[i].raw_bin_start;
                         addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
                         j--;
                     }
                     
                     // the while loop will handle all the left raw bins that don't intersect
-                    // with the current CNV
+                    // to extend the current CNV on the left-hand side
                     //
                     while ((binned_data_wrapper->data[j].ave_cov_map_gc_normalized <= hap_cutoff
                                         && cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
                            (binned_data_wrapper->data[j].ave_cov_map_gc_normalized >= dup_cutoff 
                                         && cnv_array->cnvs[i].ave_coverage >= dup_cutoff)) {
-                        if (tmp_raw_bin_start - binned_data_wrapper->data[j].end <= DISTANCE_CUTOFF) {
+                        if (tmp_cnv_bin_start - binned_data_wrapper->data[j].end <= DISTANCE_CUTOFF) {
                             cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].start;
-                            tmp_raw_bin_start = cnv_array->cnvs[i].raw_bin_start;
+                            tmp_cnv_bin_start = cnv_array->cnvs[i].raw_bin_start;
                             addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
                             j--;
                         } else {
@@ -507,14 +520,27 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                 // the current j will be the raw bin index that is the closest to the current CNV
                 // first, check if they intersect
                 //
-                uint32_t tmp_raw_bin_end = cnv_array->cnvs[i].equal_bin_end;
+                uint32_t tmp_cnv_bin_end = cnv_array->cnvs[i].equal_bin_end;
 
-                if (binned_data_wrapper->data[j].start <= tmp_raw_bin_end &&
-                        tmp_raw_bin_end <= binned_data_wrapper->data[j].end) {
+                if (binned_data_wrapper->data[j].start <= tmp_cnv_bin_end &&
+                        tmp_cnv_bin_end <= binned_data_wrapper->data[j].end) {
+                    // ------=----------------=-----------------=---------
+                    // Raw-bin-start    CNV-bin-end       Raw-bin-end
+                    //
                     cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].end;
-                    tmp_raw_bin_end = cnv_array->cnvs[i].raw_bin_end;
+                    tmp_cnv_bin_end = cnv_array->cnvs[i].raw_bin_end;
                     addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
                     j++;
+                } else {
+                    if (binned_data_wrapper->data[j].end < tmp_cnv_bin_end &&
+                            tmp_cnv_bin_end <= binned_data_wrapper->data[j].end + DISTANCE_CUTOFF) {
+                        // ------=----------------=-----------------=------------------
+                        // Raw-bin-end      CNV-bin-end     Raw-bin-end + DISTANCE_CUTOFF
+                        //
+                        cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].end;
+                        tmp_cnv_bin_end = cnv_array->cnvs[i].raw_bin_end;
+                        addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
+                    }
                 }
 
                 // now let's extend the CNV further at the right end
@@ -526,9 +552,9 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     // check if the distance is within 300bp away
                     // This value of 300 is based on 2 x seq-length = 2 x 150 = 300 (Qiaoyan's suggestion)
                     //
-                    if (binned_data_wrapper->data[j].start - tmp_raw_bin_end <= DISTANCE_CUTOFF) {
+                    if (binned_data_wrapper->data[j].start - tmp_cnv_bin_end <= DISTANCE_CUTOFF) {
                         cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].end;
-                        tmp_raw_bin_end = cnv_array->cnvs[i].raw_bin_end;
+                        tmp_cnv_bin_end = cnv_array->cnvs[i].raw_bin_end;
                         addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
                         j++;
                         raw_bin_start = j;
@@ -590,6 +616,9 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
     uint32_t i, j, breakpoint_start=0;
 
     for (i=0; i<cnv_array->size;i++) {
+        if (i == 1100) {
+            printf("stop\n");
+        }
         for (j=breakpoint_start; j<counter; j++) {
             uint32_t tmp_start = (cnv_array->cnvs[i].raw_bin_start > 0) ? \
                                     cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
@@ -657,13 +686,13 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
 void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
     char filename[100];
     FILE *fp;
-    if (type == 1) {        // For raw varying size bin output
+    if (type == 1) {                // For raw varying size bin output
         sprintf(filename, "%s_CNV_Array_raw_bin.txt", chrom_id);
         fp = fopen(filename, "w");
-    } else if (type == 2) {                // For equal size window output
+    } else if (type == 2) {         // For filtered merged CNVs from equal size window output
         sprintf(filename, "%s_CNV_Array_equal_bin_filtered.txt", chrom_id);
         fp = fopen(filename, "w");
-    } else {
+    } else {                        // For unfiltered merged CNVs from equal size window output
         sprintf(filename, "%s_CNV_Array_equal_bin_all.txt", chrom_id);
         fp = fopen(filename, "w");
     }

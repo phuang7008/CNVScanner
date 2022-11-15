@@ -226,6 +226,7 @@ void insertBinData(uint32_t start, uint32_t end, uint32_t length, double ave_cov
     binned_data_wrapper->data[binned_data_wrapper->size].length = length;
     binned_data_wrapper->data[binned_data_wrapper->size].index  = binned_data_wrapper->size;
     binned_data_wrapper->data[binned_data_wrapper->size].ave_coverage = ave_coverage;
+    binned_data_wrapper->data[binned_data_wrapper->size].gc_pct = 0.0;
     binned_data_wrapper->data[binned_data_wrapper->size].weighted_mappability = 0;
     binned_data_wrapper->data[binned_data_wrapper->size].ave_cov_gc_normalized = 0;
     binned_data_wrapper->data[binned_data_wrapper->size].weighted_gc_scale = 0;

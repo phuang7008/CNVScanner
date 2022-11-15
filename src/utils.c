@@ -416,8 +416,8 @@ void splitStringToArray(char* string_to_split, StringArray *string_array) {
     // since the strtok_r is destructive, so I have to use a copy for this
     // the bin_string has 5 entries like the follow order
     //      index    chrom    start    end    value
-    // the map_gc_string has 4 entries as the following:
-    //      chrom    start    end    mappability/gc%-scale
+    // the map_gc_string has 5 entries as the following:
+    //      chrom    start    end    mappability/gc%-scale  nothing-for-map/%GC
     //
     char *tmp_string = calloc(strlen(string_to_split)+1, sizeof(char));
     strcpy(tmp_string, string_to_split);

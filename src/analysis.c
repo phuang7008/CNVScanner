@@ -37,7 +37,8 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     all_starts_ends_array->array = calloc(all_starts_ends_array->capacity, sizeof(uint32_t));
     all_starts_ends_array->size = 0;
 
-    // key: start (or end), value: "start end length ave_cov (type==1), first_normalized ave (type==2)"
+    // key: start (or end) 
+    // value: "start end length gc_normalized ave_cov (type==1), map_normalized ave_cov (type==2)"
     //
     khash_t(khIntStr) *binned_starts  = kh_init(khIntStr);      
     khash_t(khIntStr) *binned_ends    = kh_init(khIntStr);
@@ -83,7 +84,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
         if (checkKhashKey(ends, all_starts_ends_array->array[i]) || 
                 checkKhashKey(binned_ends, all_starts_ends_array->array[i])) {
 
-            // always decrease counter if it is the end position
+            // always decrease counter if it is the 'end' position
             //
             counter--;
 
@@ -182,27 +183,42 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
 }
 
 void performNormalizationForCurrentBin(Binned_Data_Wrapper *binned_data_wraper, User_Input *user_inputs, char *bin_string, char* map_gc_string, uint32_t current_position, uint32_t prev_start, Simple_Stats *wgs_simple_stats, int type, FILE *map_gc_detail_fp) {
+    // bin_string has 5 entries: index,chr,start,end,ave_cov
+    //
     StringArray *binned_array = calloc(1, sizeof(StringArray));
     stringArrayInit(binned_array, 10);
-    splitStringToArray(bin_string, binned_array);       // bin_string has 5 entries: index,chr,start,end,ave_cov
+    splitStringToArray(bin_string, binned_array);
 
+    // map_gc_string has 4 entries for mappability: chr,start,end,mappability
+    // map_gc_string has 5 entries for GC content:  chr,start,end,gc%-scale,%GC
+    //
     StringArray *map_gc_array = calloc(1, sizeof(StringArray));
     stringArrayInit(map_gc_array, 10);
-    splitStringToArray(map_gc_string, map_gc_array);    // map_gc_string has 4 entries: chr,start,end,mappability(or gc% scale)
+    splitStringToArray(map_gc_string, map_gc_array);
 
-    // Note: the binned_array->theArray[0] is the index to the binned_array_wrapper->data
+    // it is the current window length after intersect
     //
-    uint32_t length = current_position - prev_start;        // it is the current window length after intersect
-    uint32_t orig_len = strtoul(binned_array->theArray[3], NULL, 10) - strtoul(binned_array->theArray[2], NULL, 10); // the orig raw binned window
+    uint32_t length = current_position - prev_start;
+
+    // the orig raw binned window
+    //
+    uint32_t orig_len = strtoul(binned_array->theArray[3], NULL, 10) - strtoul(binned_array->theArray[2], NULL, 10);
     double ave = strtod(binned_array->theArray[4], NULL);
     double scale_ratio = strtod(map_gc_array->theArray[3], NULL);
 
+    // Note: the binned_array->theArray[0] is the index to the binned_array_wrapper->data
+    //
     if (type == 1) {
-        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale += ((double) length / (double)orig_len) * scale_ratio;
-        binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized = 
-            ave * binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale;
-        if (binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized > wgs_simple_stats->outlier_cutoff)
-            binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized = wgs_simple_stats->outlier_cutoff;
+        // for %GC
+        // Any fragment with %GC < 25 or %GC > 70 will not considered
+        //
+        if (strtod(map_gc_array->theArray[4], NULL) >= 0.25 && strtod(map_gc_array->theArray[4], NULL) <= 0.70) {
+            binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale += ((double) length / (double)orig_len) * scale_ratio;
+            binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized = 
+                ave * binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_gc_scale;
+            if (binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized > wgs_simple_stats->outlier_cutoff)
+                binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].ave_cov_gc_normalized = wgs_simple_stats->outlier_cutoff;
+        }
 
         // output for debugging
         //

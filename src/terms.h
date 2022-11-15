@@ -109,6 +109,7 @@ typedef struct {
     uint32_t length;
     uint32_t index;
     double   ave_coverage;
+    float    gc_pct;
     double   weighted_mappability;
     double   ave_cov_gc_normalized;
     double   weighted_gc_scale;
