@@ -56,6 +56,8 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
             checkBreakpointForEachCNV(equal_bin_cnv_array[cnv_array_index], preads_x_bpts_array[pr_x_bpts_arr_index]);
 
+            setLeftRightCNVBreakpoints(equal_bin_cnv_array[cnv_array_index]);
+
             outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 2);
             outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 3);
 
@@ -361,15 +363,12 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
     //
     cnv_array->cnvs[cnv_index].raw_bin_start = 0; 
     cnv_array->cnvs[cnv_index].raw_bin_end   = 0; 
-    cnv_array->cnvs[cnv_index].left_breakpoint = 0;
-    cnv_array->cnvs[cnv_index].left_num_of_TLEN_ge_1000 = 0;
-    cnv_array->cnvs[cnv_index].left_num_of_breakpoints = 0;
-    //cnv_array->cnvs[cnv_index].final_start = 0;
-    cnv_array->cnvs[cnv_index].right_breakpoint = 0;
-    cnv_array->cnvs[cnv_index].right_num_of_TLEN_ge_1000 = 0;
-    cnv_array->cnvs[cnv_index].right_num_of_breakpoints = 0;
-    //cnv_array->cnvs[cnv_index].final_end = 0;
-
+    cnv_array->cnvs[cnv_index].cnv_breakpoints_size = 0;
+    cnv_array->cnvs[cnv_index].left_start_index = -1;   // 0-index is valid, so need to use -1 for it
+    cnv_array->cnvs[cnv_index].right_end_index  = -1;   // 0-index is valid, so need to use -1 for it
+    cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity = 25;
+    cnv_array->cnvs[cnv_index].cnv_breakpoints = 
+        calloc(cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity, sizeof(CNV_Breakpints));
 }
 
 int combineNeighboringCNVs(CNV_Array *cnv_array, uint32_t cnv_index) {
@@ -619,12 +618,13 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
         if (i == 1100) {
             printf("stop\n");
         }
-        for (j=breakpoint_start; j<counter; j++) {
-            uint32_t tmp_start = (cnv_array->cnvs[i].raw_bin_start > 0) ? \
-                                    cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
-            uint32_t tmp_end = (cnv_array->cnvs[i].raw_bin_end > 0) ? \
-                                    cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
+        uint32_t tmp_start = (cnv_array->cnvs[i].raw_bin_start>0 && \
+                                        cnv_array->cnvs[i].raw_bin_start < cnv_array->cnvs[i].equal_bin_start) ? \
+                                        cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
+        uint32_t tmp_end = (cnv_array->cnvs[i].raw_bin_end > cnv_array->cnvs[i].equal_bin_end) ? \
+                                        cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
 
+        for (j=breakpoint_start; j<counter; j++) {
             if (anchor_breakpoints[j] + DISTANCE_CUTOFF < tmp_start) {
                 continue;
             } else if (tmp_end + DISTANCE_CUTOFF < anchor_breakpoints[j]) {
@@ -633,58 +633,149 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
                 // we consider they intersect.
                 // Now we need to find out the breakpoint on the current CNV
                 //
-                if (anchor_breakpoints[j] == tmp_start) {
-                    addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 1);
-                } else if (anchor_breakpoints[j] == tmp_end) {
-                    addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 2);
-                } else if (tmp_start < anchor_breakpoints[j] && anchor_breakpoints[j] < tmp_end) {
-                    if (anchor_breakpoints[j] - tmp_start < tmp_end - anchor_breakpoints[j]) {
-                        // closer to the start position
-                        //
-                        addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 1);
-                    } else {
-                        addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 2);
-                    }
-                } else if ((anchor_breakpoints[j] >= tmp_start - DISTANCE_CUTOFF) && 
-                            (anchor_breakpoints[j] <= tmp_start + DISTANCE_CUTOFF)) {
-                    addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 1);
-                } else if ((tmp_end + DISTANCE_CUTOFF >= anchor_breakpoints[j]) &&
-                            (tmp_end - DISTANCE_CUTOFF <= anchor_breakpoints[j])) {
-                    addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j], 2);
+                addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j]);
+            }
+        }
+    }
+
+    if (anchor_breakpoints) { free(anchor_breakpoints); }
+}
+
+// The breakpoints will be stored in an array
+//
+void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t anchor_breakpoint) {
+    khint_t k = kh_get(khIntPrArray, preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, anchor_breakpoint);
+    if (k != kh_end(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash)) {
+        // add breakpoint info
+        //
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_array->cnvs[cnv_index].cnv_breakpoints_size].breakpoint = anchor_breakpoint;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_array->cnvs[cnv_index].cnv_breakpoints_size].num_of_TLEN_ge_1000 = 
+                            kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->num_TLEN_ge_1000;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_array->cnvs[cnv_index].cnv_breakpoints_size].num_of_breakpoints =
+                            kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->current_breakpoint_count;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_array->cnvs[cnv_index].cnv_breakpoints_size].orientation = 0;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints_size++;
+
+        // resize the cnv_breakpoints array if needed
+        //
+        if (cnv_array->cnvs[cnv_index].cnv_breakpoints_size == cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity) {
+            cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity = 2 * cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity;
+            cnv_array->cnvs[cnv_index].cnv_breakpoints = realloc(cnv_array->cnvs[cnv_index].cnv_breakpoints, \
+                            (cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity)*sizeof(CNV_Breakpints));
+            failureExit(cnv_array->cnvs[cnv_index].cnv_breakpoints, "cnv_array->cnvs[cnv_index].cnv_breakpoints");
+        }
+    }
+}
+
+void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
+    // When using breakpoints to set starts (left-end) and ends (right-end) of CNVs, we need the following
+    // 1). number of breakpoints associated with the current anchor breakpoint >= 2
+    // 2). num_of_TLEN_ge_1000 >= 1
+    // 3). left and right breakpoints should be separated by >= 1000
+    //
+    //uint8_t num_left_breakpoints = 0, num_right_breakpoints = 0;
+
+    uint32_t i;
+    for (i=0; i<cnv_array->size; i++) {
+        /*if (cnv_array->cnvs[i].equal_bin_start == 18613500) {
+            printf("stop 6\n");
+            printf("%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\n", cnv_array->cnvs[i].equal_bin_start, \
+                    cnv_array->cnvs[i].equal_bin_end, cnv_array->cnvs[i].equal_bin_end - cnv_array->cnvs[i].equal_bin_start,\
+                    cnv_array->cnvs[i].length, cnv_array->cnvs[i].ave_coverage);
+
+            printf("\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\n", cnv_array->cnvs[i].raw_bin_start, \
+                    cnv_array->cnvs[i].raw_bin_end, cnv_array->cnvs[i].raw_bin_end - cnv_array->cnvs[i].raw_bin_start,\
+                    cnv_array->cnvs[i].length, cnv_array->cnvs[i].ave_coverage);
+            printf("cnv_breakpoints_size is %"PRIu8"\n", cnv_array->cnvs[i].cnv_breakpoints_size);
+        }*/
+
+        bool left_most_set = false, right_most_set = false;
+        uint32_t j;
+        for (j=0; j<cnv_array->cnvs[i].cnv_breakpoints_size; j++) {
+            /*printf("breakpoint: %"PRIu32"\tnum_of_breakpoints: %"PRIu8"\tnum_of_TLEN_ge_1000: %"PRIu8"\n", \
+                    cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint,
+                    cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints, 
+                    cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000);
+            */
+            // All anchor breakpoints associated with the current CNV should be ordered from the left most to the right most.
+            //
+            if (cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints <= 1)          // singleton
+                continue;
+            if (cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000 == 0)         // small indel
+                continue;
+
+            // pass the first 2 criteria
+            // 
+            uint32_t cur_start = ((cnv_array->cnvs[i].raw_bin_start > 0 && 
+                                cnv_array->cnvs[i].raw_bin_start < cnv_array->cnvs[i].equal_bin_start)) ? \
+                                        cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
+            uint32_t cur_end = (cnv_array->cnvs[i].raw_bin_end > cnv_array->cnvs[i].equal_bin_end) ? \
+                                        cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
+
+            //printf("%"PRIu32"\t%"PRIu32"\n", cur_start, cur_end);
+            // because values are uint32_t, so the subtraction will cause overflow as it won't be negative
+            //
+            if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) < \
+                    abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end))) {
+                // the current anchor breakpoint closer to the left-hand side
+                //
+                if (!left_most_set) {
+                    cnv_array->cnvs[i].cnv_breakpoints[j].orientation = 1;
+                    cnv_array->cnvs[i].left_start_index = j;
+                    left_most_set = true;
                 } else {
-                    fprintf(stderr, "Warning: anchor breakpoint %"PRIu32" shouldn't be here\n", anchor_breakpoints[j]);
+                    // belongs to the right-hand breakpoint
+                    //
+                    if (!right_most_set) {
+                        if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[cnv_array->cnvs[i].left_start_index].breakpoint - \
+                                    cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint)) >= 1000) {
+                            cnv_array->cnvs[i].cnv_breakpoints[j].orientation = 2;
+                            cnv_array->cnvs[i].right_end_index = j;
+                            right_most_set = true;
+                        }
+                    } else {
+                        // remove the previous right-hand breakpoint
+                        // TODO: Here we might want to check which one is better right breakpoint
+                        //
+                        cnv_array->cnvs[i].cnv_breakpoints[cnv_array->cnvs[i].right_end_index].orientation = 0;
+
+                        // Now set the new right hand breakpoint
+                        //
+                        cnv_array->cnvs[i].cnv_breakpoints[j].orientation = 2;
+                        cnv_array->cnvs[i].right_end_index = j;
+                    }
+                }
+            } else {
+                // the current anchor breakpoint closer to the right-hand side
+                //
+                if (!right_most_set) {
+                    cnv_array->cnvs[i].cnv_breakpoints[j].orientation = 2;
+                    cnv_array->cnvs[i].right_end_index = j;
+                    right_most_set = true;
+                } else {
+                    if (!left_most_set) {
+                        // if both breakpoints are closer to the right-hand side
+                        //
+                        if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[cnv_array->cnvs[i].right_end_index].breakpoint - \
+                                    cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint)) >= 1000) {
+                            // set previous right hand breakpoint as the left hand breakpoint
+                            //
+                            cnv_array->cnvs[i].left_start_index = cnv_array->cnvs[i].right_end_index;
+                            cnv_array->cnvs[i].cnv_breakpoints[cnv_array->cnvs[i].left_start_index].orientation = 1;
+                            left_most_set = true;
+                        }
+
+                        cnv_array->cnvs[i].right_end_index = j;
+                        cnv_array->cnvs[i].cnv_breakpoints[j].orientation = 2;
+                    }
                 }
             }
         }
     }
 }
 
-// pos_type: 1 left side (start), while 2 right side (end)
-//
-void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t anchor_breakpoint, int pos_type) {
-    khint_t k = kh_get(khIntPrArray, preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, anchor_breakpoint);
-    if (k != kh_end(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash)) {
-        // add breakpoint info
-        //
-        if (pos_type == 1) {
-            cnv_array->cnvs[cnv_index].left_breakpoint  = anchor_breakpoint;
-            //cnv_array->cnvs[cnv_index].final_start  = anchor_breakpoint;
-            cnv_array->cnvs[cnv_index].left_num_of_TLEN_ge_1000 = kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->num_TLEN_ge_1000;
-            cnv_array->cnvs[cnv_index].left_num_of_breakpoints  = kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->current_breakpoint_count;
-        } else {
-            cnv_array->cnvs[cnv_index].right_breakpoint = anchor_breakpoint;
-            //cnv_array->cnvs[cnv_index].final_end = anchor_breakpoint;
-            cnv_array->cnvs[cnv_index].right_num_of_TLEN_ge_1000 = kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->num_TLEN_ge_1000;
-            cnv_array->cnvs[cnv_index].right_num_of_breakpoints  = kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->current_breakpoint_count;
-        }
-    } else {
-        fprintf(stderr, "Warning: something is wrong, the anchor breakpoint %"PRIu32" doesn't exist\n", anchor_breakpoint);
-    }
-
-}
-
 void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
-    char filename[100];
+    char filename[200];
     FILE *fp;
     if (type == 1) {                // For raw varying size bin output
         sprintf(filename, "%s_CNV_Array_raw_bin.txt", chrom_id);
@@ -696,6 +787,7 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
         sprintf(filename, "%s_CNV_Array_equal_bin_all.txt", chrom_id);
         fp = fopen(filename, "w");
     }
+    fileOpenError(fp, filename);
 
     fprintf(fp, "chr\tstart\tend\tlength\tCNV-call\tAvg_Cov\tbkpt_L\t#bkpt_L\t#Insert_size_L>=1000\t");
     fprintf(fp, "bkpt_R\t#bkpt_R\t#Insert_Size_R>=1000\tStart_Eq\tEnd_Eq\tLen_Eq\tLen_Eq_Based_used\tavg_cov_Eq\tBin_Type\t");
@@ -703,19 +795,31 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
 
     uint32_t j;
     for (j=0; j<cnv_array->size; j++) {
-        if (cnv_array->cnvs[j].left_breakpoint > 0 || cnv_array->cnvs[j].right_breakpoint > 0 || type == 3) {
-            if (type != 3 && cnv_array->cnvs[j].left_num_of_breakpoints <=2 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 <=1
-                    && cnv_array->cnvs[j].right_num_of_breakpoints == 0 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 == 0)
+        int8_t left_idx  = cnv_array->cnvs[j].left_start_index;
+        int8_t right_idx = cnv_array->cnvs[j].right_end_index;
+
+        if (left_idx >= 0 || right_idx >= 0 || type == 3) {
+            uint32_t left_breakpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint : 0;
+            uint32_t left_num_bpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_breakpoints : 0;
+            uint32_t left_num_geTLEN  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint : 0;
+
+            uint32_t right_breakpoint = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].breakpoint : 0;
+            uint32_t right_num_bpoint = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_breakpoints : 0;
+            uint32_t right_num_geTLEN = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_TLEN_ge_1000 : 0;
+
+            if (type != 3 && left_idx >= 0 && right_idx < 0 && left_num_bpoint <=2 && left_num_geTLEN <=1)
                 continue;
 
-            if (type != 3 && cnv_array->cnvs[j].left_num_of_breakpoints == 0 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 == 0
-                    && cnv_array->cnvs[j].right_num_of_breakpoints <=2 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 <= 1)
+            if (type != 3 && left_idx < 0 && right_idx >= 0 && right_num_bpoint <=2 && right_num_geTLEN <= 1)
                 continue;
 
-            uint32_t cnv_start = (cnv_array->cnvs[j].left_breakpoint > 0) ? cnv_array->cnvs[j].left_breakpoint : \
-                        (cnv_array->cnvs[j].raw_bin_start > 0) ? cnv_array->cnvs[j].raw_bin_start : cnv_array->cnvs[j].equal_bin_start;
-            uint32_t cnv_end = (cnv_array->cnvs[j].right_breakpoint > 0) ? cnv_array->cnvs[j].right_breakpoint : \
-                        (cnv_array->cnvs[j].raw_bin_end > 0) ? cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
+            if (cnv_array->cnvs[j].equal_bin_start == 18613500) {
+                printf("stop 7\n");
+            }
+            uint32_t cnv_start = (left_idx >= 0) ? left_breakpoint : (cnv_array->cnvs[j].raw_bin_start > 0) ? \
+                                    cnv_array->cnvs[j].raw_bin_start : cnv_array->cnvs[j].equal_bin_start;
+            uint32_t cnv_end = (right_idx >= 0) ? right_breakpoint : (cnv_array->cnvs[j].raw_bin_end > 0) ? \
+                                    cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
 
             char CNV[10];
             (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "INS");
@@ -723,11 +827,10 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
             fprintf(fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%s\t%.2f\t", chrom_id, \
                     cnv_start, cnv_end, cnv_end-cnv_start, CNV, cnv_array->cnvs[j].ave_coverage);
 
-            fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", cnv_array->cnvs[j].left_breakpoint, \
-                    cnv_array->cnvs[j].left_num_of_breakpoints, cnv_array->cnvs[j].left_num_of_TLEN_ge_1000);
 
-            fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", cnv_array->cnvs[j].right_breakpoint, \
-                    cnv_array->cnvs[j].right_num_of_breakpoints, cnv_array->cnvs[j].right_num_of_TLEN_ge_1000);
+            fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", left_breakpoint, left_num_bpoint, left_num_geTLEN);
+
+            fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", right_breakpoint, right_num_bpoint, right_num_geTLEN);
 
             fprintf(fp, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t", cnv_array->cnvs[j].equal_bin_start, \
                     cnv_array->cnvs[j].equal_bin_end, cnv_array->cnvs[j].equal_bin_end - cnv_array->cnvs[j].equal_bin_start,\
@@ -800,11 +903,22 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         CNV_Array *cnv_array = equal_bin_cnv_array[i];      // pointer assignment, don't need to be free-ed
         for (j=0; j<cnv_array->size; j++) {
-            cnv_start = (cnv_array->cnvs[j].left_breakpoint > 0) ? cnv_array->cnvs[j].left_breakpoint : \
-                    (cnv_array->cnvs[j].raw_bin_start > 0) ? cnv_array->cnvs[j].raw_bin_start : cnv_array->cnvs[j].equal_bin_start;
+            int8_t left_idx  = cnv_array->cnvs[j].left_start_index;
+            int8_t right_idx = cnv_array->cnvs[j].right_end_index;
 
-            cnv_end = (cnv_array->cnvs[j].right_breakpoint > 0) ? cnv_array->cnvs[j].right_breakpoint : \
-                    (cnv_array->cnvs[j].raw_bin_end > 0) ? cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
+            uint32_t left_breakpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint : 0;
+            uint32_t left_num_bpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_breakpoints : 0;
+            uint32_t left_num_geTLEN  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint : 0;
+
+            uint32_t right_breakpoint = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].breakpoint : 0;
+            uint32_t right_num_bpoint = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_breakpoints : 0;
+            uint32_t right_num_geTLEN = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_TLEN_ge_1000 : 0;
+
+            cnv_start = (left_breakpoint > 0) ? left_breakpoint : (cnv_array->cnvs[j].raw_bin_start > 0) ? \
+                            cnv_array->cnvs[j].raw_bin_start : cnv_array->cnvs[j].equal_bin_start;
+
+            cnv_end = (right_breakpoint > 0) ? right_breakpoint : (cnv_array->cnvs[j].raw_bin_end > 0) ? \
+                            cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
 
             char CNV[10];
             (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "DUP");
@@ -815,15 +929,13 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             char GT[10];
             strcpy(GT, "./1");
 
-            if (cnv_array->cnvs[j].left_breakpoint > 0 || cnv_array->cnvs[j].right_breakpoint > 0) {
-                if (cnv_array->cnvs[j].left_num_of_breakpoints <=2 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 <=1
-                        && cnv_array->cnvs[j].right_num_of_breakpoints == 0 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 == 0) {
+            if (left_breakpoint > 0 || right_breakpoint > 0) {
+                if (left_num_bpoint <=2 && left_num_geTLEN <=1 && right_num_bpoint == 0 && right_num_geTLEN == 0) {
                     strcpy(FILTER, "littleBreakpointSupport");
                     strcpy(GT, "./.");
                 }
 
-                if (cnv_array->cnvs[j].left_num_of_breakpoints == 0 && cnv_array->cnvs[j].left_num_of_TLEN_ge_1000 == 0
-                        && cnv_array->cnvs[j].right_num_of_breakpoints <=2 && cnv_array->cnvs[j].right_num_of_TLEN_ge_1000 <= 1) {
+                if (left_num_bpoint == 0 && right_num_geTLEN == 0 && right_num_bpoint <=2 && right_num_geTLEN <= 1) {
                     strcpy(FILTER, "littleBreakpointSupport");
                     strcpy(GT, "./.");
                 }
@@ -833,7 +945,7 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             }
 
             fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t.\t%s\tEND=%"PRIu32";SVLEN=%"PRIu32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8"\tGT\t%s\n", \
-                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, FILTER, cnv_end, cnv_end-cnv_start, CNV, cnv_array->cnvs[j].ave_coverage, cnv_array->cnvs[j].left_breakpoint, cnv_array->cnvs[j].left_num_of_breakpoints, cnv_array->cnvs[j].left_num_of_TLEN_ge_1000, cnv_array->cnvs[j].right_breakpoint, cnv_array->cnvs[j].right_num_of_breakpoints, cnv_array->cnvs[j].right_num_of_TLEN_ge_1000, GT);
+                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, FILTER, cnv_end, cnv_end-cnv_start, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, GT);
         } // end equal_bin_cnv_array
     } // end chromosome list
 }
@@ -875,6 +987,11 @@ void cnvArrayDestroy(CNV_Array **cnv_array, uint32_t number_of_chromosomes) {
             if (cnv_array[i]->cnvs[j].equal_bin_array) {
                 free(cnv_array[i]->cnvs[j].equal_bin_array);
                 cnv_array[i]->cnvs[j].equal_bin_array = NULL;
+            }
+
+            if (cnv_array[i]->cnvs[j].cnv_breakpoints) {
+                free(cnv_array[i]->cnvs[j].cnv_breakpoints);
+                cnv_array[i]->cnvs[j].cnv_breakpoints = NULL;
             }
         }
 

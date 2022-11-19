@@ -19,11 +19,6 @@
 #include "calculate_stdev.h"
 
 void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info, Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array) {
-    // for tmp stats info
-    //
-    Stats_Info *stats_info = calloc(1, sizeof(Stats_Info));
-    statsInfoInit(stats_info);
-
     // for tmp chromosome tracking
     //
     Chromosome_Tracking *chrom_tracking = calloc(1, sizeof(Chromosome_Tracking));
@@ -33,14 +28,12 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
     khash_t(khStrInt) *wanted_chromosome_hash = kh_init(khStrInt);
 
     if (user_inputs->chromosome_bed_file != NULL) {
-        stats_info->wgs_cov_stats->total_genome_bases = loadWantedChromosomes(wanted_chromosome_hash,
-                user_inputs->reference_version, user_inputs->chromosome_bed_file);
+        loadWantedChromosomes(wanted_chromosome_hash, user_inputs->reference_version, user_inputs->chromosome_bed_file);
         chromosomeTrackingInit2(wanted_chromosome_hash, chrom_tracking, header[0]);
 
         checkNamingConvention(header[0], wanted_chromosome_hash);
     } else {
-        stats_info->wgs_cov_stats->total_genome_bases =
-            loadGenomeInfoFromBamHeader(wanted_chromosome_hash, header[0], user_inputs->reference_version);
+        loadGenomeInfoFromBamHeader(wanted_chromosome_hash, header[0], user_inputs->reference_version);
         chrom_tracking->number_of_chromosomes = header[0]->n_targets;
         chromosomeTrackingInit1(chrom_tracking, wanted_chromosome_hash, header[0]);
     }
@@ -161,9 +154,6 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
     if (chrom_tracking)
         free(chrom_tracking);
 
-    if (stats_info)
-        statsInfoDestroy(stats_info);
-
     if (wanted_chromosome_hash != NULL)
         cleanKhashStrInt(wanted_chromosome_hash);
 }
@@ -222,6 +212,11 @@ void get_coverage_info(Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, O
     for (i=0; i<chrom_tracking->chromosome_lengths[chrom_idx]; i++) {
 
         if (chrom_tracking->coverage[chrom_idx][i] != -1) {
+            // remove bases with coverage extremely high
+            //
+            if (chrom_tracking->coverage[chrom_idx][i] >= 1000)
+                continue;
+
             one_pass_stdev->total_sum += (double) chrom_tracking->coverage[chrom_idx][i];
             one_pass_stdev->total_bases++;
             one_pass_stdev->sum_of_base_cov_square += (double) chrom_tracking->coverage[chrom_idx][i] * chrom_tracking->coverage[chrom_idx][i];

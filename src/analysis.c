@@ -66,7 +66,7 @@ void mappabilityGcNormalization(Binned_Data_Wrapper *binned_data_wraper, User_In
     // output for debugging
     //
     char *filename = calloc(strlen(user_inputs->map_gc_details_file) + strlen(chrom_id) + 10, sizeof(char));
-    sprintf(filename, "%s%s.txt", user_inputs->map_gc_details_file, chrom_id);
+    sprintf(filename, "%s%s_%d.txt", user_inputs->map_gc_details_file, chrom_id, type);
     FILE *map_gc_detail_fp=fopen(filename, "w");
     fileOpenError(map_gc_detail_fp, filename);
     free(filename);

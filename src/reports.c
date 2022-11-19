@@ -57,9 +57,9 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
     for (i=begin; i<begin+length; i++) {
         uint32_t start=0, end=0;
         uint64_t cov_total=0;
-        //if (i==19834399) {
-        //    printf("19834425 stopped!");
-        //}
+        if (i==61898) {
+            printf("61898 stopped!");
+        }
 
         // check if the size is approach the capacity
         //
@@ -81,12 +81,20 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
                 fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t-1\n",
                         chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start);
         } else if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= wgs_simple_stats->outlier_cutoff)) {
-           start = i;
-           while (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= wgs_simple_stats->outlier_cutoff)) {
-               i++;
-           }
-           end = i;
-           if (user_inputs->debug_ON)
+            start = i;
+            while (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] >= wgs_simple_stats->outlier_cutoff)) {
+                cov_total += wgs_simple_stats->outlier_cutoff;
+                i++;
+            }
+            end = i;
+
+            // Instead of removing outliers, here we set base coverage > outlier cutoff = outlier cutoff
+            // not working
+            //if (start <= end) {
+            //    processBinnedData(start, end, cov_total, binned_data_wrapper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
+            //}
+
+            if (user_inputs->debug_ON)
                fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t-2\n",
                        chrom_tracking->chromosome_ids[chrom_idx], start, end, end-start);
         } else if (i < begin+length && (chrom_tracking->coverage[chrom_idx][i] < hap_upper)) {

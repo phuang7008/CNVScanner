@@ -148,6 +148,13 @@ typedef struct {
 } Equal_Window_Bin;
 
 typedef struct {
+    uint32_t breakpoint;            // anchor breakpoint
+    uint8_t num_of_breakpoints;     // the occurance of this specific breakpoint
+    uint8_t num_of_TLEN_ge_1000;    // number of paired reads span more than 1000 bp
+    uint8_t orientation;            // 0: not picked, 1: left breakpoint, 2: right breakpoint
+} CNV_Breakpints;
+
+typedef struct {
     uint32_t equal_bin_start;
     uint32_t equal_bin_end;
     uint32_t raw_bin_start;
@@ -160,19 +167,15 @@ typedef struct {
     //
     uint32_t size;
     uint32_t capacity;
-    Equal_Window_Bin *equal_bin_array;  // list of all bins that are combined
+    Equal_Window_Bin *equal_bin_array;  // list of all equal window bins that are combined
 
     // store related nearby breakpoint info
     //
-    uint32_t left_breakpoint;
-    uint8_t left_num_of_TLEN_ge_1000;   // number of paired reads span more than 1000 bp
-    uint8_t left_num_of_breakpoints;    // how many breakpoints associated with this CNV
-    //uint32_t final_start;               // after adjusting with the breakpoint
-
-    uint32_t right_breakpoint;
-    uint8_t right_num_of_TLEN_ge_1000;  // number of paired reads span more than 1000 bp
-    uint8_t right_num_of_breakpoints;   // how many breakpoints associated with this CNV
-    //uint32_t final_end;                 // after adjusting with the breakpoint
+    CNV_Breakpints *cnv_breakpoints;
+    uint8_t cnv_breakpoints_size;
+    uint8_t cnv_breakpoints_capacity;
+    int8_t left_start_index;            // the signed index is set when there is a left-hand breakpoint (0-index is valid)
+    int8_t right_end_index;             // the signed index is set when there is a right-hand breakpoint (0-index is valid)
 } CNV;
 
 typedef struct {
@@ -252,8 +255,11 @@ typedef struct {
 //                    
 //                    For breakpoint info:
 //                      my_group_size = 0
+//                      my_breakpoint_group[6]
 //                      current_breakpoint_count = 0
 //                           including neighboring breakpoints (within 5 bp distance) -> group them together
+//                      num_of_soft_clipping
+//                      num_of_hard_clipping
 //                                              
 //                  key2: anchor_bpt_pos2
 //                  val2: ... 
@@ -372,7 +378,8 @@ typedef struct {
 
     double ninty_nine_percentile;
     double ninty_eight_percentile;
-    double zScore;
+    double zScore;                  // 95%, 97.5%, 99%, 99.95%, 99.99% => zscore: 1.645, 1.96, 2.576, 3.291, 4
+    //double zScore_99_p7_pct;        // 99.7% = mean + 3 * stdev
     double outlier_cutoff;
 } Simple_Stats;
 

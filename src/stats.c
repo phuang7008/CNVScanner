@@ -40,13 +40,13 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
         fprintf(stderr, "Random selection (i.e. downsampling) is ON\n");
     }
 
+    tmp_stats_info->read_cov_stats->total_reads_produced++;
 
     // Need to check various 'READ' flags regarding the current read before doing statistics analysis
     // But the order here is quite important,
     // mapped vs unmapped first
     //
     if(rec->core.flag & BAM_FUNMAP)    {            // Read Unmapped
-        tmp_stats_info->read_cov_stats->total_reads_produced++;
         return;
     }
 
@@ -420,7 +420,7 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
     //
     the_stats->zScore = 1.645 * the_stats->stdev;   // 90% confident inverval for z score
     //the_stats->zScore = 1.96 * the_stats->stdev;    // 95% confident inverval for z score
-    //the_stats->zScore = 3.00 * the_stats->stdev;    // 99% confident interval for z score
+    //the_stats->zScore_99_p7_pct = 3.00 * the_stats->stdev;    // 99% confident interval for z score (99.7%)
 
     // clean up
     //
