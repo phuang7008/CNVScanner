@@ -297,8 +297,10 @@ int main(int argc, char *argv[]) {
 
                 // clean-up
                 //
-                cleanKhashIntStr(gc_starts);
-                cleanKhashIntStr(gc_ends);
+                //cleanKhashIntStr(gc_starts);
+                //cleanKhashIntStr(gc_ends);
+                kh_destroy(khIntStr, gc_starts);
+                kh_destroy(khIntStr, gc_ends);
             }
 
             // now handling mappability normalization
@@ -317,8 +319,10 @@ int main(int argc, char *argv[]) {
 
               // clean-up
               //
-              cleanKhashIntStr(map_starts);
-              cleanKhashIntStr(map_ends);
+              //cleanKhashIntStr(map_starts);
+              //cleanKhashIntStr(map_ends);
+              kh_destroy(khIntStr, map_starts);
+              kh_destroy(khIntStr, map_ends);
             }
 
             // create equal-sized-bins

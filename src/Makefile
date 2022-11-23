@@ -19,7 +19,8 @@ INCLUDES = -I$(IDIR) -I$(HTSDIR) -I$(MYLIB)
 LFLAGS = -L$(HTSDIR) -L$(MYLIB)
 
 # define any libraries to be link into executables:
-LIBS =  $(HTSDIR)/libhts.a $(MYLIB)/libcov_tracking.a -lm -lz -lpthread -lrt -lssl -lcrypto -ldl -lcurl -llzma -lbz2 -lmcheck
+#LIBS =  $(HTSDIR)/libhts.a $(MYLIB)/libcov_tracking.a -lm -lz -lpthread -lrt -lssl -lcrypto -ldl -lcurl -llzma -lbz2 -lmcheck
+LIBS =  $(HTSDIR)/libhts.a $(MYLIB)/libcov_tracking.a -lm -lz -lpthread -lrt -lssl -lcrypto -ldl -lcurl -llzma -lbz2
 
 # define dependent header files
 _DEPS = $(wildcard *.h)
