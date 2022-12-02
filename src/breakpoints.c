@@ -51,6 +51,11 @@ void BreakpointArrayDestroy(Breakpoint_Array **breakpoint_array, Chromosome_Trac
             free(breakpoint_array[i]->breakpoints);
             breakpoint_array[i]->breakpoints = NULL;
         }
+
+        if (breakpoint_array[i] != NULL) {
+            free(breakpoint_array[i]);
+            breakpoint_array[i] = NULL;
+        }
     }
 
     if (breakpoint_array != NULL) {
@@ -267,8 +272,7 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_R
                 //
                 iter_anchor = kh_get(khIntPrArray, pread_x_bpts_array->preads_x_per_anchor_bpt_hash, prev_anchor_pos);
                 if (kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->seen_paired_read_hash) {
-                    //cleanKhashStrInt(kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->seen_paired_read_hash);
-                    kh_destroy(khStrInt, kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->seen_paired_read_hash);
+                    cleanKhashStrInt(kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->seen_paired_read_hash);
                     kh_value(pread_x_bpts_array->preads_x_per_anchor_bpt_hash, iter_anchor)->seen_paired_read_hash = NULL;
                 }
             }
@@ -477,8 +481,7 @@ void eliminateUnwantedBreakpoints(char *chr_id, Paired_Reads_Across_Breakpoints_
                 }
 
                 if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->seen_paired_read_hash) {
-                    //cleanKhashStrInt(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->seen_paired_read_hash);
-                    kh_destroy(khStrInt, kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->seen_paired_read_hash);
+                    cleanKhashStrInt(kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->seen_paired_read_hash);
                     kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->seen_paired_read_hash = NULL;
                 }
 

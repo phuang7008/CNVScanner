@@ -73,6 +73,7 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
     FILE *fh = fopen(user_inputs->vcf_output_file, "w");
     generateVCF_MetaData(user_inputs, chrom_tracking, fh);
     generateVCFresults(equal_bin_cnv_array, chrom_tracking, fh);
+    fclose(fh);
 }
 
 // Type 1: raw varying sized bins;  Type 2: Equal window bins
@@ -97,7 +98,6 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
     Equal_Window_Bin *merged_equal_bin_array = NULL;
 
     for (j=0; j<equal_size_window_wrapper->size; j++) {
-        //if ( equal_size_window_wrapper->data[j].start == 46202770) {
         if ( equal_size_window_wrapper->data[j].start == 44338500) {
             printf("stop\n");
         }
@@ -675,11 +675,11 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
             cnv_array->cnvs[cnv_index].right_end_index  = -1;   // 0-index is valid, so need to use -1 for it
         }
 
-        uint8_t index = cnv_array->cnvs[cnv_index].cnv_breakpoints_size;
-        //printf("start position: %"PRIu32"\n", cnv_array->cnvs[cnv_index].equal_bin_start);
-        if (cnv_array->cnvs[cnv_index].equal_bin_start == 44338500) {
-            printf("stop\n");
-        }
+        uint16_t index = cnv_array->cnvs[cnv_index].cnv_breakpoints_size;
+        printf("start position: %"PRIu32" with size: %"PRIu16" at anchor: %"PRIu32"\n", cnv_array->cnvs[cnv_index].equal_bin_start, index, anchor_breakpoint);
+        //if (cnv_array->cnvs[cnv_index].equal_bin_start == 44338500) {
+        //    printf("stop\n");
+        //}
         cnv_array->cnvs[cnv_index].cnv_breakpoints[index].breakpoint = anchor_breakpoint;
         cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_TLEN_ge_1000 = 
                             kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->num_TLEN_ge_1000;
@@ -690,8 +690,8 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
 
         // resize the cnv_breakpoints array if needed
         //
-        if ((cnv_array->cnvs[cnv_index].cnv_breakpoints_size + 3) == cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity) {
-            cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity = 2 * cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity;
+        if ((cnv_array->cnvs[cnv_index].cnv_breakpoints_size + 3) > cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity) {
+            cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity += 25;
             cnv_array->cnvs[cnv_index].cnv_breakpoints = realloc(cnv_array->cnvs[cnv_index].cnv_breakpoints, \
                             (cnv_array->cnvs[cnv_index].cnv_breakpoints_capacity)*sizeof(CNV_Breakpints));
             failureExit(cnv_array->cnvs[cnv_index].cnv_breakpoints, "cnv_array->cnvs[cnv_index].cnv_breakpoints");
@@ -705,7 +705,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
     // 2). num_of_TLEN_ge_1000 >= 1
     // 3). left and right breakpoints should be separated by >= 1000
     //
-    //uint8_t num_left_breakpoints = 0, num_right_breakpoints = 0;
+    //uint16_t num_left_breakpoints = 0, num_right_breakpoints = 0;
 
     uint32_t i;
     for (i=0; i<cnv_array->size; i++) {
@@ -832,8 +832,8 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
 
     uint32_t j;
     for (j=0; j<cnv_array->size; j++) {
-        int8_t left_idx  = cnv_array->cnvs[j].left_start_index;
-        int8_t right_idx = cnv_array->cnvs[j].right_end_index;
+        int16_t left_idx  = cnv_array->cnvs[j].left_start_index;
+        int16_t right_idx = cnv_array->cnvs[j].right_end_index;
 
         uint32_t left_breakpoint=0, left_num_bpoint=0, left_num_geTLEN=0;
         uint32_t right_breakpoint=0, right_num_bpoint=0, right_num_geTLEN=0;
@@ -945,8 +945,8 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         CNV_Array *cnv_array = equal_bin_cnv_array[i];      // pointer assignment, don't need to be free-ed
         for (j=0; j<cnv_array->size; j++) {
-            int8_t left_idx  = cnv_array->cnvs[j].left_start_index;
-            int8_t right_idx = cnv_array->cnvs[j].right_end_index;
+            int16_t left_idx  = cnv_array->cnvs[j].left_start_index;
+            int16_t right_idx = cnv_array->cnvs[j].right_end_index;
 
             uint32_t left_breakpoint=0, left_num_bpoint=0, left_num_geTLEN=0;
             uint32_t right_breakpoint=0, right_num_bpoint=0, right_num_geTLEN=0;
@@ -1045,6 +1045,11 @@ void cnvArrayDestroy(CNV_Array **cnv_array, uint32_t number_of_chromosomes) {
         if (cnv_array[i]->cnvs) {
             free(cnv_array[i]->cnvs);
             cnv_array[i]->cnvs = NULL;
+        }
+
+        if (cnv_array[i] != NULL) {
+            free(cnv_array[i]);
+            cnv_array[i]=NULL;
         }
     }
     if (cnv_array)

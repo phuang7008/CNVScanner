@@ -110,8 +110,7 @@ void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean) {
             // kh_destroy will be called inside the cleanKhashStrInt
             //
             if (kh_value(hash_to_clean, k)->seen_paired_read_hash) {
-                //cleanKhashStrInt(kh_value(hash_to_clean, k)->seen_paired_read_hash);
-                kh_destroy(khStrInt, kh_value(hash_to_clean, k)->seen_paired_read_hash);
+                cleanKhashStrInt(kh_value(hash_to_clean, k)->seen_paired_read_hash);
             }
 
             // clean the pread_x_a_bpt array with read_name info

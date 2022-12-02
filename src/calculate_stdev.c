@@ -145,6 +145,8 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
         if (stats_info_per_chr[chrom_index])
             statsInfoDestroy(stats_info_per_chr[chrom_index]);
     }
+    if (stats_info_per_chr)
+        free(stats_info_per_chr);
 
     // clean-up
     //

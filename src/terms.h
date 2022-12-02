@@ -149,8 +149,8 @@ typedef struct {
 
 typedef struct {
     uint32_t breakpoint;            // anchor breakpoint
-    uint8_t num_of_breakpoints;     // the occurance of this specific breakpoint
-    uint8_t num_of_TLEN_ge_1000;    // number of paired reads span more than 1000 bp
+    uint16_t num_of_breakpoints;     // the occurance of this specific breakpoint
+    uint16_t num_of_TLEN_ge_1000;    // number of paired reads span more than 1000 bp
     uint8_t orientation;            // 0: not picked, 1: left breakpoint, 2: right breakpoint
 } CNV_Breakpints;
 
@@ -172,10 +172,10 @@ typedef struct {
     // store related nearby breakpoint info
     //
     CNV_Breakpints *cnv_breakpoints;
-    uint8_t cnv_breakpoints_size;
-    uint8_t cnv_breakpoints_capacity;
-    int8_t left_start_index;            // the signed index is set when there is a left-hand breakpoint (0-index is valid)
-    int8_t right_end_index;             // the signed index is set when there is a right-hand breakpoint (0-index is valid)
+    uint16_t cnv_breakpoints_size;
+    uint16_t cnv_breakpoints_capacity;
+    int16_t left_start_index;            // the signed index is set when there is a left-hand breakpoint (0-index is valid)
+    int16_t right_end_index;             // the signed index is set when there is a right-hand breakpoint (0-index is valid)
 } CNV;
 
 typedef struct {
@@ -278,7 +278,7 @@ typedef struct {
     uint32_t total_paired_reads;                // number of total paired reads for this anchor breakpoint
     uint32_t size;                              // number of paired reads with tlen >= 1000 for this anchor breakpoint
     uint32_t capacity;
-    uint8_t  num_TLEN_ge_1000;                  // number of paired reads with insertion size >= 1000
+    uint16_t  num_TLEN_ge_1000;                  // number of paired reads with insertion size >= 1000
     khash_t(khStrInt) *seen_paired_read_hash;           // names of paired reads which already encountered
     Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;    // an array of paired reads with tlen >= 1000 in this anchor breakpoint group
 
@@ -286,7 +286,7 @@ typedef struct {
     //
     int my_group_size;
     uint32_t my_breakpoint_group[6];            // array of unique breakpoints (within 5 bp distance) -> group them together
-    uint8_t  current_breakpoint_count;          // number of breakpoint at this specific position (include those grouped)
+    uint16_t  current_breakpoint_count;          // number of breakpoint at this specific position (include those grouped)
     uint16_t num_of_soft_clipping;
     uint16_t num_of_hard_clipping;
 } Paired_Reads_Across_Per_Anchor_Breakpoint_Array;      // for breakpoints on one anchor breakpoint
