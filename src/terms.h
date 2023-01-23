@@ -286,7 +286,7 @@ typedef struct {
     //
     int my_group_size;
     uint32_t my_breakpoint_group[6];            // array of unique breakpoints (within 5 bp distance) -> group them together
-    uint16_t  current_breakpoint_count;          // number of breakpoint at this specific position (include those grouped)
+    uint16_t current_breakpoint_count;          // number of breakpoint at this specific position (include those grouped)
     uint16_t num_of_soft_clipping;
     uint16_t num_of_hard_clipping;
 } Paired_Reads_Across_Per_Anchor_Breakpoint_Array;      // for breakpoints on one anchor breakpoint
@@ -304,6 +304,32 @@ typedef struct {
 } Paired_Reads_Across_Breakpoints_Array;                    // For all breakpoints on all chromosomes (one array element for one chromosome)
                                                             // The size of the array will be the number of chromosomes
 
+/**
+ * define Not_Properly_Paired_Reads structure here
+ * Note, I only need to record everything once for paired reads
+ * Also, I am going to group nearby reads together if they are separated <= 150 bps (sequencing length)
+ */
+typedef struct {
+    char * chr_id;
+    char * mate_chr_id;
+    uint32_t start;
+    uint32_t mate_start;
+    uint32_t num_of_neighboring_pairs;
+    uint32_t num_of_pairs_TLEN_ge_1000;
+} Not_Properly_Paired_Reads;
+
+/*
+ * For single chromosome
+ */
+typedef struct {
+    char * chrom_id;
+    Not_Properly_Paired_Reads* improperly_paired_reads;
+    uint32_t size;
+    uint32_t capacity;
+
+    khash_t(khStrInt) *seen_paired_read_hash;       // names of paired reads which already encountered
+    khash_t(khStrInt) *seen_unmapped_read_hash;     // names of unmapped reads which already encountered
+} Not_Properly_Paired_Reads_Array;
 
 // khIntStr: the key as 32 bit integer, while the value is the string
 KHASH_MAP_INIT_INT(khIntStr, char*)

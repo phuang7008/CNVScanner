@@ -89,10 +89,11 @@ void writeCoverageBins(uint32_t begin, uint32_t length, Chromosome_Tracking *chr
             end = i;
 
             // Instead of removing outliers, here we set base coverage > outlier cutoff = outlier cutoff
-            // not working
-            //if (start <= end) {
-            //    processBinnedData(start, end, cov_total, binned_data_wrapper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
-            //}
+            // not working when used with normalization
+            //
+            if (start <= end) {
+                processBinnedData(start, end, cov_total, binned_data_wrapper, chrom_tracking, fh_binned_coverage, chrom_idx, user_inputs);
+            }
 
             if (user_inputs->debug_ON)
                fprintf(fh_binned_coverage, "%s\t%"PRIu32"\t%"PRIu32"\t%d\t-2\n",

@@ -818,10 +818,12 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
         sprintf(filename, "%s_CNV_Array_raw_bin.txt", chrom_id);
         fp = fopen(filename, "w");
     } else if (type == 2) {         // For filtered merged CNVs from equal size window output
-        sprintf(filename, "%s_CNV_Array_equal_bin_filtered.txt", chrom_id);
+        sprintf(filename, "%s_CNV_Array_final_filtered.txt", chrom_id);
+        //sprintf(filename, "%s_CNV_Array_equal_bin_filtered.txt", chrom_id);
         fp = fopen(filename, "w");
     } else {                        // For unfiltered merged CNVs from equal size window output
-        sprintf(filename, "%s_CNV_Array_equal_bin_all.txt", chrom_id);
+        sprintf(filename, "%s_CNV_Array_final_all.txt", chrom_id);
+        //sprintf(filename, "%s_CNV_Array_equal_bin_all.txt", chrom_id);
         fp = fopen(filename, "w");
     }
     fileOpenError(fp, filename);
