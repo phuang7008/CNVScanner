@@ -301,35 +301,70 @@ typedef struct {
     khash_t(khIntPrArray) *preads_x_per_anchor_bpt_hash;    //  a hashtable (on each chromosome)
                                                             //      key: anchor breakpoint, 
                                                             //      value: Paired_Reads_Across_A_Breakpoint_Per_Anchor_Array
-} Paired_Reads_Across_Breakpoints_Array;                    // For all breakpoints on all chromosomes (one array element for one chromosome)
+} Paired_Reads_Across_Breakpoints_Array;                    // For all breakpoints on all chromosomes 
+                                                            // (one array element for one chromosome)
                                                             // The size of the array will be the number of chromosomes
 
 /**
  * define Not_Properly_Paired_Reads structure here
  * Note, I only need to record everything once for paired reads
  * Also, I am going to group nearby reads together if they are separated <= 150 bps (sequencing length)
+ * Here we are going to handle only 3 cases
+ * Case 1: unmapped read while its mate is mapped
+ * Case 2: Paired reads mapped to different chromosome
+ * Case 3: Paired reads mapped to the same chromosome, but with insertion size >= 1000
  */
 typedef struct {
-    char * chr_id;
-    char * mate_chr_id;
     uint32_t start;
     uint32_t mate_start;
-    uint32_t num_of_neighboring_pairs;
-    uint32_t num_of_pairs_TLEN_ge_1000;
-} Not_Properly_Paired_Reads;
+} Improperly_Paired_Reads_TLEN_GE_1000;     // they are on the same chromosome
+
+
+/**
+ * The schema how the improperly paired read array works
+ *  Not_Properly_Paired_Reads_Array: improperly_paired_reads_array => An array with size=num_of_chromosomes
+ *    For each array element: there are things to be tracked
+ *      chrom_id
+ *      num_of_groups (simply size of the groups) all groups of a chromosome
+ *      seen_paired_read_hash
+ *      grouped_improperly_paired_reads (an array)
+ *          For each grouped improperly paired reads:
+ *              group_start
+ *              group_end
+ *              total_paired_reads (within the group)
+ *              num_of_pairs_TLEN_ge_1000
+ *              num_of_unmapped_reads
+ *              num_of_mapped_reads_on_diff_chrom
+ *              num_of_mapped_reads_on_same_chrom
+ *    
+ */
+typedef struct {
+    //One_Not_Properly_Paired_Reads * one_improperly_paired_reads;
+    uint32_t group_start;                           // the first start position of all current group reads
+    uint32_t group_start_end;                       // the last start position of all current group reads
+    uint32_t group_mate_end;                        // both paired reads on the same chromosome with TLEN >= 1000
+                                                    // it is the end of the last mate in the group
+    uint32_t total_paired_reads;
+    uint32_t num_of_pairs_TLEN_ge_1000;             // paired reads should be on the same chrom with TLEN >= 1000
+    khash_t(m32) * mate_ends_hash;                  // hash of mate end positions that have the paired-read TLEN >= 1000
+                                                    // the difference of neighboring ends (sorted) should be <= 150 
+                                                    // just like the starts (the hash will be converted to array)
+    uint32_t num_of_unmapped_reads;
+    uint32_t num_of_mapped_reads_on_diff_chrom;
+    uint32_t num_of_mapped_reads_on_same_chrom;
+} Grouped_Not_Properly_Paired_Reads;
 
 /*
  * For single chromosome
  */
 typedef struct {
     char * chrom_id;
-    Not_Properly_Paired_Reads* improperly_paired_reads;
-    uint32_t size;
-    uint32_t capacity;
+    Grouped_Not_Properly_Paired_Reads* grouped_improperly_paired_reads;
+    int32_t num_of_groups;                          // signed value, the size of groups, initialize to -1
+    int32_t capacity;
 
     khash_t(khStrInt) *seen_paired_read_hash;       // names of paired reads which already encountered
-    khash_t(khStrInt) *seen_unmapped_read_hash;     // names of unmapped reads which already encountered
-} Not_Properly_Paired_Reads_Array;
+} Not_Properly_Paired_Reads_Array;                  // One array element for one chromosome
 
 // khIntStr: the key as 32 bit integer, while the value is the string
 KHASH_MAP_INIT_INT(khIntStr, char*)

@@ -30,6 +30,7 @@
 
 #include "analysis.h"
 #include "breakpoints.h"
+#include "improperly_paired_reads.h"
 #include "calculate_stdev.h"
 #include "excluded_regions.h"
 #include "fileProcessing.h"
@@ -190,11 +191,21 @@ int main(int argc, char *argv[]) {
     Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(Paired_Reads_Across_Breakpoints_Array*));
     PairedReadsAcrossBreakpointsArrayInit(preads_x_bpts_array, chrom_tracking);
 
+    // not properly paired/aligned reads
+    //
+    Not_Properly_Paired_Reads_Array** improperly_paired_reads_array = calloc(chrom_tracking->number_of_chromosomes, sizeof (Not_Properly_Paired_Reads_Array*));
+    NotProperlyPairedReadsInit(improperly_paired_reads_array, chrom_tracking);
+
+    // get all unmapped read names
+    //
+    khash_t(khStrInt) *unmapped_read_hash = kh_init(khStrInt);
+    getAllUnmappedReads(unmapped_read_hash, sfh_idx[0], header[0], sfh[0]);
+
     // calculate the whole genome base coverage mean and standard deviation
     //
     Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
     SimpleStatsInit(wgs_simple_stats);
-    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, preads_x_bpts_array);
+    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, preads_x_bpts_array, improperly_paired_reads_array, unmapped_read_hash);
 
     // The following is for debugging purpose
     //
@@ -247,7 +258,7 @@ int main(int argc, char *argv[]) {
             int result=0;
             bam1_t *b = bam_init1();
             while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL);
+              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL, NULL);
             }
 
             if (result < -1) {

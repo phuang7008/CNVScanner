@@ -28,8 +28,7 @@ void findDebugPoint() {
     printf("for debugging\n");
 }
 
-void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array) {
-
+void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array, Not_Properly_Paired_Reads_Array* improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash) {
     if(user_inputs->percentage < 1.0) {
         // set random seed and only need to be set ONCE
         //srand((uint32_t)time(NULL));    
@@ -82,8 +81,11 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
     if (rec->core.flag & BAM_FPROPER_PAIR) {    // Read is properly paired
         tmp_stats_info->read_cov_stats->total_reads_proper_paired++;
     } else {
+        // improperly paired reads
+        //
         tmp_stats_info->read_cov_stats->total_chimeric_reads++;
-        //continue;       // in hg37, it is also has supplementary flag set
+        if (improperly_paired_reads_array != NULL)
+            processImproperlyPairedReads(improperly_paired_reads_array, unmapped_read_hash, rec);
     }
 
     /*if (rec->core.flag & BAM_FSUPPLEMENTARY) {

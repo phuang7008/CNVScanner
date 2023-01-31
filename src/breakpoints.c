@@ -361,7 +361,7 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_R
         // For search region, we need to use bpt_pos not the current anchor position
         //
         char region[200];
-        sprintf(region, "%s:%"PRIu32"-%"PRIu32"", bpt_arr->chrom_id, bpt_pos, bpt_pos+1);
+        sprintf(region, "%s:%"PRIu32"-%"PRIu32"", bpt_arr->chrom_id, bpt_pos-300, bpt_pos+300);
         hts_itr_t *hts_itr = sam_itr_querys(sfh_idx, header, region);
 
         if (hts_itr == NULL) {

@@ -18,7 +18,8 @@
 
 #include "calculate_stdev.h"
 
-void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info, Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array) {
+void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash) {
+
     // for tmp chromosome tracking
     //
     Chromosome_Tracking *chrom_tracking = calloc(1, sizeof(Chromosome_Tracking));
@@ -80,6 +81,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     // fetch the breakpoint array chromosome index here
                     //
                     uint32_t bpt_chr_idx = fetchBreakpointArrayChrIndex(breakpoint_array, chrom_tracking, chrom_index);
+                    uint32_t imp_chr_idx = fetchImproperPRArrayChrIndex(improperly_paired_reads_array, chrom_tracking, chrom_index);
 
                     // create a lookup table for paired reads of each breakpoint
                     // key: read name (str), while value: the index in the breakpoint array for this chromosome
@@ -91,7 +93,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     int result = 0;
                     bam1_t *b = bam_init1();
                     while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-                        processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx]);
+                        processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], improperly_paired_reads_array[imp_chr_idx], unmapped_read_hash);
                     }
 
                     if (result < -1) {
@@ -103,7 +105,10 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
 
                     bam_destroy1(b);
                     hts_itr_destroy(iter);
-                    //cleanKhashStrInt(breakpoint_pairs_hash);
+
+                    // output improperly paired reads for debugging
+                    //
+                    outputGroupedImproperlyPairedReads(improperly_paired_reads_array, chrom_tracking);
 
                     if (user_inputs->excluded_region_file)
                         zeroAllExcludedRegions(chrom_tracking, chrom_index, excluded_bed_info);
@@ -216,7 +221,9 @@ void get_coverage_info(Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, O
         if (chrom_tracking->coverage[chrom_idx][i] != -1) {
             // remove bases with coverage extremely high
             //
-            if (chrom_tracking->coverage[chrom_idx][i] >= 1000)
+            //if (chrom_tracking->coverage[chrom_idx][i] >= 1000)
+            if (chrom_tracking->coverage[chrom_idx][i] >= 500)
+                //chrom_tracking->coverage[chrom_idx][i] = 100;
                 continue;
 
             one_pass_stdev->total_sum += (double) chrom_tracking->coverage[chrom_idx][i];
