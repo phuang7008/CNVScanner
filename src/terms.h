@@ -130,11 +130,16 @@ typedef struct {
     uint32_t size;
 } DoubleArray;
 
-// calculation stdev in one pass
+// calculation mean, stdev, tlen_mean and tlen_stdev in one pass
 typedef struct {
     double total_sum;
     double total_bases;
     double sum_of_base_cov_square;
+
+    uint64_t total_tlen_sum;
+    uint32_t total_reads;
+    uint32_t total_reads_0_tlen;
+    uint64_t sum_of_tlen_square;
 } OnePassStdev;
 
 // store discovered CNVs
@@ -435,7 +440,13 @@ typedef struct {
     double average_coverage;
     double stdev;
 
-    uint32_t total_bases_used;      // excluding N-regsions, Repeat Masks, Mappability Excluded Regions and Seg-Dup
+    uint32_t total_bases_used;      // excluding N-regsions
+
+    double tlen_mean;               // average TLEN from all data point
+    double tlen_stdev;
+    uint32_t tlen_total_reads_used; // for a read pair, this should be counted only once (use positive TLEN)
+    uint32_t total_reads_w_0_tlen;  // this will be counted twice, so the final results should be divided by 2
+    double tlen_outlier_cutoff;
 
     double ninty_nine_percentile;
     double ninty_eight_percentile;

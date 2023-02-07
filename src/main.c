@@ -258,7 +258,7 @@ int main(int argc, char *argv[]) {
             int result=0;
             bam1_t *b = bam_init1();
             while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL, NULL);
+              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL, NULL, NULL);
             }
 
             if (result < -1) {

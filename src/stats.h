@@ -41,7 +41,7 @@ void findDebugPoint();
  * @param chrom_tracking, a variable used to track count information at each chromosome position
  * @param chrom_index, a index points to the current chromosome index at the chromo_tracking array variable
  */
-void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array, Not_Properly_Paired_Reads_Array* improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash);
+void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *header, Stats_Info *tmp_stats_info, Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Breakpoint_Array *breakpoint_array, OnePassStdev *one_pass_stdev, Not_Properly_Paired_Reads_Array* improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash);
 
 /**
  * This function is used to process individual aligned read and put the results into a chrom_tracking variable

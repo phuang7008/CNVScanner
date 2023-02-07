@@ -93,7 +93,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     int result = 0;
                     bam1_t *b = bam_init1();
                     while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-                        processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], improperly_paired_reads_array[imp_chr_idx], unmapped_read_hash);
+                        processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], one_pass_stdev[chrom_index], improperly_paired_reads_array[imp_chr_idx], unmapped_read_hash);
                     }
 
                     if (result < -1) {
@@ -172,6 +172,11 @@ void OnePassStdevInit(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_
         one_pass_stdev[i]->total_sum   = 0.0;
         one_pass_stdev[i]->total_bases = 0.0;
         one_pass_stdev[i]->sum_of_base_cov_square = 0.0;
+
+        one_pass_stdev[i]->total_tlen_sum = 0;
+        one_pass_stdev[i]->total_reads = 0;
+        one_pass_stdev[i]->total_reads_0_tlen = 0;
+        one_pass_stdev[i]->sum_of_tlen_square = 0;
     }
 }
 
@@ -188,30 +193,62 @@ void OnePassStdevDestroy(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chr
 
 void StdevCalculation(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking, Simple_Stats *simple_stats) {
     uint32_t i;
+    uint64_t total_tlen_sum=0, total_tlen_square_sum=0, total_tlen_reads=0, total_reads_0_tlen=0;
     double total_sum=0, total_square_sum=0, total_bases=0;
+
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         total_sum   += one_pass_stdev[i]->total_sum;
         total_bases += one_pass_stdev[i]->total_bases;
         total_square_sum += one_pass_stdev[i]->sum_of_base_cov_square;
+
+        total_tlen_sum += one_pass_stdev[i]->total_tlen_sum;
+        total_tlen_square_sum += one_pass_stdev[i]->sum_of_tlen_square;
+        total_tlen_reads += one_pass_stdev[i]->total_reads;
+        total_reads_0_tlen += one_pass_stdev[i]->total_reads_0_tlen;
     }
 
+    // For overall base stats
+    //
     simple_stats->average_coverage  = total_sum / total_bases;
     simple_stats->total_bases_used  = total_bases;
     simple_stats->stdev = sqrt(total_square_sum / total_bases - simple_stats->average_coverage * simple_stats->average_coverage);
-    //simple_stats->stdev = total_square_sum / total_bases - simple_stats->average_coverage * simple_stats->average_coverage;
     simple_stats->outlier_cutoff    = simple_stats->average_coverage + 3 * simple_stats->stdev;
+
+    // For TLEN stats
+    // but the reads with TLEN 0 is counted twice, so we need to adjust it here
+    //
+    total_tlen_reads = total_tlen_reads + (total_reads_0_tlen / 2);
+    simple_stats->tlen_mean = (double)total_tlen_sum / (double)total_tlen_reads;
+    simple_stats->tlen_total_reads_used = total_tlen_reads;
+    simple_stats->tlen_stdev = sqrt((double)total_tlen_square_sum / (double)total_tlen_reads - \
+                                            simple_stats->tlen_mean * simple_stats->tlen_mean);
+    simple_stats->total_reads_w_0_tlen = total_reads_0_tlen;
+    simple_stats->tlen_outlier_cutoff = simple_stats->tlen_mean + 3 * simple_stats->tlen_stdev;
 
     fprintf(stderr, "After one pass calculation of mean and stdev\n");
     fprintf(stderr, "Average Coverage: %.2f\n", simple_stats->average_coverage);
     fprintf(stderr, "Standard Deviation: %.2f\n", simple_stats->stdev);
     fprintf(stderr, "Outlier Cutoff: %.2f\n", simple_stats->outlier_cutoff);
     fprintf(stderr, "Total bases Used: %"PRIu32"\n\n", simple_stats->total_bases_used);
+
+    fprintf(stderr, "After one pass calculation of TLEN mean and TLEN stdev\n");
+    fprintf(stderr, "Total reads Used: %"PRIu32"\n", simple_stats->tlen_total_reads_used);
+    fprintf(stderr, "TLEN Mean: %.2f\n", simple_stats->tlen_mean);
+    fprintf(stderr, "TLEN StDev: %.2f\n", simple_stats->tlen_stdev);
+    fprintf(stderr, "TLEN TLEN outlier cutoff (3 * StDev + TLEN_Mean): %.2f\n", simple_stats->tlen_outlier_cutoff);
+    fprintf(stderr, "Total reads with TLEN = 0: %"PRIu32"\n\n", simple_stats->total_reads_w_0_tlen);
 }
 
 void SimpleStatsInit(Simple_Stats *simple_stats) {
     simple_stats->average_coverage = 0.0;
     simple_stats->stdev = 0.0;
     simple_stats->total_bases_used = 0;
+
+    simple_stats->tlen_mean = 0.0;
+    simple_stats->tlen_stdev = 0.0;
+    simple_stats->tlen_total_reads_used = 0;
+    simple_stats->total_reads_w_0_tlen = 0;
+    simple_stats->tlen_outlier_cutoff = 0.0;
 }
 
 void get_coverage_info(Chromosome_Tracking *chrom_tracking, int32_t chrom_idx, OnePassStdev *one_pass_stdev) {
