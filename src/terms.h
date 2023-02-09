@@ -326,13 +326,13 @@ typedef struct {
 
 
 /**
- * The schema how the improperly paired read array works
+ * The schema: how the improperly paired read array works
  *  Not_Properly_Paired_Reads_Array: improperly_paired_reads_array => An array with size=num_of_chromosomes
- *    For each array element: there are things to be tracked
+ *    For each array element (one chr): there are things to be tracked
  *      chrom_id
- *      num_of_groups (simply size of the groups) all groups of a chromosome
+ *      num_of_groups (simply size of the groups) all groups within a chromosome
  *      seen_paired_read_hash
- *      grouped_improperly_paired_reads (an array)
+ *      grouped_improperly_paired_reads (an array of type Grouped_Not_Properly_Paired_Reads)
  *          For each grouped improperly paired reads:
  *              group_start
  *              group_end
