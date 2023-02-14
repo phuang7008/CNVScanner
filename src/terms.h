@@ -181,6 +181,12 @@ typedef struct {
     uint16_t cnv_breakpoints_capacity;
     int16_t left_start_index;            // the signed index is set when there is a left-hand breakpoint (0-index is valid)
     int16_t right_end_index;             // the signed index is set when there is a right-hand breakpoint (0-index is valid)
+
+    // store improperly paired reads with perfect mapping and TLEN > 1000 and count >= 2
+    //
+    uint32_t imp_PR_start;
+    uint32_t imp_PR_end;
+    uint16_t num_of_imp_RP_TLEN_1000;   // number of improperly paired-reads with TLEN >= 1000
 } CNV;
 
 typedef struct {

@@ -96,6 +96,7 @@ void addValueToKhashBucketStrStr(khash_t(khStrStr) *hash_in, char *key, char * v
  * @return the value pointed by the key
  */
 uint32_t getValueFromKhash32(khash_t(m32) *hash32, uint32_t pos_key);
+int32_t getSignedValueFromKhash32(khash_t(m32) *hash32, uint32_t pos_key);
 uint16_t getValueFromKhash16(khash_t(m16) *hash16, uint32_t pos_key);
 char * getValueFromKhashStrStr(khash_t(khStrStr) *hash_in, char* key);
 

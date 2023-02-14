@@ -20,7 +20,7 @@
 
 #include <omp.h>
 
-void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, User_Input *user_inputs) {
+void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array, Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, User_Input *user_inputs) {
 #pragma omp parallel shared(the_stats) num_threads(user_inputs->num_of_threads)
     {
 #pragma omp single
@@ -34,7 +34,7 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
             // find the corresponding index in equal_size_window_wrappers, raw_bin_data_wrappers and preads_x_bpts_array
             //
-            uint32_t equal_bin_index, raw_bin_index, pr_x_bpts_arr_index;
+            uint32_t equal_bin_index, raw_bin_index, pr_x_bpts_arr_index, improper_array_index;
             for (equal_bin_index=0; equal_bin_index<chrom_tracking->number_of_chromosomes; equal_bin_index++) {
                 if (strcmp(equal_size_window_wrappers[equal_bin_index]->chromosome_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
                     break;
@@ -50,6 +50,11 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
                     break;
             }
 
+            for (improper_array_index=0; improper_array_index<chrom_tracking->number_of_chromosomes; improper_array_index++) {
+                if (strcmp(improperly_PR_array[improper_array_index]->chrom_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
+                    break;
+            }
+
             mergeNeighboringBinsBasedOnZscore(equal_bin_cnv_array[cnv_array_index], equal_size_window_wrappers[equal_bin_index], the_stats, equal_bin_cnv_array[cnv_array_index]->chromosome_id, user_inputs, 2);
 
             expandMergedCNVWithRawBins(raw_bin_data_wrappers[raw_bin_index], equal_bin_cnv_array[cnv_array_index], the_stats);
@@ -57,6 +62,8 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
             checkBreakpointForEachCNV(equal_bin_cnv_array[cnv_array_index], preads_x_bpts_array[pr_x_bpts_arr_index]);
 
             setLeftRightCNVBreakpoints(equal_bin_cnv_array[cnv_array_index]);
+
+            checkImproperlyPairedReadsForEachCNV(equal_bin_cnv_array[cnv_array_index], improperly_PR_array[improper_array_index]);
 
             outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 2);
             outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 3);
@@ -600,7 +607,7 @@ void addRawBinToCNV(Binned_Data_Wrapper *binned_data_wrapper, uint32_t raw_bin_i
 void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr) {
     // first, we need to get the sorted anchor breakpoints
     //
-    uint32_t capacity = PR_INIT_SIZE*10;    // the initial size is set to 2000
+    uint32_t capacity = PR_INIT_SIZE*50;    // the initial size is set to 10000
     uint32_t *anchor_breakpoints = calloc(capacity, sizeof(uint32_t));
     uint32_t counter=0;
 
@@ -614,7 +621,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
             // dynamically increase the capacity of anchor breakpoint array
             //
             if (counter + 5 >= capacity) {
-                capacity += PR_INIT_SIZE*10;
+                capacity += PR_INIT_SIZE*20;
                 anchor_breakpoints = realloc(anchor_breakpoints, capacity * sizeof(uint32_t));
                 failureExit(anchor_breakpoints, "anchor_breakpoints memory realloc failed\n");
             }
@@ -671,7 +678,7 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
         }
 
         uint16_t index = cnv_array->cnvs[cnv_index].cnv_breakpoints_size;
-        printf("start position: %"PRIu32" with size: %"PRIu16" at anchor: %"PRIu32"\n", cnv_array->cnvs[cnv_index].equal_bin_start, index, anchor_breakpoint);
+        //printf("start position: %"PRIu32" with size: %"PRIu16" at anchor: %"PRIu32"\n", cnv_array->cnvs[cnv_index].equal_bin_start, index, anchor_breakpoint);
         //if (cnv_array->cnvs[cnv_index].equal_bin_start == 44338500) {
         //    printf("stop\n");
         //}
@@ -806,6 +813,168 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
     }
 }
 
+void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array) {
+    // setup an array with all starts and ends from improperly paired reads and all CNVs
+    //
+    uint32_t capacity = (improperly_PR_array->num_of_groups + cnv_array->size) * 2;
+    uint32_t * all_starts_ends = calloc(capacity, sizeof(uint32_t));
+    int32_t count = 0;      // need to use signed for negative value checking
+
+    khash_t(m32) *imp_PR_start_hash  = kh_init(m32);
+    khash_t(m32) *imp_PR_end_hash    = kh_init(m32);
+    khash_t(m32) *imp_PR_end_start_lookup = kh_init(m32);
+
+    // loop through the improperly paired reads and find all starts and ends
+    //
+    int32_t g;
+    for (g=0; g<improperly_PR_array->num_of_groups; g++) {
+        uint32_t num_TLEN_1000 = improperly_PR_array->grouped_improperly_paired_reads[g].num_of_pairs_TLEN_ge_1000;
+
+        if (num_TLEN_1000 >= 2 && (improperly_PR_array->grouped_improperly_paired_reads[g].group_mate_end - 
+                improperly_PR_array->grouped_improperly_paired_reads[g].group_start <= 100000)) {
+            // TODO Once I add the condition using perfect matched paired reads, I will remove the 2nd condition checking
+            // Store TLEN count info as value so that it is easy for lookup
+            //
+            all_starts_ends[count] = improperly_PR_array->grouped_improperly_paired_reads[g].group_start;
+            addValueToKhashBucket32(imp_PR_start_hash, all_starts_ends[count], num_TLEN_1000);
+            count++;
+
+            all_starts_ends[count] = improperly_PR_array->grouped_improperly_paired_reads[g].group_mate_end;
+            addValueToKhashBucket32(imp_PR_end_hash, all_starts_ends[count], num_TLEN_1000);
+            count++;
+            fprintf(stderr, "IMP\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1], num_TLEN_1000);
+
+            // add values to the lookup table
+            //
+            addValueToKhashBucket32(imp_PR_end_start_lookup, improperly_PR_array->grouped_improperly_paired_reads[g].group_mate_end, improperly_PR_array->grouped_improperly_paired_reads[g].group_start);
+        }
+    }
+
+    // walk through CNV array and get all its starts and ends
+    //
+    khash_t(m32) *cnv_start_hash  = kh_init(m32);
+    khash_t(m32) *cnv_end_hash    = kh_init(m32);
+
+    uint32_t i;
+    for (i=0; i<cnv_array->size;i++) {
+        // Store the CNV_Array index into the hash tables so that it is easy to lookup and set values
+        //
+        uint32_t tmp_start = cnv_array->cnvs[i].raw_bin_start>0 ?
+                             cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
+        addValueToKhashBucket32(cnv_start_hash, tmp_start, i);
+        all_starts_ends[count] = tmp_start;
+        count++;
+
+        uint32_t tmp_end = cnv_array->cnvs[i].raw_bin_end > 0 ?
+                           cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
+        addValueToKhashBucket32(cnv_end_hash, tmp_end, i);
+        all_starts_ends[count] = tmp_end;
+        count++;
+        fprintf(stderr, "CNV\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1]);
+
+        // need to set all placeholders to 0 for the improperly paired reads
+        //
+        cnv_array->cnvs[i].imp_PR_start = 0;
+        cnv_array->cnvs[i].imp_PR_end   = 0;
+        cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 = 0;
+    }
+
+    // Here the capacity won't be equal to the count value as the latter one is filtered, 
+    // not all improperly paired reads will be added into the array
+    //
+    fprintf(stderr, "The capacity is %"PRId32" while the count is %"PRId32" in the checkImproperlyPairedReadsForEachCNV\n\n", capacity, count);
+
+    // now we need to resize the all_starts_ends array to the size of the 'count'
+    //
+    capacity = count;
+    all_starts_ends = realloc(all_starts_ends, capacity * sizeof(uint32_t));
+
+    qsort(all_starts_ends, capacity, sizeof(uint32_t), compare);
+
+    // for debugging purpose
+    //
+    //for (g=0; g<count;g++)
+    //    fprintf(stderr, "pos %"PRIu32"\n", all_starts_ends[g]);
+
+    // now do the intersect. 
+    // If they intersect, set the improperly paired reads support to true
+    //
+    int32_t cnv_index = -1;    // need to use signed value as sometimes, no value found
+    count = 0;
+    for (i=0; i<capacity; i++) {
+        if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
+                checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i])) {
+
+            // always decrease count if it is the end position
+            //
+            count--;
+
+            if (count < 0) {
+                fprintf(stderr, "Error: the count %"PRId16" should NOT be negative", count);
+                fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
+                exit(EXIT_FAILURE);
+            }
+
+            // when current position is an end and count == 1, there is an intersect 
+            // there might be multiple groups of improperly paired reads
+            // need to find the one with most number of TLEN >= 1000
+            //
+            if (count == 1) {
+                uint32_t cur_TLEN = getValueFromKhash32(imp_PR_end_hash, all_starts_ends[i]);
+                if (cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 < cur_TLEN) {
+                    cnv_array->cnvs[cnv_index].imp_PR_end = all_starts_ends[i];
+                    cnv_array->cnvs[cnv_index].imp_PR_start = 
+                        getValueFromKhash32(imp_PR_end_start_lookup, all_starts_ends[i]);;
+                    cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 = cur_TLEN;
+                }
+            }
+
+            // it is possible that some starts and ends are the same value
+            // we need to delete the end position as it goes first in both this loop and in the data
+            //
+            khiter_t iter;
+            if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
+                iter = kh_get(m32, cnv_end_hash, all_starts_ends[i]);
+                if (iter != kh_end(cnv_end_hash)) {
+                    kh_del(m32, cnv_end_hash, iter);
+                }
+            } else if (checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i])) {
+                iter = kh_get(m32, imp_PR_end_hash, all_starts_ends[i]);
+                if (iter != kh_end(imp_PR_end_hash)) {
+                    kh_del(m32, imp_PR_end_hash, iter);        // this deletes the key second
+                }
+            }
+        } else {
+            // it should be in the 'start' position, always increment count
+            //
+            count++;
+
+            // get current CNV start positioin
+            //
+            if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i])) {
+                cnv_index = getSignedValueFromKhash32(cnv_start_hash, all_starts_ends[i]);
+                if (cnv_index == -1) {
+                    fprintf(stderr, "Something went wrong with CNV start at %"PRIu32"\t", all_starts_ends[i]);
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+    }
+
+    // clean-ups
+    //
+    if (all_starts_ends != NULL) {
+        free(all_starts_ends);
+        all_starts_ends = NULL;
+    }
+
+    kh_destroy(m32, imp_PR_end_start_lookup);
+    kh_destroy(m32, imp_PR_start_hash);
+    kh_destroy(m32, imp_PR_end_hash);
+    kh_destroy(m32, cnv_start_hash);
+    kh_destroy(m32, cnv_end_hash);
+}
+
 void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
     char filename[200];
     FILE *fp;
@@ -824,7 +993,8 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
     fileOpenError(fp, filename);
 
     fprintf(fp, "chr\tstart\tend\tlength\tCNV-call\tAvg_Cov\tbkpt_L\t#bkpt_L\t#Insert_size_L>=1000\t");
-    fprintf(fp, "bkpt_R\t#bkpt_R\t#Insert_Size_R>=1000\tStart_Eq\tEnd_Eq\tLen_Eq\tLen_Eq_Based_used\tavg_cov_Eq\tBin_Type\t");
+    fprintf(fp, "bkpt_R\t#bkpt_R\t#Insert_Size_R>=1000\tImp_PR_start\tImp_PR_end\tImp_PR_TLEN>=1000\t");
+    fprintf(fp, "Start_Eq\tEnd_Eq\tLen_Eq\tLen_Eq_Based_used\tavg_cov_Eq\tBin_Type\t");
     fprintf(fp, "Start_Raw\tEnd_Raw\tLen_Raw\tavg_cov_Raw\tBin_Type\n");
 
     uint32_t j;
@@ -846,11 +1016,18 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
                 right_num_geTLEN = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_TLEN_ge_1000 : 0;
             }
 
-            if (type != 3 && left_idx >= 0 && right_idx < 0 && left_num_bpoint <=2 && left_num_geTLEN <=1)
-                continue;
+            if (type != 3) {
+                // filter CNVs based on the breakpoint info and improperly paired reads info
+                // based need at least 2 support for all categories
+                //
+                if (cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 <= 1) {
+                    if (left_idx >= 0 && right_idx < 0 && left_num_bpoint <=1 && left_num_geTLEN <=1)
+                        continue;
 
-            if (type != 3 && left_idx < 0 && right_idx >= 0 && right_num_bpoint <=2 && right_num_geTLEN <= 1)
-                continue;
+                    if (left_idx < 0 && right_idx >= 0 && right_num_bpoint <=1 && right_num_geTLEN <= 1)
+                        continue;
+                }
+            }
 
             /*if (cnv_array->cnvs[j].equal_bin_start == 18613500) {
                 printf("stop 7\n");
@@ -870,6 +1047,8 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
             fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", left_breakpoint, left_num_bpoint, left_num_geTLEN);
 
             fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", right_breakpoint, right_num_bpoint, right_num_geTLEN);
+
+            fprintf(fp, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t", cnv_array->cnvs[j].imp_PR_start, cnv_array->cnvs[j].imp_PR_end, cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000);
 
             fprintf(fp, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t", cnv_array->cnvs[j].equal_bin_start, \
                     cnv_array->cnvs[j].equal_bin_end, cnv_array->cnvs[j].equal_bin_end - cnv_array->cnvs[j].equal_bin_start,\

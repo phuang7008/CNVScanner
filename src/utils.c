@@ -297,6 +297,20 @@ uint32_t getValueFromKhash32(khash_t(m32) *hash32, uint32_t pos_key) {
 	return 0;
 }
 
+int32_t getSignedValueFromKhash32(khash_t(m32) *hash32, uint32_t pos_key) {
+    khiter_t k_iter;
+    if (hash32 != NULL) {
+        k_iter = kh_get(m32, hash32, pos_key);
+
+        if (k_iter == kh_end(hash32))
+            // this is needed as if the bucket is never used, the value will be whatever left there, and the value is undefined!
+            //
+            return -1;
+        return kh_value(hash32, k_iter);
+    }
+    return -1;
+}
+
 void addValueToKhashBucketStrStr(khash_t(khStrStr) *hash_in, char *key, char * val) {
     int ret;
     khiter_t k_iter = kh_put(khStrStr, hash_in, key, &ret);
