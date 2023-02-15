@@ -193,8 +193,8 @@ int main(int argc, char *argv[]) {
 
     // not properly paired/aligned reads
     //
-    Not_Properly_Paired_Reads_Array** improperly_paired_reads_array = calloc(chrom_tracking->number_of_chromosomes, sizeof (Not_Properly_Paired_Reads_Array*));
-    NotProperlyPairedReadsInit(improperly_paired_reads_array, chrom_tracking);
+    Not_Properly_Paired_Reads_Array** improperly_PR_array = calloc(chrom_tracking->number_of_chromosomes, sizeof (Not_Properly_Paired_Reads_Array*));
+    NotProperlyPairedReadsInit(improperly_PR_array, chrom_tracking);
 
     // get all unmapped read names
     //
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
     //
     Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
     SimpleStatsInit(wgs_simple_stats);
-    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, preads_x_bpts_array, improperly_paired_reads_array, unmapped_read_hash);
+    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, preads_x_bpts_array, improperly_PR_array, unmapped_read_hash);
 
     // The following is for debugging purpose
     //
@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
 
     // merge and expand the CNV calls using raw bin data
     //
-    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, preads_x_bpts_array, improperly_paired_reads_array,  chrom_tracking, the_stats, user_inputs);
+    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, preads_x_bpts_array, improperly_PR_array,  chrom_tracking, the_stats, user_inputs);
 
     // clean up
     //

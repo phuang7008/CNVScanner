@@ -823,30 +823,32 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     khash_t(m32) *imp_PR_start_hash  = kh_init(m32);
     khash_t(m32) *imp_PR_end_hash    = kh_init(m32);
     khash_t(m32) *imp_PR_end_start_lookup = kh_init(m32);
+    khash_t(m32) *imp_PR_start_end_lookup = kh_init(m32);
 
     // loop through the improperly paired reads and find all starts and ends
     //
     int32_t g;
     for (g=0; g<improperly_PR_array->num_of_groups; g++) {
-        uint32_t num_TLEN_1000 = improperly_PR_array->grouped_improperly_paired_reads[g].num_of_pairs_TLEN_ge_1000;
+        uint32_t num_TLEN_1000 = improperly_PR_array->grouped_improperly_PRs[g].num_of_pairs_TLEN_ge_1000;
 
-        if (num_TLEN_1000 >= 2 && (improperly_PR_array->grouped_improperly_paired_reads[g].group_mate_end - 
-                improperly_PR_array->grouped_improperly_paired_reads[g].group_start <= 100000)) {
+        if (num_TLEN_1000 >= 2 && (improperly_PR_array->grouped_improperly_PRs[g].group_mate_end - 
+                improperly_PR_array->grouped_improperly_PRs[g].group_start <= 100000)) {
             // TODO Once I add the condition using perfect matched paired reads, I will remove the 2nd condition checking
             // Store TLEN count info as value so that it is easy for lookup
             //
-            all_starts_ends[count] = improperly_PR_array->grouped_improperly_paired_reads[g].group_start;
+            all_starts_ends[count] = improperly_PR_array->grouped_improperly_PRs[g].group_start;
             addValueToKhashBucket32(imp_PR_start_hash, all_starts_ends[count], num_TLEN_1000);
             count++;
 
-            all_starts_ends[count] = improperly_PR_array->grouped_improperly_paired_reads[g].group_mate_end;
+            all_starts_ends[count] = improperly_PR_array->grouped_improperly_PRs[g].group_mate_end;
             addValueToKhashBucket32(imp_PR_end_hash, all_starts_ends[count], num_TLEN_1000);
             count++;
             fprintf(stderr, "IMP\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1], num_TLEN_1000);
 
             // add values to the lookup table
             //
-            addValueToKhashBucket32(imp_PR_end_start_lookup, improperly_PR_array->grouped_improperly_paired_reads[g].group_mate_end, improperly_PR_array->grouped_improperly_paired_reads[g].group_start);
+            addValueToKhashBucket32(imp_PR_end_start_lookup, improperly_PR_array->grouped_improperly_PRs[g].group_mate_end, improperly_PR_array->grouped_improperly_PRs[g].group_start);
+            addValueToKhashBucket32(imp_PR_start_end_lookup, improperly_PR_array->grouped_improperly_PRs[g].group_start, improperly_PR_array->grouped_improperly_PRs[g].group_mate_end);
         }
     }
 
@@ -899,9 +901,13 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     // now do the intersect. 
     // If they intersect, set the improperly paired reads support to true
     //
-    int32_t cnv_index = -1;    // need to use signed value as sometimes, no value found
+    int32_t cnv_index = -1;         // need to use signed value as sometimes, no value found
+    int32_t imp_PR_start = -1;      // singed value for testing
     count = 0;
     for (i=0; i<capacity; i++) {
+        if (all_starts_ends[i] == 92160217) {
+            printf("I am here\n");
+        }
         if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
                 checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i])) {
 
@@ -920,11 +926,11 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             // need to find the one with most number of TLEN >= 1000
             //
             if (count == 1) {
-                uint32_t cur_TLEN = getValueFromKhash32(imp_PR_end_hash, all_starts_ends[i]);
+                uint32_t cur_TLEN = getValueFromKhash32(imp_PR_start_hash, imp_PR_start);
                 if (cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 < cur_TLEN) {
-                    cnv_array->cnvs[cnv_index].imp_PR_end = all_starts_ends[i];
-                    cnv_array->cnvs[cnv_index].imp_PR_start = 
-                        getValueFromKhash32(imp_PR_end_start_lookup, all_starts_ends[i]);;
+                    cnv_array->cnvs[cnv_index].imp_PR_start = imp_PR_start;
+                    cnv_array->cnvs[cnv_index].imp_PR_end =
+                        getValueFromKhash32(imp_PR_start_end_lookup, imp_PR_start);;
                     cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 = cur_TLEN;
                 }
             }
@@ -954,10 +960,15 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i])) {
                 cnv_index = getSignedValueFromKhash32(cnv_start_hash, all_starts_ends[i]);
                 if (cnv_index == -1) {
-                    fprintf(stderr, "Something went wrong with CNV start at %"PRIu32"\t", all_starts_ends[i]);
+                    fprintf(stderr, "Something went wrong with CNV start at %"PRIu32"\n", all_starts_ends[i]);
                     exit(EXIT_FAILURE);
                 }
             }
+
+            // get improperly paired-read start position
+            //
+            if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i]))
+                imp_PR_start = all_starts_ends[i];
         }
     }
 
@@ -969,6 +980,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     }
 
     kh_destroy(m32, imp_PR_end_start_lookup);
+    kh_destroy(m32, imp_PR_start_end_lookup);
     kh_destroy(m32, imp_PR_start_hash);
     kh_destroy(m32, imp_PR_end_hash);
     kh_destroy(m32, cnv_start_hash);
@@ -1005,7 +1017,7 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
         uint32_t left_breakpoint=0, left_num_bpoint=0, left_num_geTLEN=0;
         uint32_t right_breakpoint=0, right_num_bpoint=0, right_num_geTLEN=0;
 
-        if (left_idx >= 0 || right_idx >= 0 || type == 3) {
+        if (left_idx >= 0 || right_idx >= 0 || type == 3 || cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 >= 2) {
             if (cnv_array->cnvs[j].cnv_breakpoints != NULL) {
                 left_breakpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint : 0;
                 left_num_bpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_breakpoints : 0;

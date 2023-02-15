@@ -338,7 +338,7 @@ typedef struct {
  *      chrom_id
  *      num_of_groups (simply size of the groups) all groups within a chromosome
  *      seen_paired_read_hash
- *      grouped_improperly_paired_reads (an array of type Grouped_Not_Properly_Paired_Reads)
+ *      grouped_improperly_PRs (an array of type Grouped_Not_Properly_Paired_Reads)
  *          For each grouped improperly paired reads:
  *              group_start
  *              group_end
@@ -370,7 +370,7 @@ typedef struct {
  */
 typedef struct {
     char * chrom_id;
-    Grouped_Not_Properly_Paired_Reads* grouped_improperly_paired_reads;
+    Grouped_Not_Properly_Paired_Reads* grouped_improperly_PRs;
     int32_t num_of_groups;                          // signed value, the size of groups, initialize to -1
     int32_t capacity;
 
