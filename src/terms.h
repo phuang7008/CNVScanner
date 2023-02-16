@@ -154,8 +154,8 @@ typedef struct {
 
 typedef struct {
     uint32_t breakpoint;            // anchor breakpoint
-    uint16_t num_of_breakpoints;     // the occurance of this specific breakpoint
-    uint16_t num_of_TLEN_ge_1000;    // number of paired reads span more than 1000 bp
+    uint16_t num_of_breakpoints;    // the occurance of this specific breakpoint
+    uint16_t num_of_TLEN_ge_1000;   // number of paired reads span more than 1000 bp
     uint8_t orientation;            // 0: not picked, 1: left breakpoint, 2: right breakpoint
 } CNV_Breakpints;
 
@@ -266,7 +266,7 @@ typedef struct {
 //                    
 //                    For breakpoint info:
 //                      my_group_size = 0
-//                      my_breakpoint_group[6]
+//                      my_breakpoint_group[50]
 //                      current_breakpoint_count = 0
 //                           including neighboring breakpoints (within 5 bp distance) -> group them together
 //                      num_of_soft_clipping
@@ -296,7 +296,7 @@ typedef struct {
     // breakpoint info
     //
     int my_group_size;
-    uint32_t my_breakpoint_group[6];            // array of unique breakpoints (within 5 bp distance) -> group them together
+    uint32_t my_breakpoint_group[50];           // array of unique breakpoints (within 5 bp distance) -> group them together
     uint16_t current_breakpoint_count;          // number of breakpoint at this specific position (include those grouped)
     uint16_t num_of_soft_clipping;
     uint16_t num_of_hard_clipping;
@@ -325,11 +325,6 @@ typedef struct {
  * Case 2: Paired reads mapped to different chromosome
  * Case 3: Paired reads mapped to the same chromosome, but with insertion size >= 1000
  */
-typedef struct {
-    uint32_t start;
-    uint32_t mate_start;
-} Improperly_Paired_Reads_TLEN_GE_1000;     // they are on the same chromosome
-
 
 /**
  * The schema: how the improperly paired read array works

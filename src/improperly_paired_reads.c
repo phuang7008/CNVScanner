@@ -147,7 +147,7 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
         // different set of TLEN from 1234 to 1234567890 in length. So need to elimiate singletons
         // Here we choose the end positions is because all the starts are closed by (~150bp)
         //
-        /*uint16_t size = improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000;
+        uint16_t size = improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000;
         if (size >= 2) {
             uint32_t * ends = calloc(size, sizeof(uint32_t));
             khiter_t iter;
@@ -164,6 +164,8 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
                     }
                 }
             }
+            if ((ends[0] >= 92162600 && ends[0] <= 92163694) || (ends[0] >= 166004032 && ends[0] < 166007032))
+                printf("jee\n");
 
             // sort the ends array
             //
@@ -173,21 +175,24 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
             // eliminate all singletons and update the num_of_pairs_TLEN_ge_1000 to the 
             // one with the group size of the highest number of members
             //
-            uint32_t i, group_mate_end;
+            uint32_t i, group_mate_end=0;
             uint16_t cur_group_size=1, max=0;
             for (i=1; i<j; i++) {
                 if (ends[i] - ends[i-1] < 300) {
                     // same group
                     //
                     cur_group_size++;
+                    group_mate_end = ends[i];
                 } else {
                     if (cur_group_size > max && cur_group_size >= 2) {
                         max = cur_group_size;
                         cur_group_size = 1;
-                        group_mate_end = ends[i-1];
                     }
                 }
             }
+
+            if (cur_group_size > max) 
+                max = cur_group_size;
 
             // update the num_of_pairs_TLEN_ge_1000 and reset the group_mate_end
             //
@@ -198,7 +203,7 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
                 free(ends);
                 ends = NULL;
             }
-        }*/
+        }
 
         improperly_PR_array->num_of_groups++;
         g_idx++;

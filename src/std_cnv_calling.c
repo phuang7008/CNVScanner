@@ -607,58 +607,189 @@ void addRawBinToCNV(Binned_Data_Wrapper *binned_data_wrapper, uint32_t raw_bin_i
 void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr) {
     // first, we need to get the sorted anchor breakpoints
     //
-    uint32_t capacity = PR_INIT_SIZE*50;    // the initial size is set to 10000
-    uint32_t *anchor_breakpoints = calloc(capacity, sizeof(uint32_t));
-    uint32_t counter=0;
+    int32_t capacity = PR_INIT_SIZE*500;       // the initial size is set to 100,000
+    uint32_t *all_starts_ends = calloc(capacity, sizeof(uint32_t));
+
+    khash_t(m32) *breakpoint_start_hash = kh_init(m32);
+    khash_t(m32) *breakpoint_end_hash   = kh_init(m32);
+    //khash_t(m32) *breakpoint_start_end_lookup = kh_init(m32);
+    //khash_t(m32) *breakpoint_end_start_lookup = kh_init(m32);
+
+    int32_t counter=0;
 
     khint_t k;
     for (k=kh_begin(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash); \
             k!=kh_end(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash); ++k) {   // at the hash array per chr
         if (kh_exist(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)) {
-            anchor_breakpoints[counter] = kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k);
+            // here we store number of breakpoints associated with it
+            //
+            uint32_t breakpoint_pos = kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k);
+
+            all_starts_ends[counter] = breakpoint_pos - DISTANCE_CUTOFF;
+            addValueToKhashBucket32(breakpoint_start_hash, all_starts_ends[counter], breakpoint_pos);
             counter++;
+
+            all_starts_ends[counter] = breakpoint_pos + DISTANCE_CUTOFF;
+            addValueToKhashBucket32(breakpoint_end_hash, all_starts_ends[counter], breakpoint_pos);
+            counter++;
+
+            //fprintf(stderr, "Breakpoint\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[counter-2], all_starts_ends[counter-1], breakpoint_pos);
 
             // dynamically increase the capacity of anchor breakpoint array
             //
             if (counter + 5 >= capacity) {
-                capacity += PR_INIT_SIZE*20;
-                anchor_breakpoints = realloc(anchor_breakpoints, capacity * sizeof(uint32_t));
-                failureExit(anchor_breakpoints, "anchor_breakpoints memory realloc failed\n");
+                capacity += PR_INIT_SIZE*25;
+                all_starts_ends = realloc(all_starts_ends, capacity * sizeof(uint32_t));
+                failureExit(all_starts_ends, "all_starts_ends in intersecting CNV w/ breakpoint memory realloc failed\n");
             }
         }
     }
 
-    qsort(anchor_breakpoints, counter, sizeof(uint32_t), compare);
+    fprintf(stderr, "Pass 1 The capacity is %"PRId32" and counter is %"PRId32"\n", capacity, counter);
 
-    // then walk through the CNV array
+    // reset the size of anchor_breakpoints array to the size of counter
+    // plus the cnv_array->size
     //
-    uint32_t i, j, breakpoint_start=0;
+    capacity = counter + cnv_array->size*2;
+    all_starts_ends = realloc(all_starts_ends, capacity * sizeof(uint32_t));
+    failureExit(all_starts_ends, "all_starts_ends in intersecting CNV/breakpoint memory realloc failed\n");
 
+    // walk through the CNV array and save all CNV coordinates
+    //
+    khash_t(m32) *cnv_start_hash = kh_init(m32);
+    khash_t(m32) *cnv_end_hash   = kh_init(m32);
+
+    uint32_t i;
     for (i=0; i<cnv_array->size;i++) {
-        if (i == 1100) {
-            printf("stop\n");
-        }
-        uint32_t tmp_start = (cnv_array->cnvs[i].raw_bin_start>0 && \
-                                        cnv_array->cnvs[i].raw_bin_start < cnv_array->cnvs[i].equal_bin_start) ? \
+        uint32_t tmp_start = cnv_array->cnvs[i].raw_bin_start>0 ? \
                                         cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
-        uint32_t tmp_end = (cnv_array->cnvs[i].raw_bin_end > cnv_array->cnvs[i].equal_bin_end) ? \
+        addValueToKhashBucket32(cnv_start_hash, tmp_start, i);      // store index here
+        all_starts_ends[counter] = tmp_start;
+        counter++;
+        
+        uint32_t tmp_end = cnv_array->cnvs[i].raw_bin_end > 0 ? \
                                         cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
+        addValueToKhashBucket32(cnv_end_hash, tmp_end, i);
+        all_starts_ends[counter] = tmp_end;
+        counter++;
 
-        for (j=breakpoint_start; j<counter; j++) {
-            if (anchor_breakpoints[j] + DISTANCE_CUTOFF < tmp_start) {
-                continue;
-            } else if (tmp_end + DISTANCE_CUTOFF < anchor_breakpoints[j]) {
-                break;
-            } else {
-                // we consider they intersect.
-                // Now we need to find out the breakpoint on the current CNV
-                //
-                addBreakpointInfo(cnv_array, i, preads_x_bpt_arr, anchor_breakpoints[j]);
+        //fprintf(stderr, "CNV\t%"PRId32"\t%"PRId32"\n", all_starts_ends[counter-2], all_starts_ends[counter-1]);
+    }
+
+    qsort(all_starts_ends, capacity, sizeof(uint32_t), compare);
+
+    fprintf(stderr, "Pass 2 The capacity is %"PRId32" and counter is %"PRId32"\n", capacity, counter);
+
+    // do intersect
+    //
+    counter = 0;
+    int32_t cnv_index = -1;             // need to use signed value as sometimes, no value found
+    int32_t breakpoint_start = -1;      // singed value for testing
+    for (i=0; i<(uint32_t)capacity; i++) {
+        if (all_starts_ends[i] == 87646203 || all_starts_ends[i] == 87645834)
+            printf("here it is\n");
+
+        if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
+                checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i])) {
+
+            // always decrease count if it is the end position
+            //
+            counter--;
+
+            if (counter < 0) {
+                fprintf(stderr, "Error: the count %"PRId16" should NOT be negative", counter);
+                fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
+                exit(EXIT_FAILURE);
             }
+
+            if (cnv_index == -1)
+                continue;
+
+            // when current position is an end and counter >= 1, there is an intersect
+            // There might be multiple breakpoints associated with this CNV 
+            // and the breakpoint intervals are not Merged. Will store all of them
+            //
+            if (counter >= 1) {
+                // because the max length of breakpoint interval used for intersection is only 600
+                // so we don't have to worry that breakpoiint interval completely engulf a CNV
+                //
+                uint32_t cur_anchor_breakpoint = 0;
+                if (checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i])) {
+                    // find the anchor breakpoint using the breakpoint end hash with the current end
+                    //              ================================= CNV
+                    //   ----------x---------- breakpoint interval 1
+                    //        -----------x---------- breakpoint interval 2
+                    //   bs1  bs2   cs3      be1   be2              ce3
+                    //    1    2     3        2     1                0
+                    //
+                    // Using the current end position to get the anchor breakpoint
+                    //
+                    cur_anchor_breakpoint = getValueFromKhash32(breakpoint_end_hash, all_starts_ends[i]);
+                } else {
+                    // find the anchor breakpoint using current breakpoint_start
+                    // ================================== CNV
+                    //      ---------x--------- breakpoint interval 1
+                    //                   -----------x--------- breakpoint interval 2
+                    // cs1  bs2          bs3  be1       ce1  be2
+                    //  1    2            3    2         1    0
+                    //                        ==> use breakpoint end potition to get the anchor breakpoint
+                    //                                  ==> use the stored Breakpoint_start to get the anchor breakpoint
+                    //
+                    cur_anchor_breakpoint = getValueFromKhash32(breakpoint_start_hash, breakpoint_start);
+                }
+                addBreakpointInfo(cnv_array, cnv_index, preads_x_bpt_arr, cur_anchor_breakpoint);
+            }
+
+            // as some start and end positions might be the same, it is quite confusion
+            // so we need to delete the end ones once we have processed it
+            //
+            khiter_t iter;
+            if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
+                iter = kh_get(m32, cnv_end_hash, all_starts_ends[i]);
+                if (iter != kh_end(cnv_end_hash)) {
+                    kh_del(m32, cnv_end_hash, iter);
+                }
+            } else if (checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i])) {
+                iter = kh_get(m32, breakpoint_end_hash, all_starts_ends[i]);
+                if (iter != kh_end(breakpoint_end_hash)) {
+                    kh_del(m32, breakpoint_end_hash, iter);        // this deletes the key
+                }
+            }
+        } else {
+            // start position
+            //
+            counter++;
+
+            // get current CNV start position in cnv_index
+            //
+            if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i])) {
+                cnv_index = getSignedValueFromKhash32(cnv_start_hash, all_starts_ends[i]);
+                if (cnv_index == -1) {
+                    fprintf(stderr, "Something went wrong with CNV/Breakpoint start at %"PRIu32"\n", all_starts_ends[i]);
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            // get current breakpoint start position
+            //
+            if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i]))
+                breakpoint_start = all_starts_ends[i];
         }
     }
 
-    if (anchor_breakpoints) { free(anchor_breakpoints); }
+    // clean-up
+    //
+    if (all_starts_ends != NULL) {
+        free(all_starts_ends);
+        all_starts_ends = NULL;
+    }
+
+    //kh_destroy(m32, breakpoint_end_start_lookup);
+    //kh_destroy(m32, breakpoint_start_end_lookup);
+    kh_destroy(m32, breakpoint_start_hash);
+    kh_destroy(m32, breakpoint_end_hash);
+    kh_destroy(m32, cnv_start_hash);
+    kh_destroy(m32, cnv_end_hash);
 }
 
 // The breakpoints will be stored in an array
@@ -843,7 +974,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             all_starts_ends[count] = improperly_PR_array->grouped_improperly_PRs[g].group_mate_end;
             addValueToKhashBucket32(imp_PR_end_hash, all_starts_ends[count], num_TLEN_1000);
             count++;
-            fprintf(stderr, "IMP\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1], num_TLEN_1000);
+            //fprintf(stderr, "IMP\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1], num_TLEN_1000);
 
             // add values to the lookup table
             //
@@ -872,7 +1003,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
         addValueToKhashBucket32(cnv_end_hash, tmp_end, i);
         all_starts_ends[count] = tmp_end;
         count++;
-        fprintf(stderr, "CNV\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1]);
+        //fprintf(stderr, "CNV\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1]);
 
         // need to set all placeholders to 0 for the improperly paired reads
         //
@@ -905,7 +1036,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     int32_t imp_PR_start = -1;      // singed value for testing
     count = 0;
     for (i=0; i<capacity; i++) {
-        if (all_starts_ends[i] == 92160217) {
+        if (all_starts_ends[i] == 172988215) {
             printf("I am here\n");
         }
         if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
@@ -915,18 +1046,30 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             //
             count--;
 
+            if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
+                fprintf(stderr, "CNV_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
+            } else {
+                fprintf(stderr, "IMP_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
+            }
+
             if (count < 0) {
                 fprintf(stderr, "Error: the count %"PRId16" should NOT be negative", count);
                 fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
                 exit(EXIT_FAILURE);
             }
 
-            // when current position is an end and count == 1, there is an intersect 
+            // when current position is an end and count >= 1, there is an intersect 
             // there might be multiple groups of improperly paired reads
             // need to find the one with most number of TLEN >= 1000
             //
-            if (count == 1) {
-                uint32_t cur_TLEN = getValueFromKhash32(imp_PR_start_hash, imp_PR_start);
+            if (count >= 1) {
+                uint32_t cur_TLEN = 0;
+                if (checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i])) {
+                    cur_TLEN = getValueFromKhash32(imp_PR_end_hash, all_starts_ends[i]);
+                } else {
+                    cur_TLEN = getValueFromKhash32(imp_PR_start_hash, imp_PR_start);
+                }
+
                 if (cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 < cur_TLEN) {
                     cnv_array->cnvs[cnv_index].imp_PR_start = imp_PR_start;
                     cnv_array->cnvs[cnv_index].imp_PR_end =
@@ -963,12 +1106,15 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
                     fprintf(stderr, "Something went wrong with CNV start at %"PRIu32"\n", all_starts_ends[i]);
                     exit(EXIT_FAILURE);
                 }
+                fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
             }
 
             // get improperly paired-read start position
             //
-            if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i]))
+            if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i])) {
                 imp_PR_start = all_starts_ends[i];
+                fprintf(stderr, "IMP_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
+            }
         }
     }
 
