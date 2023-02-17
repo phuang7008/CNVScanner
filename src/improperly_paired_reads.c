@@ -164,8 +164,6 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
                     }
                 }
             }
-            if ((ends[0] >= 92162600 && ends[0] <= 92163694) || (ends[0] >= 166004032 && ends[0] < 166007032))
-                printf("jee\n");
 
             // sort the ends array
             //
@@ -243,7 +241,7 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
                 improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000++;
                 improperly_PR_array->grouped_improperly_PRs[g_idx].group_mate_end = improperly_PR_array->grouped_improperly_PRs[g_idx].group_start + rec->core.isize;
 
-                addValueToKhashBucket32(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, rec->core.mpos, 1);
+                setValueToKhashBucket32(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, rec->core.mpos, 1);
                 // we also need to track the TLEN array here
                 // TODO
             }
@@ -262,6 +260,27 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
         improperly_PR_array->capacity += 50;
         improperly_PR_array->grouped_improperly_PRs = realloc(improperly_PR_array->grouped_improperly_PRs, improperly_PR_array->capacity * sizeof(Grouped_Not_Properly_Paired_Reads));
         failureExit(improperly_PR_array->grouped_improperly_PRs, "improperly_PR_array->grouped_improperly_PRs");
+    }
+}
+
+// There are many special cases that might interfere with the downstream analysis
+// 1). Two intervals have the same ends, but starts are different more than 500bps
+//          eithr merge them or use different ends by 5bps (choose the latter one)
+// 2). Two intervals overlaps for more than 50% of each other (not handled)
+//
+void organizeImproperlyPairedReadArray(Not_Properly_Paired_Reads_Array* improperly_PR_array) {
+    
+    khash_t(m32) *seen_ends_hash  = kh_init(m32);
+
+    int32_t i;
+    for (i=0; i<improperly_PR_array->num_of_groups; i++) {
+        uint32_t end = improperly_PR_array->grouped_improperly_PRs[i].group_mate_end;
+        khiter_t iter = kh_get(m32, seen_ends_hash, end);
+        if (iter == kh_end(seen_ends_hash)) {
+            setValueToKhashBucket32(seen_ends_hash, end, 1);
+        } else {
+            improperly_PR_array->grouped_improperly_PRs[i].group_mate_end += 5;
+        }
     }
 }
 

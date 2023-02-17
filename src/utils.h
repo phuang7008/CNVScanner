@@ -89,6 +89,8 @@ void addValueToKhashBucket16(khash_t(m16) *hash_in, uint16_t pos_key, uint16_t v
 void addValueToKhashBucket32(khash_t(m32) *hash_in, uint32_t pos_key, uint32_t val);
 void addValueToKhashBucketStrStr(khash_t(khStrStr) *hash_in, char *key, char * val);
 
+void setValueToKhashBucket32(khash_t(m32) *hash_in, uint32_t pos_key, uint32_t val);
+
 /*
  * Get value from the hash table by the key
  * @param hash_in

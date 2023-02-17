@@ -281,6 +281,25 @@ void addValueToKhashBucket32(khash_t(m32) *hash_in, uint32_t pos_key, uint32_t v
     return;
 }
 
+void setValueToKhashBucket32(khash_t(m32) *hash_in, uint32_t pos_key, uint32_t val) {
+    int ret;
+    khiter_t k_iter = kh_put(m32, hash_in, pos_key, &ret);
+
+    // according to samtools, the kh_put returned values are:
+    // 0 if the key is present in the hash table; 
+    // 1 if the bucket is empty (never used);
+    // 2 if the element in the bucket has been deleted [int*]
+    //
+    if (ret == 1) {
+        kh_value(hash_in, k_iter) = 0;
+    } else if (ret == -1) {
+        fprintf(stderr, "ERROR: can't find the key for stats_info->target_cov_histogram at pos %d\n", pos_key);
+        exit(EXIT_FAILURE);
+    }
+
+    kh_value(hash_in, k_iter) = val;
+}
+
 uint32_t getValueFromKhash32(khash_t(m32) *hash32, uint32_t pos_key) {
     khiter_t k_iter;
 	if (hash32 != NULL) {

@@ -626,11 +626,11 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
             uint32_t breakpoint_pos = kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k);
 
             all_starts_ends[counter] = breakpoint_pos - DISTANCE_CUTOFF;
-            addValueToKhashBucket32(breakpoint_start_hash, all_starts_ends[counter], breakpoint_pos);
+            setValueToKhashBucket32(breakpoint_start_hash, all_starts_ends[counter], breakpoint_pos);
             counter++;
 
             all_starts_ends[counter] = breakpoint_pos + DISTANCE_CUTOFF;
-            addValueToKhashBucket32(breakpoint_end_hash, all_starts_ends[counter], breakpoint_pos);
+            setValueToKhashBucket32(breakpoint_end_hash, all_starts_ends[counter], breakpoint_pos);
             counter++;
 
             //fprintf(stderr, "Breakpoint\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[counter-2], all_starts_ends[counter-1], breakpoint_pos);
@@ -663,13 +663,13 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
     for (i=0; i<cnv_array->size;i++) {
         uint32_t tmp_start = cnv_array->cnvs[i].raw_bin_start>0 ? \
                                         cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
-        addValueToKhashBucket32(cnv_start_hash, tmp_start, i);      // store index here
+        setValueToKhashBucket32(cnv_start_hash, tmp_start, i);      // store index here
         all_starts_ends[counter] = tmp_start;
         counter++;
         
         uint32_t tmp_end = cnv_array->cnvs[i].raw_bin_end > 0 ? \
                                         cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
-        addValueToKhashBucket32(cnv_end_hash, tmp_end, i);
+        setValueToKhashBucket32(cnv_end_hash, tmp_end, i);
         all_starts_ends[counter] = tmp_end;
         counter++;
 
@@ -945,6 +945,9 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 }
 
 void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array) {
+
+    organizeImproperlyPairedReadArray(improperly_PR_array);
+
     // setup an array with all starts and ends from improperly paired reads and all CNVs
     //
     uint32_t capacity = (improperly_PR_array->num_of_groups + cnv_array->size) * 2;
@@ -968,18 +971,18 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             // Store TLEN count info as value so that it is easy for lookup
             //
             all_starts_ends[count] = improperly_PR_array->grouped_improperly_PRs[g].group_start;
-            addValueToKhashBucket32(imp_PR_start_hash, all_starts_ends[count], num_TLEN_1000);
+            setValueToKhashBucket32(imp_PR_start_hash, all_starts_ends[count], num_TLEN_1000);
             count++;
 
             all_starts_ends[count] = improperly_PR_array->grouped_improperly_PRs[g].group_mate_end;
-            addValueToKhashBucket32(imp_PR_end_hash, all_starts_ends[count], num_TLEN_1000);
+            setValueToKhashBucket32(imp_PR_end_hash, all_starts_ends[count], num_TLEN_1000);
             count++;
             //fprintf(stderr, "IMP\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1], num_TLEN_1000);
 
             // add values to the lookup table
             //
-            addValueToKhashBucket32(imp_PR_end_start_lookup, improperly_PR_array->grouped_improperly_PRs[g].group_mate_end, improperly_PR_array->grouped_improperly_PRs[g].group_start);
-            addValueToKhashBucket32(imp_PR_start_end_lookup, improperly_PR_array->grouped_improperly_PRs[g].group_start, improperly_PR_array->grouped_improperly_PRs[g].group_mate_end);
+            setValueToKhashBucket32(imp_PR_end_start_lookup, improperly_PR_array->grouped_improperly_PRs[g].group_mate_end, improperly_PR_array->grouped_improperly_PRs[g].group_start);
+            setValueToKhashBucket32(imp_PR_start_end_lookup, improperly_PR_array->grouped_improperly_PRs[g].group_start, improperly_PR_array->grouped_improperly_PRs[g].group_mate_end);
         }
     }
 
@@ -987,6 +990,8 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     //
     khash_t(m32) *cnv_start_hash  = kh_init(m32);
     khash_t(m32) *cnv_end_hash    = kh_init(m32);
+    khash_t(m32) *cnv_start_end_lookup = kh_init(m32);
+    khash_t(m32) *cnv_end_start_lookup = kh_init(m32);
 
     uint32_t i;
     for (i=0; i<cnv_array->size;i++) {
@@ -994,16 +999,18 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
         //
         uint32_t tmp_start = cnv_array->cnvs[i].raw_bin_start>0 ?
                              cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
-        addValueToKhashBucket32(cnv_start_hash, tmp_start, i);
+        setValueToKhashBucket32(cnv_start_hash, tmp_start, i);
         all_starts_ends[count] = tmp_start;
         count++;
 
         uint32_t tmp_end = cnv_array->cnvs[i].raw_bin_end > 0 ?
                            cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
-        addValueToKhashBucket32(cnv_end_hash, tmp_end, i);
+        setValueToKhashBucket32(cnv_end_hash, tmp_end, i);
         all_starts_ends[count] = tmp_end;
         count++;
         //fprintf(stderr, "CNV\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[count-2], all_starts_ends[count-1]);
+        setValueToKhashBucket32(cnv_start_end_lookup, tmp_start, tmp_end);
+        setValueToKhashBucket32(cnv_end_start_lookup, tmp_end, tmp_start);
 
         // need to set all placeholders to 0 for the improperly paired reads
         //
@@ -1032,11 +1039,15 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     // now do the intersect. 
     // If they intersect, set the improperly paired reads support to true
     //
-    int32_t cnv_index = -1;         // need to use signed value as sometimes, no value found
-    int32_t imp_PR_start = -1;      // singed value for testing
+    khash_t(m32) *live_cnv_start_hash  = kh_init(m32);
+    //khash_t(m32) *live_cnv_end_hash  = kh_init(m32);
+    khash_t(m32) *live_imp_start_hash  = kh_init(m32);
+    //khash_t(m32) *live_imp_end_hash  = kh_init(m32);
+
+    khiter_t iter;
     count = 0;
     for (i=0; i<capacity; i++) {
-        if (all_starts_ends[i] == 172988215) {
+        if (all_starts_ends[i] == 92160217) {
             printf("I am here\n");
         }
         if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
@@ -1060,28 +1071,99 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
 
             // when current position is an end and count >= 1, there is an intersect 
             // there might be multiple groups of improperly paired reads
-            // need to find the one with most number of TLEN >= 1000
+            // need to combine all of them together
             //
+            uint32_t imp_start=0, cnv_start=0, cur_TLEN = 0;
+            int32_t cnv_index = -1;
+
             if (count >= 1) {
-                uint32_t cur_TLEN = 0;
+
                 if (checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i])) {
+                    // an improperly paired read end here
+                    // loop through all the current live_cnv_start_hash and combine them
+                    //
                     cur_TLEN = getValueFromKhash32(imp_PR_end_hash, all_starts_ends[i]);
+                    imp_start = getValueFromKhash32(imp_PR_end_start_lookup, all_starts_ends[i]);
+
+                    for (iter=kh_begin(live_cnv_start_hash); iter!=kh_end(live_cnv_start_hash); iter++) {
+                        if (kh_exist(live_cnv_start_hash, iter)) {
+                            cnv_index = getValueFromKhash32(live_cnv_start_hash, kh_key(live_cnv_start_hash, iter));
+                            cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 += cur_TLEN;
+
+                            if (cnv_array->cnvs[cnv_index].imp_PR_start == 0 ||
+                                    cnv_array->cnvs[cnv_index].imp_PR_start > imp_start)
+                                cnv_array->cnvs[cnv_index].imp_PR_start = imp_start;
+
+                            if (cnv_array->cnvs[cnv_index].imp_PR_end == 0 ||
+                                    cnv_array->cnvs[cnv_index].imp_PR_end > all_starts_ends[i])
+                                cnv_array->cnvs[cnv_index].imp_PR_end = all_starts_ends[i];
+                        }
+                    }
+
+                    // now delete the corresponding imp_start from live_imp_start_hash
+                    //
+                    iter = kh_get(m32, live_imp_start_hash, imp_start);
+                    kh_del(m32, live_imp_start_hash, iter);
                 } else {
-                    cur_TLEN = getValueFromKhash32(imp_PR_start_hash, imp_PR_start);
+                    // a CNV end here
+                    // first, get the cnv_start from the cnv_end_start_lookup using all_starts_ends[i] as cnv_end
+                    // next, get cnv_index from live_cnv_start_hash using the cnv_start as key
+                    //
+                    cnv_start = getValueFromKhash32(cnv_end_start_lookup, all_starts_ends[i]);
+                    cnv_index = getValueFromKhash32(live_cnv_start_hash, cnv_start);
+
+                    // loop through all the current live_imp_start_hash and add all counts together
+                    //
+                    for (iter=kh_begin(live_imp_start_hash); iter!=kh_end(live_imp_start_hash); iter++) {
+                        if (kh_exist(live_imp_start_hash, iter)) {
+                            imp_start = kh_key(live_imp_start_hash, iter);
+                            cur_TLEN = getValueFromKhash32(imp_PR_start_hash, imp_start);
+                            cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 += cur_TLEN;
+
+                            // elongate the imp_paired_reads on both sides
+                            //
+                            if (cnv_array->cnvs[cnv_index].imp_PR_start == 0 || 
+                                    cnv_array->cnvs[cnv_index].imp_PR_start > imp_start)
+                                cnv_array->cnvs[cnv_index].imp_PR_start = imp_start;
+                            if (cnv_array->cnvs[cnv_index].imp_PR_end < getValueFromKhash32(imp_PR_start_end_lookup, imp_start))
+                                cnv_array->cnvs[cnv_index].imp_PR_end = getValueFromKhash32(imp_PR_start_end_lookup, imp_start);
+                        }
+                    }
+
+                    // now delete the current CNV start in live_cnv_start_hash
+                    //
+                    iter = kh_get(m32, live_cnv_start_hash, cnv_start);
+                    kh_del(m32, live_cnv_start_hash, iter);
+                }
+            } else {
+                // clean all the values in live_cnv_start_hash and the live_imp_start_hash
+                //
+                for (iter=kh_begin(live_cnv_start_hash); iter!=kh_end(live_cnv_start_hash); ++iter) {
+                    if (kh_exist(live_cnv_start_hash, iter)) {
+                        kh_del(m32, live_cnv_start_hash, iter);
+                    }
                 }
 
-                if (cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 < cur_TLEN) {
-                    cnv_array->cnvs[cnv_index].imp_PR_start = imp_PR_start;
-                    cnv_array->cnvs[cnv_index].imp_PR_end =
-                        getValueFromKhash32(imp_PR_start_end_lookup, imp_PR_start);;
-                    cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 = cur_TLEN;
+                for (iter=kh_begin(live_imp_start_hash); iter!=kh_end(live_imp_start_hash); ++iter) {
+                    if (kh_exist(live_imp_start_hash, iter)) {
+                        kh_del(m32, live_imp_start_hash, iter);
+                    }   
                 }
+                        
+                /*if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
+                    cnv_start = getValueFromKhash32(cnv_end_start_lookup, all_starts_ends[i]);
+                    if (getSignedValueFromKhash32(live_cnv_start_hash, cnv_start) >= 0)
+                        kh_del(m32, live_cnv_start_hash, iter);
+                } else if (checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i])) {
+                    imp_start = getValueFromKhash32(imp_PR_end_start_lookup, all_starts_ends[i]);
+                    if (getSignedValueFromKhash32(live_imp_start_hash, imp_start) >= 0)
+                        kh_del(m32, live_imp_start_hash, iter);
+                }*/
             }
 
             // it is possible that some starts and ends are the same value
             // we need to delete the end position as it goes first in both this loop and in the data
             //
-            khiter_t iter;
             if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
                 iter = kh_get(m32, cnv_end_hash, all_starts_ends[i]);
                 if (iter != kh_end(cnv_end_hash)) {
@@ -1101,18 +1183,19 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             // get current CNV start positioin
             //
             if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i])) {
-                cnv_index = getSignedValueFromKhash32(cnv_start_hash, all_starts_ends[i]);
+                int32_t cnv_index = getSignedValueFromKhash32(cnv_start_hash, all_starts_ends[i]);
                 if (cnv_index == -1) {
                     fprintf(stderr, "Something went wrong with CNV start at %"PRIu32"\n", all_starts_ends[i]);
                     exit(EXIT_FAILURE);
                 }
                 fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
+                setValueToKhashBucket32(live_cnv_start_hash, all_starts_ends[i], cnv_index);
             }
 
             // get improperly paired-read start position
             //
             if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i])) {
-                imp_PR_start = all_starts_ends[i];
+                setValueToKhashBucket32(live_imp_start_hash, all_starts_ends[i], 1);
                 fprintf(stderr, "IMP_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
             }
         }
@@ -1129,8 +1212,12 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     kh_destroy(m32, imp_PR_start_end_lookup);
     kh_destroy(m32, imp_PR_start_hash);
     kh_destroy(m32, imp_PR_end_hash);
+    kh_destroy(m32, cnv_start_end_lookup);
+    kh_destroy(m32, cnv_end_start_lookup);
     kh_destroy(m32, cnv_start_hash);
     kh_destroy(m32, cnv_end_hash);
+    kh_destroy(m32, live_cnv_start_hash);
+    kh_destroy(m32, live_imp_start_hash);
 }
 
 void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {

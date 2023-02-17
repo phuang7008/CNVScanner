@@ -36,6 +36,8 @@ uint32_t fetchImproperPRArrayChrIndex(Not_Properly_Paired_Reads_Array** improper
 
 void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_paired_reads_array, khash_t(khStrInt)* unmapped_read_hash, bam1_t *rec);
 
+void organizeImproperlyPairedReadArray(Not_Properly_Paired_Reads_Array* improperly_PR_array);
+
 int32_t getMateMatchLengthFromMCTag(char *mate_cigar);
 
 void outputGroupedImproperlyPairedReads(Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, Chromosome_Tracking *chrom_tracking);
