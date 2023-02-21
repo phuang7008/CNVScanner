@@ -279,7 +279,10 @@ void organizeImproperlyPairedReadArray(Not_Properly_Paired_Reads_Array* improper
         if (iter == kh_end(seen_ends_hash)) {
             setValueToKhashBucket32(seen_ends_hash, end, 1);
         } else {
-            improperly_PR_array->grouped_improperly_PRs[i].group_mate_end += 5;
+            // added to resolve the issues that might be 3 or 4 or more endings with the same value
+            //
+            improperly_PR_array->grouped_improperly_PRs[i].group_mate_end += 5 * kh_value(seen_ends_hash, iter);
+            addValueToKhashBucket32(seen_ends_hash, end, 1);    // increment 1
         }
     }
 }
