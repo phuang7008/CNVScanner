@@ -126,7 +126,10 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
             length += cln;
     }
 
-    if (length < rec->core.l_qseq - 5)
+    // Kim suggested to use 140 as cut off
+    //
+    //if (length < rec->core.l_qseq - 5)
+    if (length < rec->core.l_qseq - 10)
         return;
 
     // check its mate cigar
@@ -134,7 +137,10 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
     uint8_t *m_cigar = bam_aux_get(rec,"MC");
     char *mc_tag = bam_aux2Z(m_cigar);
 
-    if (getMateMatchLengthFromMCTag(mc_tag) < rec->core.l_qseq - 5)
+    // Kim suggested to use 140 as cutoff
+    //
+    //if (getMateMatchLengthFromMCTag(mc_tag) < rec->core.l_qseq - 5)
+    if (getMateMatchLengthFromMCTag(mc_tag) < rec->core.l_qseq - 10)
         return;
 
     bool new_group=false;

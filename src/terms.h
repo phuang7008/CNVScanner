@@ -167,6 +167,7 @@ typedef struct {
     uint32_t length;    // note, the length is not necessarily = end - start, as some bases like Ns regions are removed
     double  ave_coverage;
     char cnv_type;      // L: for deletion, while P for Dup
+    bool combined;      // a combined CNV between neighboring CNVs separated by one Equal-bin
 
     // store merged bins 
     //
