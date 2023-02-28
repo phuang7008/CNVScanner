@@ -467,9 +467,9 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
     uint32_t i, j, raw_bin_start=0;
 
     for (i=0; i<cnv_array->size;i++) {
-        /*if (cnv_array->cnvs[i].equal_bin_start == 117125000) {
+        if (cnv_array->cnvs[i].equal_bin_start == 188653000) {
             printf("stop3\n");
-        }*/
+        }
         for (j=raw_bin_start; j<binned_data_wrapper->size; j++) {
             // Note the code will handle the extension of extra raw-bins later on
             //
@@ -515,9 +515,13 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                                 cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
                             (binned_data_wrapper->data[j].ave_cov_map_gc_normalized < dup_cutoff &&
                                 cnv_array->cnvs[i].ave_coverage >= dup_cutoff)) {
-                            cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].end;
-                            addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
-                            j++;
+                            // need to check to avoid cnv start > cnv end
+                            //
+                            if (binned_data_wrapper->data[j].end < cnv_array->cnvs[i].equal_bin_end) {
+                                cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].end;
+                                addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
+                                j++;
+                            }
                         }
                     }
             
@@ -568,9 +572,13 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                             // ================== new CNV-bin-end
                             // The same is true for INS
                             //
-                            cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].start - 1;
-                            addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
-                            j--;
+                            // also need to check so that we don't have cnv_start > cnv_end
+                            //
+                            if (binned_data_wrapper->data[j].start -1 > cnv_array->cnvs[i].equal_bin_start) {
+                                cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].start - 1;
+                                addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
+                                j--;
+                            }
                         }
                     }
 
@@ -711,8 +719,8 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
     counter = 0;
     int32_t cnv_index = -1;             // need to use signed value as sometimes, no value found
     for (i=0; i<(uint32_t)capacity; i++) {
-        //if (all_starts_ends[i] == 6651566 || all_starts_ends[i] == 6652610)
-        //    printf("here it is\n");
+        if (all_starts_ends[i] == 188566994 || all_starts_ends[i] == 6652610)
+            printf("here it is\n");
 
         if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
                 checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i])) {
@@ -722,16 +730,16 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
             counter--;
 
             if (counter < 0) {
-                fprintf(stderr, "Error: the count %"PRId16" should NOT be negative", counter);
+                fprintf(stderr, "Error: the counter %"PRId16" should NOT be negative in breakpoint/cnv intersection\n", counter);
                 fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
                 exit(EXIT_FAILURE);
             }
 
-            /*if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
+            if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
                 fprintf(stderr, "CNV_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             } else {
                 fprintf(stderr, "Breakpoint_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
-            }*/
+            }
 
             //if (cnv_index == -1)
             //    continue;
@@ -842,14 +850,14 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
                     exit(EXIT_FAILURE);
                 }
                 setValueToKhashBucket32(live_cnv_start_hash, all_starts_ends[i], cnv_index);
-                //fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             }
 
             // get current breakpoint start position
             //
             if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i])) {
                 setValueToKhashBucket32(live_bpt_start_hash, all_starts_ends[i], i);
-                //fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             }
         }
     }
@@ -923,8 +931,8 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 
     uint32_t i;
     for (i=0; i<cnv_array->size; i++) {
-        //if (cnv_array->cnvs[i].equal_bin_start == 181874500)
-        //    printf("stop 6\n");
+        if (cnv_array->cnvs[i].equal_bin_start == 181874500 || cnv_array->cnvs[i].equal_bin_start == 195592500)
+            printf("stop 6\n");
 
         // some of the CNVs don't have breakpoints associated them, so skip
         //
@@ -959,20 +967,35 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
             uint16_t prev_bpts=0, prev_tlen=0, cur_bpts=0, cur_tlen=0;
             bool left=false;
 
-            if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) < \
-                    abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end)))
+            if (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint < cur_start) {
                 left = true;
+            } else if (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint > cur_end) {
+                left = false;
+            } else {
+                if (cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 >= 2) {
+                    // need to locate the intersected region with raw-bin or equal-bin
+                    //   -------------------------------- raw-bin
+                    //       =============================== improperly paired reads
+                    //         xx                         breakpoint
+                    //
+                    if (cur_start < cnv_array->cnvs[i].imp_PR_start)
+                        cur_start = cnv_array->cnvs[i].imp_PR_start;
 
-            // use improperly paired reads (IMP) to check the combined CNVs only if an IMP info exists
-            //
-            if (cnv_array->cnvs[i].combined && cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 >= 2) {
-                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cnv_array->cnvs[i].imp_PR_start)) <
-                    abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cnv_array->cnvs[i].imp_PR_end))) {
+                    if (cur_end > cnv_array->cnvs[i].imp_PR_end)
+                        cur_end = cnv_array->cnvs[i].imp_PR_end;
+                } 
+                
+                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) < \
+                    abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end)))
                     left = true;
-                } else {
-                    left = false;
-                }
             }
+
+            // however, cur_start and cur_end might change based on the above code changes
+            // if the left-hand position > right-hand position after assign left-hand = breakpoint, 
+            // we will turn left off as false
+            //
+            if (left && cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint > cur_end)
+                left = false;
 
             if (left) {
                 // the current anchor breakpoint closer to the left-hand side
@@ -1135,7 +1158,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             }*/
 
             if (count < 0) {
-                fprintf(stderr, "Error: the count %"PRId16" should NOT be negative", count);
+                fprintf(stderr, "Error: the count %"PRId16" should NOT be negative in imp/cnv intersection", count);
                 fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
                 exit(EXIT_FAILURE);
             }
