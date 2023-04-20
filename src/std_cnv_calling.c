@@ -344,7 +344,7 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
     if (cnv_flag == 1) {
         cnv_array->cnvs[cnv_index].cnv_type = 'L';      // for DEL
     } else if (cnv_flag == 3) {
-        cnv_array->cnvs[cnv_index].cnv_type = 'P';      // for DUP
+        cnv_array->cnvs[cnv_index].cnv_type = 'P';      // for DUP/INS
     } else {
         fprintf(stderr, "ERROR: cnv type %"PRIu8" is niether dup nor del\n", cnv_flag);
     }
@@ -908,6 +908,19 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
         cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_breakpoints =
                             kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->current_breakpoint_count;
         cnv_array->cnvs[cnv_index].cnv_breakpoints[index].orientation = 0;
+
+        // here we need to check the tlen info with the length of CNV, reduce num_TLEN_ge_1000 count if needed
+        //
+        uint32_t j;
+        for (j=0; j<kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->size; j++) {    // at each breakpoint array
+            // here we set the size of CNV using equal bin data.
+            // it shouldn't matter if we use raw_bin info as we are going to check tlen > 5*cnv_leng
+            //
+            uint32_t cnv_length = cnv_array->cnvs[cnv_index].equal_bin_end - cnv_array->cnvs[cnv_index].equal_bin_start;
+            if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->pread_x_a_bpt[j].tlen > 5*cnv_length)
+                cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_TLEN_ge_1000--;
+        }
+
         cnv_array->cnvs[cnv_index].cnv_breakpoints_size++;
 
         // resize the cnv_breakpoints array if needed
@@ -931,8 +944,22 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 
     uint32_t i;
     for (i=0; i<cnv_array->size; i++) {
-        if (cnv_array->cnvs[i].equal_bin_start == 181874500 || cnv_array->cnvs[i].equal_bin_start == 195592500)
-            printf("stop 6\n");
+        //if (cnv_array->cnvs[i].equal_bin_start == 71894500 || cnv_array->cnvs[i].equal_bin_start == 195592500)
+        //    printf("stop 6\n");
+
+        // Get the CNV start and end here as we need them for the checking
+        //
+        uint32_t cur_start = cnv_array->cnvs[i].raw_bin_start > 0 ? \
+                             cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
+        uint32_t cur_end   = cnv_array->cnvs[i].raw_bin_end > 0 ? \
+                             cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
+
+        // Need to reset the improperly paired reads TLEN if the following condition is true
+        //
+        uint32_t cnv_length = cur_end - cur_start;
+        uint32_t imp_PR_length = cnv_array->cnvs[i].imp_PR_end - cnv_array->cnvs[i].imp_PR_start;
+        if (imp_PR_length > 5*cnv_length)
+            cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 = 0;
 
         // some of the CNVs don't have breakpoints associated them, so skip
         //
@@ -956,11 +983,6 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 
             // pass the first 2 criteria
             // 
-            uint32_t cur_start = cnv_array->cnvs[i].raw_bin_start > 0 ? \
-                                        cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
-            uint32_t cur_end = cnv_array->cnvs[i].raw_bin_end > 0 ? \
-                                        cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
-
             //printf("%"PRIu32"\t%"PRIu32"\n", cur_start, cur_end);
             // because values are uint32_t, so the subtraction will cause overflow as it won't be negative
             //
@@ -1438,9 +1460,10 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
 
     fprintf(fh, "##ALT=<ID=CNV,Description=\"Copy Number Variant\">\n");
     fprintf(fh, "##ALT=<ID=DEL,Description=\"Deletion relative to the reference\">\n");
-    fprintf(fh, "##ALT=<ID=DUP,Description=\"Insertion/Duplication relative to the reference\">\n");
+    fprintf(fh, "##ALT=<ID=DUP,Description=\"Duplication relative to the reference\">\n");
+    fprintf(fh, "##ALT=<ID=INS,Description=\"Insertion relative to the reference\">\n");
     fprintf(fh, "##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the structural variant\">\n");
-    fprintf(fh, "##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of SV:DEL=Deletion, DUP=Duplication\">\n");
+    fprintf(fh, "##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of SV:DEL=Deletion, DUP=Duplication, INS=Insertion\">\n");
     fprintf(fh, "##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">\n");
     fprintf(fh, "##INFO=<ID=AVGCOV,Number=.,Type=Float,Description=\"Average Coverage of the CNV\">\n");
     fprintf(fh, "##INFO=<ID=BPTL,Number=1,Type=Integer,Description=\"Breakpoint position at the left side of the CNV\">\n");
@@ -1487,7 +1510,7 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
                             cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
 
             char CNV[10];
-            (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "DUP");
+            (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "INS");
 
             char FILTER[30];
             strcpy(FILTER, "PASS");

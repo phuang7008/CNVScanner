@@ -371,9 +371,17 @@ void storePairedReadsAcrossBreakpointsPerChr(Breakpoint_Array *bpt_arr, Paired_R
 
         bam1_t *b = bam_init1();
         while (sam_itr_next(sfh, hts_itr, b) >= 0) {
-            // if paired reads are not on the same chromosome, don't process it, just skip it
-            //
-            if (b->core.tid != b->core.mtid) continue;
+            if(b->core.tid != b->core.mtid) continue;       // paired reads are not on the same chromosome
+
+            if(b->core.flag & BAM_FDUP) continue;           // duplicated reads
+
+            if(b->core.flag & BAM_FUNMAP) continue;         // unmapped reads
+            
+            if(b->core.flag & BAM_FSECONDARY) continue;     // not the primary reads
+
+            if(b->core.flag & BAM_FQCFAIL) continue;        // Fails Vendor Quality Check
+
+            if(b->core.qual < user_inputs->min_map_quality) continue;       // doesn't pass MAPQ
 
             // check if we have seen this read name before. If so, skip it
             //
