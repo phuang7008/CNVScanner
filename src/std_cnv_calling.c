@@ -917,7 +917,8 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
             // it shouldn't matter if we use raw_bin info as we are going to check tlen > 5*cnv_leng
             //
             uint32_t cnv_length = cnv_array->cnvs[cnv_index].equal_bin_end - cnv_array->cnvs[cnv_index].equal_bin_start;
-            if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->pread_x_a_bpt[j].tlen > 5*cnv_length)
+            //if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->pread_x_a_bpt[j].tlen > 5*cnv_length)
+            if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->pread_x_a_bpt[j].tlen > 3*cnv_length)
                 cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_TLEN_ge_1000--;
         }
 
@@ -958,10 +959,13 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
         //
         uint32_t cnv_length = cur_end - cur_start;
         uint32_t imp_PR_length = cnv_array->cnvs[i].imp_PR_end - cnv_array->cnvs[i].imp_PR_start;
-        if (imp_PR_length > 5*cnv_length)
+        //if (imp_PR_length > 5*cnv_length)
+        if (imp_PR_length > 3*cnv_length)
             cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 = 0;
 
         // some of the CNVs don't have breakpoints associated them, so skip
+        // the check has to be here as it is used to set the breakpoint
+        // don't worry about improperly paired reads checking as it will be handled at the output
         //
         if (cnv_array->cnvs[i].cnv_breakpoints == NULL)
             continue;
@@ -1034,7 +1038,8 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                     cur_bpts = cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints;
                     cur_tlen = cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000;
 
-                    if ((cur_bpts >prev_bpts) && (cur_tlen > prev_tlen))
+                    //if ((cur_bpts >prev_bpts) && (cur_tlen > prev_tlen))
+                    if ((cur_bpts + cur_tlen) > (prev_bpts + prev_tlen))
                         cnv_array->cnvs[i].left_start_index = j;
                 }
             } else {
@@ -1052,7 +1057,8 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                     cur_bpts = cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints;
                     cur_tlen = cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000;
 
-                    if ((cur_bpts >prev_bpts) && (cur_tlen > prev_tlen))
+                    //if ((cur_bpts >prev_bpts) && (cur_tlen > prev_tlen))
+                    if ((cur_bpts + cur_tlen) > (prev_bpts + prev_tlen))
                         cnv_array->cnvs[i].right_end_index = j;
                 }
             }
