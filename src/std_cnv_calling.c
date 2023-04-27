@@ -1515,6 +1515,9 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             cnv_end = (right_breakpoint > 0) ? right_breakpoint : (cnv_array->cnvs[j].raw_bin_end > 0) ? \
                             cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
 
+            if (cnv_end - cnv_start < 1000)
+                continue;
+
             char CNV[10];
             (cnv_array->cnvs[j].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "INS");
 

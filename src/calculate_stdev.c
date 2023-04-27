@@ -108,7 +108,8 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
 
                     // output improperly paired reads for debugging
                     //
-                    outputGroupedImproperlyPairedReads(improperly_paired_reads_array, chrom_tracking);
+                    if (user_inputs->debug_ON)
+                        outputGroupedImproperlyPairedReads(improperly_paired_reads_array, chrom_tracking);
 
                     if (user_inputs->excluded_region_file)
                         zeroAllExcludedRegions(chrom_tracking, chrom_index, excluded_bed_info);
