@@ -47,6 +47,7 @@
 #define SMALL_LENGTH_CUTOFF 50
 #define EQUAL_BIN_SIZE 20
 #define DISTANCE_CUTOFF 300     // Qiaoyan: use 2 x seq-length = 2 x 150 = 300 on either size
+#define BREAKPOINT_DISTANCE_TO_GROUP 5      // group neighboring breakpoint within 5bp together
 
 // We need to declared the followings as glabal since the program will change these values!!!
 // The naming convention for this type of data is CAPTICAL_WORD1_WORD2_WORD3...extern bool EXCLUDED_FILE_PROVIDED;
@@ -156,7 +157,6 @@ typedef struct {
     uint32_t breakpoint;            // anchor breakpoint
     uint16_t num_of_breakpoints;    // the occurance of this specific breakpoint
     uint16_t num_of_TLEN_ge_1000;   // number of paired reads span more than 1000 bp
-    uint8_t orientation;            // 0: not picked, 1: left breakpoint, 2: right breakpoint
 } CNV_Breakpints;
 
 typedef struct {
@@ -235,87 +235,6 @@ typedef struct {
     char * chrom_id;
     Breakpoint *breakpoints;        // there is a bpt_chr_idx associated with this array
 } Breakpoint_Array;                 // all breakpoints are assigned to their own chromosome id
-
-// consolidate all paired reads associated with a breakpoint
-//                      breakpoint
-//         read1_f -----------/----->     ...    <---------------  read1_r
-//  read2_f ------------->              ...        <------------------  read2_r
-//                      cross-breakpoint
-//
-// Here is the detailed storage structure
-// Paired_Reads_Across_Breakpoints_Array: An array with size=num_of_chromosomes
-//      Each array element has two variable:
-//          chrom_id
-//          preads_x_per_anchor_bpt_arr_hash
-//              preads_x_per_anchor_bpt_hash (chr1)    preads_x_per_anchor_bpt_hash (chr2)
-//                  key1: anchor_bpt_pos1
-//                  val1: preads_x_per_anchor_bpt_array (chr1): need to initialize for the key1
-//                    For paired reads info
-//                      size=0
-//                      capacity=PR_INIT_SIZE
-//                      num_TLEN_ge_1000=0
-//                      initialize seen_paired_read_hash
-//                      initialize pread_x_a_bpt array to the size of PR_INIT_SIZE
-//                          -> pread_x_a_bpt[0]: for current read, need to store the following info:
-//                                current_start_position
-//                                mate_start_position
-//                                tlen
-//                                read_name
-//                          -> pread_x_a_bpt[1]
-//                             ...
-//                          -> pread_x_a_bpt[n]
-//                    
-//                    For breakpoint info:
-//                      my_group_size = 0
-//                      my_breakpoint_group[50]
-//                      current_breakpoint_count = 0
-//                           including neighboring breakpoints (within 5 bp distance) -> group them together
-//                      num_of_soft_clipping
-//                      num_of_hard_clipping
-//                                              
-//                  key2: anchor_bpt_pos2
-//                  val2: ... 
-//                  etc.
-//
-typedef struct {
-    uint32_t current_start_position;
-    uint32_t mate_start_position;
-    uint32_t tlen;
-    char * read_name;
-} Paired_Reads_Across_A_Breakpoint;             // for a single breakpoint
-
-typedef struct {
-    // paired reads info
-    //
-    uint32_t total_paired_reads;                // number of total paired reads for this anchor breakpoint
-    uint32_t size;                              // number of paired reads with tlen >= 1000 for this anchor breakpoint
-    uint32_t capacity;
-    uint16_t  num_TLEN_ge_1000;                  // number of paired reads with insertion size >= 1000
-    khash_t(khStrInt) *seen_paired_read_hash;           // names of paired reads which already encountered
-    Paired_Reads_Across_A_Breakpoint *pread_x_a_bpt;    // an array of paired reads with tlen >= 1000 in this anchor breakpoint group
-
-    // breakpoint info
-    //
-    int my_group_size;
-    uint32_t my_breakpoint_group[50];           // array of unique breakpoints (within 5 bp distance) -> group them together
-    uint16_t current_breakpoint_count;          // number of breakpoint at this specific position (include those grouped)
-    uint16_t num_of_soft_clipping;
-    uint16_t num_of_hard_clipping;
-} Paired_Reads_Across_Per_Anchor_Breakpoint_Array;      // for breakpoints on one anchor breakpoint
-
-// key is the breakpoint position as uint32_t, while value is the the array of Paired_Reads_Across_A_Breakpoint
-// the KHASH_MAP_INIT_INT, the last INT means the key is INT
-//
-KHASH_MAP_INIT_INT(khIntPrArray, Paired_Reads_Across_Per_Anchor_Breakpoint_Array*)
-
-typedef struct {
-    char * chrom_id;
-    khash_t(khIntPrArray) *preads_x_per_anchor_bpt_hash;    //  a hashtable (on each chromosome)
-                                                            //      key: anchor breakpoint, 
-                                                            //      value: Paired_Reads_Across_A_Breakpoint_Per_Anchor_Array
-} Paired_Reads_Across_Breakpoints_Array;                    // For all breakpoints on all chromosomes 
-                                                            // (one array element for one chromosome)
-                                                            // The size of the array will be the number of chromosomes
 
 /**
  * define Not_Properly_Paired_Reads structure here

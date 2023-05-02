@@ -58,8 +58,6 @@ void cleanKhashStr(khash_t(str) *hash_to_clean, uint8_t type);
  */
 void cleanKhashStrStr(khash_t(khStrStr) * hash_to_clean);
 
-void cleanKhashIntPrArray(khash_t(khIntPrArray) *hash_to_clean);
-
 /*
  * Initialize the member of the Stats_Info variable
  * @param stats_info: an instance of Stats_Info to store the whole genome coverage stat info

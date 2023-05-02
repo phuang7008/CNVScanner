@@ -188,9 +188,6 @@ int main(int argc, char *argv[]) {
     Breakpoint_Array **breakpoint_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(Breakpoint_Array));
     BreakpointArrayInit(breakpoint_array, chrom_tracking);
 
-    Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(Paired_Reads_Across_Breakpoints_Array*));
-    PairedReadsAcrossBreakpointsArrayInit(preads_x_bpts_array, chrom_tracking);
-
     // not properly paired/aligned reads
     //
     Not_Properly_Paired_Reads_Array** improperly_PR_array = calloc(chrom_tracking->number_of_chromosomes, sizeof (Not_Properly_Paired_Reads_Array*));
@@ -201,11 +198,16 @@ int main(int argc, char *argv[]) {
     khash_t(khStrInt) *unmapped_read_hash = kh_init(khStrInt);
     getAllUnmappedReads(unmapped_read_hash, sfh_idx[0], header[0], sfh[0]);
 
+    // store anchor breakpoints into a hash array (array is for each chromosome)
+    //
+    khash_t(m32) **anchor_breakpoints_hash_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(khash_t(m32)));
+    AnchorBreakpointsHashArrayInit(anchor_breakpoints_hash_array, chrom_tracking);
+
     // calculate the whole genome base coverage mean and standard deviation
     //
     Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
     SimpleStatsInit(wgs_simple_stats);
-    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, preads_x_bpts_array, improperly_PR_array, unmapped_read_hash);
+    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, anchor_breakpoints_hash_array, improperly_PR_array, unmapped_read_hash);
 
     // The following is for debugging purpose
     //
@@ -363,7 +365,7 @@ int main(int argc, char *argv[]) {
 
     // merge and expand the CNV calls using raw bin data
     //
-    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, preads_x_bpts_array, improperly_PR_array,  chrom_tracking, the_stats, user_inputs);
+    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, anchor_breakpoints_hash_array, improperly_PR_array, chrom_tracking, the_stats, user_inputs, header, sfh_idx, sfh);
 
     // clean up
     //
@@ -376,7 +378,6 @@ int main(int argc, char *argv[]) {
     binnedDataWrapperDestroy(equal_size_window_wrappers, chrom_tracking);
 
     BreakpointArrayDestroy(breakpoint_array, chrom_tracking);
-    PairedReadsAcrossBreakpointsArrayDestroy(preads_x_bpts_array, chrom_tracking);
     //BreakpointStatsArrayDestroy(bpt_stats_array);
 
     if (excluded_bed_info != NULL)

@@ -18,7 +18,7 @@
 
 #include "calculate_stdev.h"
 
-void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash) {
+void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash) {
 
     // for tmp chromosome tracking
     //
@@ -106,6 +106,10 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     bam_destroy1(b);
                     hts_itr_destroy(iter);
 
+                    // process all breakpoints and generate anchor breakpoint hash
+                    //
+                    processBreakpoints(breakpoint_array[bpt_chr_idx], anchor_breakpoints_hash_array[chrom_index], user_inputs);
+
                     // output improperly paired reads for debugging
                     //
                     if (user_inputs->debug_ON)
@@ -125,17 +129,10 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                         chrom_tracking->coverage[chrom_index] = NULL;
                     }
 
-                    // obtain paired reads across breakpoints info
-                    //
-                    uint32_t preads_x_bpt_chr_idx = 
-                        fetchPReadsXBreakpointArrayChrIndex(preads_x_bpts_array, chrom_tracking, chrom_index);
-                    storePairedReadsAcrossBreakpointsPerChr(breakpoint_array[bpt_chr_idx], preads_x_bpts_array[preads_x_bpt_chr_idx], header[thread_id], sfh_idx[thread_id], sfh[thread_id], user_inputs);
-
                     // output breakpoint array and paired_reads across breakpointsfor debugging
                     //
                     if (user_inputs->debug_ON) {
                         outputBreakpointArray(breakpoint_array[bpt_chr_idx]);
-                        outputPairedReadsAcrossBreakpointsArray(preads_x_bpts_array[preads_x_bpt_chr_idx]);
                     }
                 } // omp task
             } // for loop

@@ -20,7 +20,8 @@
 
 #include <omp.h>
 
-void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, Paired_Reads_Across_Breakpoints_Array **preads_x_bpts_array, Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, User_Input *user_inputs) {
+void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh) {
+
 #pragma omp parallel shared(the_stats) num_threads(user_inputs->num_of_threads)
     {
 #pragma omp single
@@ -30,11 +31,11 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 #pragma omp task
           {
             int thread_id = omp_get_thread_num();
-            printf("Current thread id in generating CNV calls: %d\n", thread_id);
+            printf("Current thread id in generating CNV calls: %d with chr %s\n", thread_id, chrom_tracking->chromosome_ids[cnv_array_index]);
 
             // find the corresponding index in equal_size_window_wrappers, raw_bin_data_wrappers and preads_x_bpts_array
             //
-            uint32_t equal_bin_index, raw_bin_index, pr_x_bpts_arr_index, improper_array_index;
+            uint32_t equal_bin_index, raw_bin_index, improper_array_index;
             for (equal_bin_index=0; equal_bin_index<chrom_tracking->number_of_chromosomes; equal_bin_index++) {
                 if (strcmp(equal_size_window_wrappers[equal_bin_index]->chromosome_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
                     break;
@@ -42,11 +43,6 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
             for (raw_bin_index=0; raw_bin_index<chrom_tracking->number_of_chromosomes; raw_bin_index++) {
                 if (strcmp(raw_bin_data_wrappers[raw_bin_index]->chromosome_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
-                    break;
-            }
-
-            for (pr_x_bpts_arr_index=0; pr_x_bpts_arr_index<chrom_tracking->number_of_chromosomes; pr_x_bpts_arr_index++) {
-                if (strcmp(preads_x_bpts_array[pr_x_bpts_arr_index]->chrom_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
                     break;
             }
 
@@ -59,7 +55,7 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
             expandMergedCNVWithRawBins(raw_bin_data_wrappers[raw_bin_index], equal_bin_cnv_array[cnv_array_index], the_stats);
 
-            checkBreakpointForEachCNV(equal_bin_cnv_array[cnv_array_index], preads_x_bpts_array[pr_x_bpts_arr_index]);
+            checkBreakpointForEachCNV(equal_bin_cnv_array[cnv_array_index], anchor_breakpoints_hash_array[cnv_array_index], header[thread_id], sfh_idx[thread_id], sfh[thread_id], user_inputs);
 
             checkImproperlyPairedReadsForEachCNV(equal_bin_cnv_array[cnv_array_index], improperly_PR_array[improper_array_index]);
 
@@ -623,7 +619,7 @@ void addRawBinToCNV(Binned_Data_Wrapper *binned_data_wrapper, uint32_t raw_bin_i
     cnv[cnv_index].size++;
 }
 
-void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr) {
+void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakpoints_hash, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh, User_Input *user_inputs) {
     // first, we need to get the sorted anchor breakpoints
     //
     int32_t capacity = PR_INIT_SIZE*500;       // the initial size is set to 100,000
@@ -637,14 +633,12 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
     int32_t counter=0;
 
     khint_t k;
-    for (k=kh_begin(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash); \
-            k!=kh_end(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash); ++k) {   // at the hash array per chr
-        if (kh_exist(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)) {
+    for (k=kh_begin(anchor_breakpoints_hash); k!=kh_end(anchor_breakpoints_hash); ++k) {
+        if (kh_exist(anchor_breakpoints_hash, k)) {
             // Only process breakpoint with count >= 2 and number of TLEN >=2
             //
-            if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->current_breakpoint_count >= 2 &&
-                    kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->num_TLEN_ge_1000 >= 2) {
-                uint32_t breakpoint_pos = kh_key(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k);
+            if (kh_value(anchor_breakpoints_hash, k) >= 2) {
+                uint32_t breakpoint_pos = kh_key(anchor_breakpoints_hash, k);
 
                 all_starts_ends[counter] = breakpoint_pos - DISTANCE_CUTOFF;
                 setValueToKhashBucket32(breakpoint_start_hash, all_starts_ends[counter], breakpoint_pos);
@@ -719,8 +713,8 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
     counter = 0;
     int32_t cnv_index = -1;             // need to use signed value as sometimes, no value found
     for (i=0; i<(uint32_t)capacity; i++) {
-        if (all_starts_ends[i] == 188566994 || all_starts_ends[i] == 6652610)
-            printf("here it is\n");
+        //if (all_starts_ends[i] == 188566994 || all_starts_ends[i] == 6652610)
+        //    printf("here it is\n");
 
         if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
                 checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i])) {
@@ -772,7 +766,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
                     for (iter=kh_begin(live_cnv_start_hash); iter!=kh_end(live_cnv_start_hash); ++iter) {
                         if (kh_exist(live_cnv_start_hash, iter)) {
                             cnv_index = kh_value(live_cnv_start_hash, iter);
-                            addBreakpointInfo(cnv_array, cnv_index, preads_x_bpt_arr, cur_anchor_breakpoint);
+                            addBreakpointInfo(cnv_array, cnv_index, anchor_breakpoints_hash, cur_anchor_breakpoint, header, sfh_idx, sfh, user_inputs);
                         }
                     }
 
@@ -799,7 +793,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
                         if (kh_exist(live_bpt_start_hash, iter)) {
                             uint32_t breakpoint_start = kh_key(live_bpt_start_hash, iter);
                             cur_anchor_breakpoint = getValueFromKhash32(breakpoint_start_hash, breakpoint_start);
-                            addBreakpointInfo(cnv_array, cnv_index, preads_x_bpt_arr, cur_anchor_breakpoint);
+                            addBreakpointInfo(cnv_array, cnv_index, anchor_breakpoints_hash, cur_anchor_breakpoint, header, sfh_idx, sfh, user_inputs);
                         }
                     }
 
@@ -883,9 +877,9 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, Paired_Reads_Across_Breakpo
 
 // The breakpoints will be stored in an array
 //
-void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Across_Breakpoints_Array *preads_x_bpt_arr, uint32_t anchor_breakpoint) {
-    khint_t k = kh_get(khIntPrArray, preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, anchor_breakpoint);
-    if (k != kh_end(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash)) {
+void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, khash_t(m32) *anchor_breakpoints_hash, uint32_t anchor_breakpoint, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh, User_Input *user_inputs) {
+    khint_t k = kh_get(m32, anchor_breakpoints_hash, anchor_breakpoint);
+    if (k != kh_end(anchor_breakpoints_hash)) {
         // add breakpoint info
         //
         if (cnv_array->cnvs[cnv_index].cnv_breakpoints == NULL) {
@@ -903,24 +897,9 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
         //    printf("stop\n");
         //}
         cnv_array->cnvs[cnv_index].cnv_breakpoints[index].breakpoint = anchor_breakpoint;
-        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_TLEN_ge_1000 = 
-                            kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->num_TLEN_ge_1000;
-        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_breakpoints =
-                            kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->current_breakpoint_count;
-        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].orientation = 0;
-
-        // here we need to check the tlen info with the length of CNV, reduce num_TLEN_ge_1000 count if needed
-        //
-        uint32_t j;
-        for (j=0; j<kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->size; j++) {    // at each breakpoint array
-            // here we set the size of CNV using equal bin data.
-            // it shouldn't matter if we use raw_bin info as we are going to check tlen > 5*cnv_leng
-            //
-            uint32_t cnv_length = cnv_array->cnvs[cnv_index].equal_bin_end - cnv_array->cnvs[cnv_index].equal_bin_start;
-            //if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->pread_x_a_bpt[j].tlen > 5*cnv_length)
-            if (kh_value(preads_x_bpt_arr->preads_x_per_anchor_bpt_hash, k)->pread_x_a_bpt[j].tlen > 3*cnv_length)
-                cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_TLEN_ge_1000--;
-        }
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_breakpoints = kh_value(anchor_breakpoints_hash, k);
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_TLEN_ge_1000=0;
+        storePairedReadsAcrossABreakpoint(cnv_array, cnv_index, anchor_breakpoint, header, sfh_idx, sfh, user_inputs);
 
         cnv_array->cnvs[cnv_index].cnv_breakpoints_size++;
 
@@ -933,6 +912,52 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, Paired_Reads_Ac
             failureExit(cnv_array->cnvs[cnv_index].cnv_breakpoints, "cnv_array->cnvs[cnv_index].cnv_breakpoints");
         }
     }
+}
+
+void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index, uint32_t anchor_breakpoint, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh, User_Input *user_inputs) {
+    uint32_t cur_start = cnv_array->cnvs[cnv_index].raw_bin_start > 0 ? \
+                         cnv_array->cnvs[cnv_index].raw_bin_start : cnv_array->cnvs[cnv_index].equal_bin_start;
+    uint32_t cur_end   = cnv_array->cnvs[cnv_index].raw_bin_end > 0 ? \
+                         cnv_array->cnvs[cnv_index].raw_bin_end : cnv_array->cnvs[cnv_index].equal_bin_end;
+    uint32_t cnv_length = cur_end - cur_start;
+
+    // now declare a string 'region' for search, something like chr3:2-3 (breakpoint only 1 bp long)
+    // For search region, we need to use bpt_pos not the current anchor position
+    // Because we group nearby breakpoint within 5 bps away together, so the search will add addition 10bp both side
+    //
+    char region[200];
+    sprintf(region, "%s:%"PRIu32"-%"PRIu32"", cnv_array->chromosome_id, anchor_breakpoint-DISTANCE_CUTOFF, anchor_breakpoint+DISTANCE_CUTOFF);
+    //sprintf(region, "%s:%"PRIu32"-%"PRIu32"", cnv_array->chromosome_id, anchor_breakpoint-DISTANCE_CUTOFF-10, anchor_breakpoint+DISTANCE_CUTOFF+10);
+    hts_itr_t *hts_itr = sam_itr_querys(sfh_idx, header, region);
+
+    if (hts_itr == NULL) {
+        fprintf(stderr, "ERROR: iterator creation failed: chr %s\n", region);
+        exit(EXIT_FAILURE);
+    }
+
+    bam1_t *b = bam_init1();
+    while (sam_itr_next(sfh, hts_itr, b) >= 0) {
+        if(b->core.tid != b->core.mtid) continue;       // paired reads are not on the same chromosome
+
+        if(b->core.flag & BAM_FDUP) continue;           // duplicated reads
+
+        if(b->core.flag & BAM_FUNMAP) continue;         // unmapped reads
+
+        if(b->core.flag & BAM_FSECONDARY) continue;     // not the primary reads
+
+        if(b->core.flag & BAM_FQCFAIL) continue;        // Fails Vendor Quality Check
+
+        if(b->core.qual < user_inputs->min_map_quality) continue;       // doesn't pass MAPQ
+
+        if (abs(b->core.isize) >= 1000 && abs(b->core.isize) <= 3*cnv_length) {
+            // add to the current CNV
+            //
+            cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_array->cnvs[cnv_index].cnv_breakpoints_size].num_of_TLEN_ge_1000++;
+        }
+    }
+
+    bam_destroy1(b);
+    hts_itr_destroy(hts_itr);
 }
 
 void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
@@ -1027,7 +1052,6 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                 // the current anchor breakpoint closer to the left-hand side
                 //
                 if (!left_most_set) {
-                    cnv_array->cnvs[i].cnv_breakpoints[j].orientation = 1;
                     cnv_array->cnvs[i].left_start_index = j;
                     left_most_set = true;
                 } else {
@@ -1046,7 +1070,6 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                 // the current anchor breakpoint closer to the right-hand side
                 //
                 if (!right_most_set) {
-                    cnv_array->cnvs[i].cnv_breakpoints[j].orientation = 2;
                     cnv_array->cnvs[i].right_end_index = j;
                     right_most_set = true;
                 } else {
