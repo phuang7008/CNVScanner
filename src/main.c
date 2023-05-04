@@ -379,6 +379,9 @@ int main(int argc, char *argv[]) {
 
     BreakpointArrayDestroy(breakpoint_array, chrom_tracking);
     //BreakpointStatsArrayDestroy(bpt_stats_array);
+    NotProperlyPairedReadsDestroy(improperly_PR_array, chrom_tracking);
+    AnchorBreakpointsHashArrayDestroy(anchor_breakpoints_hash_array, chrom_tracking);
+    cleanAllUnmappedReadHash(unmapped_read_hash);
 
     if (excluded_bed_info != NULL)
         cleanBedInfo(excluded_bed_info);

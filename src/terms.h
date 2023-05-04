@@ -289,7 +289,7 @@ typedef struct {
     int32_t num_of_groups;                          // signed value, the size of groups, initialize to -1
     int32_t capacity;
 
-    khash_t(khStrInt) *seen_paired_read_hash;       // names of paired reads which already encountered
+    //khash_t(khStrInt) *seen_paired_read_hash;       // names of paired reads which already encountered
 } Not_Properly_Paired_Reads_Array;                  // One array element for one chromosome
 
 // khIntStr: the key as 32 bit integer, while the value is the string

@@ -191,6 +191,8 @@ void processBreakpoints(Breakpoint_Array *bpt_arr, khash_t(m32) *anchor_breakpoi
     // need to find out the anchor breakpoints to group neighboring breakpoints <= 5 bps away
     //
     recordAnchorBreakpoints(sorted_breakpoints, anchor_breakpoints_hash, bpt_arr, user_inputs);
+
+    free(sorted_breakpoints);
 }
 
 void outputBreakpointArray(Breakpoint_Array *bpt_arr) {

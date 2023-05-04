@@ -32,6 +32,39 @@ void NotProperlyPairedReadsInit(Not_Properly_Paired_Reads_Array** improperly_PR_
     }
 }
 
+void NotProperlyPairedReadsDestroy(Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking){
+    uint32_t i;
+
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        if (improperly_PR_array[i]->chrom_id) {
+            free(improperly_PR_array[i]->chrom_id);
+            improperly_PR_array[i]->chrom_id = NULL;
+        }
+
+        if (improperly_PR_array[i]->grouped_improperly_PRs) {
+            uint32_t g_idx = improperly_PR_array[i]->num_of_groups;
+            uint32_t j;
+            for (j=0; j<g_idx; j++) {
+                if (improperly_PR_array[i]->grouped_improperly_PRs[j].mate_ends_hash)
+                    kh_destroy(m32, improperly_PR_array[i]->grouped_improperly_PRs[j].mate_ends_hash);
+            }
+
+            free(improperly_PR_array[i]->grouped_improperly_PRs);
+            improperly_PR_array[i]->grouped_improperly_PRs = NULL;
+        }
+
+        if (improperly_PR_array[i]) {
+            free(improperly_PR_array[i]);
+            improperly_PR_array[i] = NULL;
+        }
+    }
+
+    if (improperly_PR_array) {
+        free(improperly_PR_array);
+        improperly_PR_array = NULL;
+    }
+}
+
 void getAllUnmappedReads(khash_t(khStrInt) *unmapped_read_hash, hts_idx_t *sfh_idx, bam_hdr_t* header, samFile* sfh) {
     uint64_t total_unmapped_reads=0;
     hts_itr_t *iter_umpd = sam_itr_querys(sfh_idx, header, "*");
@@ -49,6 +82,21 @@ void getAllUnmappedReads(khash_t(khStrInt) *unmapped_read_hash, hts_idx_t *sfh_i
         fprintf(stderr, "total unmapped reads with *\t%"PRIu64"\n", total_unmapped_reads);
         bam_destroy1(b);
         hts_itr_destroy(iter_umpd);
+    }
+}
+
+void cleanAllUnmappedReadHash(khash_t(khStrInt) *unmapped_read_hash) {
+    khiter_t iter;
+    for (iter=kh_begin(unmapped_read_hash); iter!=kh_end(unmapped_read_hash); iter++) {
+        if (kh_exist(unmapped_read_hash, iter)) {
+            free((char *) kh_key(unmapped_read_hash, iter));
+            kh_key(unmapped_read_hash, iter) = NULL;
+        }
+    }
+
+    if (unmapped_read_hash) {
+        free(unmapped_read_hash);
+        unmapped_read_hash = NULL;
     }
 }
 
@@ -248,8 +296,6 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
                 improperly_PR_array->grouped_improperly_PRs[g_idx].group_mate_end = improperly_PR_array->grouped_improperly_PRs[g_idx].group_start + rec->core.isize;
 
                 setValueToKhashBucket32(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, rec->core.mpos, 1);
-                // we also need to track the TLEN array here
-                // TODO
             }
         } else {
             improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_mapped_reads_on_diff_chrom++;
@@ -291,6 +337,8 @@ void organizeImproperlyPairedReadArray(Not_Properly_Paired_Reads_Array* improper
             addValueToKhashBucket32(seen_ends_hash, end, 1);    // increment 1
         }
     }
+
+    kh_destroy(m32, seen_ends_hash);
 }
 
 void outputGroupedImproperlyPairedReads(Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking) {

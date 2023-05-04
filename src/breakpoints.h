@@ -32,6 +32,8 @@ void BreakpointArrayDestroy(Breakpoint_Array **breakpoint_array, Chromosome_Trac
 
 void AnchorBreakpointsHashArrayInit(khash_t(m32) **anchor_breakpoints_hash_array, Chromosome_Tracking *chrom_tracking);
 
+void AnchorBreakpointsHashArrayDestroy(khash_t(m32) **anchor_breakpoints_hash_array, Chromosome_Tracking *chrom_tracking);
+
 uint32_t fetchBreakpointArrayChrIndex(Breakpoint_Array **breakpoint_array, Chromosome_Tracking *chrom_tracking, uint32_t chrom_idx);
 
 void storeCurrentReadBreakpointInfo(uint32_t current_ref_pos, bam1_t *rec, Breakpoint_Array *bpt_arr, int type);
