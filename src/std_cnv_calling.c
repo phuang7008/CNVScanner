@@ -463,9 +463,9 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
     uint32_t i, j, raw_bin_start=0;
 
     for (i=0; i<cnv_array->size;i++) {
-        if (cnv_array->cnvs[i].equal_bin_start == 188653000) {
-            printf("stop3\n");
-        }
+        //if (cnv_array->cnvs[i].equal_bin_start == 188653000) {
+        //    printf("stop3\n");
+        //}
         for (j=raw_bin_start; j<binned_data_wrapper->size; j++) {
             // Note the code will handle the extension of extra raw-bins later on
             //
@@ -525,10 +525,11 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     // to extend the current CNV on the left-hand side
                     //
                     j--;
-                    while ((binned_data_wrapper->data[j].ave_cov_map_gc_normalized <= hap_cutoff
+                    while (j>=raw_bin_start && 
+                            ((binned_data_wrapper->data[j].ave_cov_map_gc_normalized <= hap_cutoff
                                         && cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
-                           (binned_data_wrapper->data[j].ave_cov_map_gc_normalized >= dup_cutoff 
-                                        && cnv_array->cnvs[i].ave_coverage >= dup_cutoff)) {
+                            (binned_data_wrapper->data[j].ave_cov_map_gc_normalized >= dup_cutoff 
+                                        && cnv_array->cnvs[i].ave_coverage >= dup_cutoff))) {
                         // raw-bin at j    raw bin at j+1 (intersected)
                         // -------------- -----------------------------
                         //          CNV-start ------------------------------------- CNV-end
@@ -581,10 +582,11 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     // now let's extend the CNV further at the right end
                     //
                     j++;
-                    while ((binned_data_wrapper->data[j].ave_coverage <= hap_cutoff &&
+                    while (j<binned_data_wrapper->size &&
+                            ((binned_data_wrapper->data[j].ave_coverage <= hap_cutoff &&
                                 cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
-                           (binned_data_wrapper->data[j].ave_coverage >= dup_cutoff &&
-                                cnv_array->cnvs[i].ave_coverage >= dup_cutoff)) {
+                            (binned_data_wrapper->data[j].ave_coverage >= dup_cutoff &&
+                                cnv_array->cnvs[i].ave_coverage >= dup_cutoff))) {
                         //      raw-bin at j-1 (intersected)                  raw bin at j
                         //      --------------------------------------------  -----------------
                         //  CNV-start 
@@ -729,11 +731,11 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                 exit(EXIT_FAILURE);
             }
 
-            if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
+            /*if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
                 fprintf(stderr, "CNV_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             } else {
                 fprintf(stderr, "Breakpoint_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
-            }
+            }*/
 
             //if (cnv_index == -1)
             //    continue;
@@ -844,14 +846,14 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                     exit(EXIT_FAILURE);
                 }
                 setValueToKhashBucket32(live_cnv_start_hash, all_starts_ends[i], cnv_index);
-                fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                //fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             }
 
             // get current breakpoint start position
             //
             if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i])) {
                 setValueToKhashBucket32(live_bpt_start_hash, all_starts_ends[i], i);
-                fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                //fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             }
         }
     }
