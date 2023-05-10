@@ -322,11 +322,15 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
 
     // output for debugging
     //
-    char *filename = calloc(strlen(user_inputs->window_details_file) + strlen(chrom_id) + 10, sizeof(char));
-    sprintf(filename, "%s%s.txt", user_inputs->window_details_file, chrom_id);
-    FILE *equal_window_fp=fopen(filename, "w");
-    fileOpenError(equal_window_fp, filename);
-    free(filename);
+    FILE *equal_window_fp = NULL;
+    
+    if (user_inputs->debug_ON) {
+        char *filename = calloc(strlen(user_inputs->window_details_file) + strlen(chrom_id) + 10, sizeof(char));
+        sprintf(filename, "%s%s.txt", user_inputs->window_details_file, chrom_id);
+        equal_window_fp = fopen(filename, "w");
+        fileOpenError(equal_window_fp, filename);
+        free(filename);
+    }
 
     // do intersect
     //

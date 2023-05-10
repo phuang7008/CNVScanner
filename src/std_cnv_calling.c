@@ -1092,6 +1092,11 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 }
 
 void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array) {
+    // some bam/cram files don't have 'MC' tag, so skip the function
+    // num_of_groups was originally set to -1
+    //
+    if (improperly_PR_array->num_of_groups <= 0)
+        return;
 
     organizeImproperlyPairedReadArray(improperly_PR_array);
 

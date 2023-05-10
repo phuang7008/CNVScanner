@@ -337,13 +337,15 @@ int main(int argc, char *argv[]) {
     //
     reportStatsForDebugging(stats_info, user_inputs);
 
-    // output final normalized binned results
-    //
-    outputFinalBinnedData(binned_data_wrappers, user_inputs, chrom_tracking, 1);
+    if (user_inputs->debug_ON) {
+        // output final normalized binned results
+        //
+        outputFinalBinnedData(binned_data_wrappers, user_inputs, chrom_tracking, 1);
 
-    // output final equal sized window 
-    //
-    outputFinalBinnedData(equal_size_window_wrappers, user_inputs, chrom_tracking, 2);
+        // output final equal sized window 
+        //
+        outputFinalBinnedData(equal_size_window_wrappers, user_inputs, chrom_tracking, 2);
+    }
 
     // calculate the statistics here for WGS
     //

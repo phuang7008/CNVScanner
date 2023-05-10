@@ -42,15 +42,19 @@ void NotProperlyPairedReadsDestroy(Not_Properly_Paired_Reads_Array** improperly_
         }
 
         if (improperly_PR_array[i]->grouped_improperly_PRs) {
-            uint32_t g_idx = improperly_PR_array[i]->num_of_groups;
-            uint32_t j;
-            for (j=0; j<g_idx; j++) {
-                if (improperly_PR_array[i]->grouped_improperly_PRs[j].mate_ends_hash)
-                    kh_destroy(m32, improperly_PR_array[i]->grouped_improperly_PRs[j].mate_ends_hash);
+            if (improperly_PR_array[i]->num_of_groups >= 0) {
+                uint32_t g_idx = improperly_PR_array[i]->num_of_groups;
+                uint32_t j;
+                for (j=0; j<g_idx; j++) {
+                    if (improperly_PR_array[i]->grouped_improperly_PRs[j].mate_ends_hash)
+                        kh_destroy(m32, improperly_PR_array[i]->grouped_improperly_PRs[j].mate_ends_hash);
+                }
             }
 
-            free(improperly_PR_array[i]->grouped_improperly_PRs);
-            improperly_PR_array[i]->grouped_improperly_PRs = NULL;
+            if (improperly_PR_array[i]->grouped_improperly_PRs != NULL) {
+                free(improperly_PR_array[i]->grouped_improperly_PRs);
+                improperly_PR_array[i]->grouped_improperly_PRs = NULL;
+            }
         }
 
         if (improperly_PR_array[i]) {
@@ -183,6 +187,12 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
     // check its mate cigar
     //
     uint8_t *m_cigar = bam_aux_get(rec,"MC");
+    // some bam file doesn't have the 'MC' tag produced, 
+    // in this case, we simply don't use this info
+    //
+    if (m_cigar == NULL)
+        return;
+
     char *mc_tag = bam_aux2Z(m_cigar);
 
     // Kim suggested to use 140 as cutoff

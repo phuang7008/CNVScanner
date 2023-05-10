@@ -313,18 +313,20 @@ void setupOutputReportFiles(User_Input *user_inputs) {
 
     // output the binned data to files, which needs to be multi-threaded
     //
-    sprintf(string_to_add, ".WGS_binned_data_REPORT_");
-    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_binning_file, string_to_add);
+    if (user_inputs->debug_ON) {
+        sprintf(string_to_add, ".WGS_binned_data_REPORT_");
+        generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->wgs_binning_file, string_to_add);
 
-    // output normalized binned result file at the end of the program. so no needs multi-threading here
-    //
-    sprintf(string_to_add, ".WGS_normalized_binned_results.txt");
-    createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->normalized_result_file, string_to_add, VERSION_);
+        // output normalized binned result file at the end of the program. so no needs multi-threading here
+        //
+        sprintf(string_to_add, ".WGS_normalized_binned_results.txt");
+        createFileName(user_inputs->output_dir, tmp_basename, &user_inputs->normalized_result_file, string_to_add, VERSION_);
 
-    // the output info here needs to be multi-threaded. 
-    //
-    sprintf(string_to_add, ".WGS_equal_window_details_");
-    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->window_details_file, string_to_add);
+        // the output info here needs to be multi-threaded. 
+        //
+        sprintf(string_to_add, ".WGS_equal_window_details_");
+        generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->window_details_file, string_to_add);
+    }
 
     // for whole genome (wgs) file name
     if (user_inputs->Write_WGS_cov_fasta) {
