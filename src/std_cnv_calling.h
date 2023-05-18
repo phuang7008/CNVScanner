@@ -43,6 +43,8 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, khash_t(m32) *a
 
 void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index, uint32_t anchor_breakpoint, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh, User_Input *user_inputs);
 
+void processPairedReadsAcrossABreakpointTlenInfo(CNV_Array *cnv_array);
+
 void setLeftRightCNVBreakpoints(CNV_Array *cnv_array);
 
 void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array);

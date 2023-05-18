@@ -157,6 +157,10 @@ typedef struct {
     uint32_t breakpoint;            // anchor breakpoint
     uint16_t num_of_breakpoints;    // the occurance of this specific breakpoint
     uint16_t num_of_TLEN_ge_1000;   // number of paired reads span more than 1000 bp
+    uint32_t *paired_read_starts;   // an array of starts associated with the paired reads across the breakpoint
+    uint32_t *paired_read_ends;     // an array of ends associated with the paired reads across the breakpoint
+    uint16_t num_of_paired_reads;
+    uint16_t capacity;
 } CNV_Breakpints;
 
 typedef struct {
@@ -178,8 +182,8 @@ typedef struct {
     // store related nearby breakpoint info
     //
     CNV_Breakpints *cnv_breakpoints;
-    uint16_t cnv_breakpoints_size;
-    uint16_t cnv_breakpoints_capacity;
+    uint32_t cnv_breakpoints_size;
+    uint32_t cnv_breakpoints_capacity;
     int16_t left_start_index;            // the signed index is set when there is a left-hand breakpoint (0-index is valid)
     int16_t right_end_index;             // the signed index is set when there is a right-hand breakpoint (0-index is valid)
 

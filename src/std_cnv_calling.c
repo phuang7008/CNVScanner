@@ -59,6 +59,8 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
             checkImproperlyPairedReadsForEachCNV(equal_bin_cnv_array[cnv_array_index], improperly_PR_array[improper_array_index]);
 
+            processPairedReadsAcrossABreakpointTlenInfo(equal_bin_cnv_array[cnv_array_index]);
+
             setLeftRightCNVBreakpoints(equal_bin_cnv_array[cnv_array_index]);
 
             outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 2);
@@ -525,7 +527,7 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     // to extend the current CNV on the left-hand side
                     //
                     j--;
-                    while (j>=raw_bin_start && 
+                    while (j>=raw_bin_start && j<binned_data_wrapper->size &&
                             ((binned_data_wrapper->data[j].ave_cov_map_gc_normalized <= hap_cutoff
                                         && cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
                             (binned_data_wrapper->data[j].ave_cov_map_gc_normalized >= dup_cutoff 
@@ -582,7 +584,7 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     // now let's extend the CNV further at the right end
                     //
                     j++;
-                    while (j<binned_data_wrapper->size &&
+                    while (j>=raw_bin_start && j<binned_data_wrapper->size &&
                             ((binned_data_wrapper->data[j].ave_coverage <= hap_cutoff &&
                                 cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
                             (binned_data_wrapper->data[j].ave_coverage >= dup_cutoff &&
@@ -901,6 +903,13 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, khash_t(m32) *a
         cnv_array->cnvs[cnv_index].cnv_breakpoints[index].breakpoint = anchor_breakpoint;
         cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_breakpoints = kh_value(anchor_breakpoints_hash, k);
         cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_TLEN_ge_1000=0;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].num_of_paired_reads = 0;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].capacity = 10;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].paired_read_starts = \
+            calloc(cnv_array->cnvs[cnv_index].cnv_breakpoints[index].capacity, sizeof(uint32_t));
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[index].paired_read_ends = \
+            calloc(cnv_array->cnvs[cnv_index].cnv_breakpoints[index].capacity, sizeof(uint32_t));
+
         storePairedReadsAcrossABreakpoint(cnv_array, cnv_index, anchor_breakpoint, header, sfh_idx, sfh, user_inputs);
 
         cnv_array->cnvs[cnv_index].cnv_breakpoints_size++;
@@ -917,6 +926,16 @@ void addBreakpointInfo(CNV_Array *cnv_array, uint32_t cnv_index, khash_t(m32) *a
 }
 
 void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index, uint32_t anchor_breakpoint, bam_hdr_t *header, hts_idx_t *sfh_idx, samFile *sfh, User_Input *user_inputs) {
+    // skip if it is a singleton
+    // Note, the cnv_breakpoints_size is the latest index to the anchor breakpoint array
+    //
+    uint32_t cnv_breakpoints_size = cnv_array->cnvs[cnv_index].cnv_breakpoints_size;
+    if (cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].num_of_breakpoints <= 1)
+        return;
+
+    //if (cnv_index == 2524 && anchor_breakpoint==208664075)
+    //    printf("anchor_breakpoint=208664075\n");
+
     uint32_t cur_start = cnv_array->cnvs[cnv_index].raw_bin_start > 0 ? \
                          cnv_array->cnvs[cnv_index].raw_bin_start : cnv_array->cnvs[cnv_index].equal_bin_start;
     uint32_t cur_end   = cnv_array->cnvs[cnv_index].raw_bin_end > 0 ? \
@@ -927,7 +946,7 @@ void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index,
     // For search region, we need to use bpt_pos not the current anchor position
     // Because we group nearby breakpoint within 5 bps away together, so the search will add addition 10bp both side
     //
-    char region[200];
+    char region[1500];
     sprintf(region, "%s:%"PRIu32"-%"PRIu32"", cnv_array->chromosome_id, anchor_breakpoint-DISTANCE_CUTOFF, anchor_breakpoint+DISTANCE_CUTOFF);
     //sprintf(region, "%s:%"PRIu32"-%"PRIu32"", cnv_array->chromosome_id, anchor_breakpoint-DISTANCE_CUTOFF-10, anchor_breakpoint+DISTANCE_CUTOFF+10);
     hts_itr_t *hts_itr = sam_itr_querys(sfh_idx, header, region);
@@ -936,6 +955,10 @@ void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index,
         fprintf(stderr, "ERROR: iterator creation failed: chr %s\n", region);
         exit(EXIT_FAILURE);
     }
+
+    khash_t(m32) *seen_starts_hash = kh_init(m32);
+    khash_t(m32) *seen_ends_hash = kh_init(m32);
+    khiter_t iter;
 
     bam1_t *b = bam_init1();
     while (sam_itr_next(sfh, hts_itr, b) >= 0) {
@@ -952,14 +975,130 @@ void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index,
         if(b->core.qual < user_inputs->min_map_quality) continue;       // doesn't pass MAPQ
 
         if (abs(b->core.isize) >= 1000 && abs(b->core.isize) <= 3*cnv_length) {
-            // add to the current CNV
+            uint32_t start = (b->core.pos <= b->core.mpos) ? b->core.pos : b->core.mpos;
+            uint32_t end = start + abs(b->core.isize);
+            uint32_t start_cutoff = start - 500;
+            uint32_t end_cutoff = end + 500;
+
+            // first, need to check if the start pos and end pos exist, if so, increase end or shink start by 1
             //
-            cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_array->cnvs[cnv_index].cnv_breakpoints_size].num_of_TLEN_ge_1000++;
+            while (1) {
+                iter = kh_get(m32, seen_starts_hash, start);
+                if (iter != kh_end(seen_starts_hash)) {
+                    start--;
+                    if (start <= start_cutoff) break;
+                } else {
+                    addValueToKhashBucket32(seen_starts_hash, start, 1);
+                    break;
+                }
+            }
+
+            while (1) {
+                iter = kh_get(m32, seen_ends_hash, end);
+                if (iter != kh_end(seen_ends_hash)) {
+                    end++;
+                    if (end >= end_cutoff) break;
+                } else {
+                    addValueToKhashBucket32(seen_ends_hash, end, 1);
+                    break;
+                }
+            }
+
+            // add to the current CNV,
+            //
+            uint16_t num_of_paired_reads = cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].num_of_paired_reads;
+                
+            if (cnv_index == 2524 && anchor_breakpoint==208664075) {
+                fprintf(stderr, "cnv_index %"PRIu32"; cnv_breakpoints_size %"PRIu32"; num_of_paired_reads %"PRIu16"\n", cnv_index, cnv_breakpoints_size, num_of_paired_reads );
+            }
+            cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_starts[num_of_paired_reads] = start;
+            cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_ends[num_of_paired_reads] = end;
+            cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].num_of_paired_reads++;
+
+            // dynamic increase the array size
+            //
+            if (cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].num_of_paired_reads + 3 >= cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].capacity) {
+                cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].capacity += 10;
+                cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_starts = 
+                    realloc(cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_starts, \
+                        cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].capacity * sizeof(uint32_t));
+                failureExit(cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_starts, "cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_starts");
+
+                cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_ends =
+                    realloc(cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_ends, \
+                        cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].capacity * sizeof(uint32_t)); 
+                failureExit(cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_ends, "cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_ends");
+            }
         }
     }
 
     bam_destroy1(b);
     hts_itr_destroy(hts_itr);
+
+    kh_destroy(m32, seen_starts_hash);
+    kh_destroy(m32, seen_ends_hash);
+}
+
+void processPairedReadsAcrossABreakpointTlenInfo(CNV_Array *cnv_array) {
+    uint16_t i;
+    for (i=0; i<cnv_array->size; i++) {
+        uint16_t j;
+        for (j=0; j<cnv_array->cnvs[i].cnv_breakpoints_size; j++) {
+            if (cnv_array->cnvs[i].cnv_breakpoints[j].num_of_paired_reads == 0)
+                continue;
+
+            if (cnv_array->cnvs[i].cnv_breakpoints[j].num_of_paired_reads == 1) {
+                cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000 = 1;
+                continue;
+            }
+
+            uint16_t tmp_size = cnv_array->cnvs[i].cnv_breakpoints[j].num_of_paired_reads;
+            uint32_t *all_starts_ends_array = calloc(tmp_size*2, sizeof(uint32_t));
+            uint16_t k, count=0;
+            khash_t(m32) *seen_starts_hash = kh_init(m32);
+            khash_t(m32) *seen_ends_hash = kh_init(m32);
+
+            for (k=0; k<tmp_size; k++) {
+                all_starts_ends_array[count] = cnv_array->cnvs[i].cnv_breakpoints[j].paired_read_starts[k];
+                addValueToKhashBucket32(seen_starts_hash, all_starts_ends_array[count], 1);
+                count++;
+                all_starts_ends_array[count] = cnv_array->cnvs[i].cnv_breakpoints[j].paired_read_ends[k];
+                addValueToKhashBucket32(seen_ends_hash, all_starts_ends_array[count], 1);
+                count++;
+            }
+
+            qsort(all_starts_ends_array, tmp_size, sizeof(uint32_t), compare);
+
+            // do intersect
+            //
+            count = 0;
+            for (k=0; k<tmp_size; k++) {
+                khiter_t iter = kh_get(m32, seen_ends_hash, all_starts_ends_array[k]);
+                if (k>0 && iter != kh_end(seen_ends_hash)) {
+                    if (count > 0) count--;
+
+                    // delete the end key so that to avoid collide with start
+                    //
+                    kh_del(m32, seen_ends_hash, iter);
+                } else {
+                    count++;
+                    if (count > cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000) 
+                        cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000 = count;
+                }
+            }
+
+            //fprintf(stderr, "breakpoint: %"PRIu32"\n", cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint);
+
+            // clean-up
+            //
+            kh_destroy(m32, seen_starts_hash);
+            kh_destroy(m32, seen_ends_hash);
+            if (all_starts_ends_array) free(all_starts_ends_array);
+            seen_starts_hash = NULL;
+            seen_ends_hash = NULL;
+            all_starts_ends_array=NULL;
+        }
+    }
 }
 
 void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
@@ -1598,7 +1737,7 @@ void cnvArrayInit(CNV_Array **cnv_array, Chromosome_Tracking *chrom_tracking) {
 }
 
 void cnvArrayDestroy(CNV_Array **cnv_array, uint32_t number_of_chromosomes) {
-    uint32_t i, j;
+    uint32_t i, j, k;
     for (i=0; i<number_of_chromosomes; i++) {
         // handle chrom id
         //
@@ -1614,6 +1753,13 @@ void cnvArrayDestroy(CNV_Array **cnv_array, uint32_t number_of_chromosomes) {
             }
 
             if (cnv_array[i]->cnvs[j].cnv_breakpoints) {
+                for (k=0; k<cnv_array[i]->cnvs[j].cnv_breakpoints_size; k++) {
+                    if (cnv_array[i]->cnvs[j].cnv_breakpoints[k].paired_read_starts)
+                        free(cnv_array[i]->cnvs[j].cnv_breakpoints[k].paired_read_starts);
+
+                    if (cnv_array[i]->cnvs[j].cnv_breakpoints[k].paired_read_ends)
+                        free(cnv_array[i]->cnvs[j].cnv_breakpoints[k].paired_read_ends);
+                }
                 free(cnv_array[i]->cnvs[j].cnv_breakpoints);
                 cnv_array[i]->cnvs[j].cnv_breakpoints = NULL;
             }
