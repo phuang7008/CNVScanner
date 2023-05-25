@@ -103,7 +103,7 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
     Equal_Window_Bin *merged_equal_bin_array = NULL;
 
     for (j=0; j<equal_size_window_wrapper->size; j++) {
-        //if ( equal_size_window_wrapper->data[j].start == 44338500) {
+        //if ( equal_size_window_wrapper->data[j].start == 87720500) {
         //    printf("stop\n");
         //}
         if (equal_size_window_wrapper->data[j].length == 0) {
@@ -207,7 +207,7 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
                         //
                         storeCurrentCNVtoArray(cnv_array, prev_start, prev_end, prev_len, \
                                                     coverage, merged_equal_bin_array, bin_counter, cnv_counter, prev_flag);
-                        extendBothEndsByOneBin(cnv_array, equal_size_window_wrapper, cnv_counter, bin_counter, j);
+                        //extendBothEndsByOneBin(cnv_array, equal_size_window_wrapper, cnv_counter, bin_counter, j);
                         cnv_counter += combineNeighboringCNVs(cnv_array, cnv_counter);
                         cnv_counter++;
                         if (cnv_counter + 3 >= cnv_array->capacity) {
@@ -465,9 +465,10 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
     uint32_t i, j, raw_bin_start=0;
 
     for (i=0; i<cnv_array->size;i++) {
-        //if (cnv_array->cnvs[i].equal_bin_start == 188653000) {
+        //if (cnv_array->cnvs[i].equal_bin_start == 87997000) {
         //    printf("stop3\n");
         //}
+
         for (j=raw_bin_start; j<binned_data_wrapper->size; j++) {
             // Note the code will handle the extension of extra raw-bins later on
             //
@@ -527,19 +528,29 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     // to extend the current CNV on the left-hand side
                     //
                     j--;
-                    while (j>=raw_bin_start && j<binned_data_wrapper->size &&
-                            ((binned_data_wrapper->data[j].ave_cov_map_gc_normalized <= hap_cutoff
+                    while (j>=raw_bin_start && j<binned_data_wrapper->size) {
+                        if (((cnv_array->cnvs[i].equal_bin_start > binned_data_wrapper->data[j].end) &&
+                            ((cnv_array->cnvs[i].equal_bin_start - binned_data_wrapper->data[j].end)<=1000)) ||
+                            ((cnv_array->cnvs[i].raw_bin_start > binned_data_wrapper->data[j].end) && 
+                             ((cnv_array->cnvs[i].raw_bin_start - binned_data_wrapper->data[j].end)<=1000))) {
+                            // raw-bin at j-1           raw bin at j (intersected)
+                            // -------------- <=1000   -----------------------------
+                            //                  CNV-start ------------------------------------- CNV-end
+                            // ======================================================== extended CNV
+                            //
+                            if ((binned_data_wrapper->data[j].ave_cov_map_gc_normalized <= hap_cutoff
                                         && cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
-                            (binned_data_wrapper->data[j].ave_cov_map_gc_normalized >= dup_cutoff 
-                                        && cnv_array->cnvs[i].ave_coverage >= dup_cutoff))) {
-                        // raw-bin at j    raw bin at j+1 (intersected)
-                        // -------------- -----------------------------
-                        //          CNV-start ------------------------------------- CNV-end
-                        // ======================================================== extended CNV
-                        //
-                        cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].start;
-                        addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
-                        j--;
+                                (binned_data_wrapper->data[j].ave_cov_map_gc_normalized >= dup_cutoff 
+                                        && cnv_array->cnvs[i].ave_coverage >= dup_cutoff)) {
+                                cnv_array->cnvs[i].raw_bin_start = binned_data_wrapper->data[j].start;
+                                addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
+                                j--;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
                     }
                     j = raw_bin_start+1;
                     continue;
@@ -582,22 +593,34 @@ void expandMergedCNVWithRawBins(Binned_Data_Wrapper *binned_data_wrapper, CNV_Ar
                     }
 
                     // now let's extend the CNV further at the right end
+                    // but when we do it on the right hand-side, we need to ensure the next ones
+                    // are within 1000bp (2 equal-bin blocks) to each other
                     //
                     j++;
-                    while (j>=raw_bin_start && j<binned_data_wrapper->size &&
-                            ((binned_data_wrapper->data[j].ave_coverage <= hap_cutoff &&
-                                cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
-                            (binned_data_wrapper->data[j].ave_coverage >= dup_cutoff &&
-                                cnv_array->cnvs[i].ave_coverage >= dup_cutoff))) {
-                        //      raw-bin at j-1 (intersected)                  raw bin at j
-                        //      --------------------------------------------  -----------------
-                        //  CNV-start 
-                        //  ...------------------------------------- CNV-end
-                        //  ...================================================================ extended CNV
-                        //
-                        cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].end;
-                        addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
-                        j++;
+                    while (j>=raw_bin_start && j<binned_data_wrapper->size) {
+                        if (((binned_data_wrapper->data[j].start > cnv_array->cnvs[i].equal_bin_end) &&
+                                (binned_data_wrapper->data[j].start - cnv_array->cnvs[i].equal_bin_end <= 1000)) ||
+                             ((binned_data_wrapper->data[j].start > cnv_array->cnvs[i].raw_bin_end) && 
+                              (binned_data_wrapper->data[j].start - cnv_array->cnvs[i].raw_bin_end <= 1000))) {
+                            //      raw-bin at j-1 (intersected)                  raw bin at j
+                            //      --------------------------------------------  -----------------
+                            //  CNV-start 
+                            //  ...------------------------------------- CNV-end
+                            //  ...================================================================ extended CNV
+                            //
+                            if ((binned_data_wrapper->data[j].ave_coverage <= hap_cutoff &&
+                                    cnv_array->cnvs[i].ave_coverage <= hap_cutoff) || 
+                                (binned_data_wrapper->data[j].ave_coverage >= dup_cutoff &&
+                                    cnv_array->cnvs[i].ave_coverage >= dup_cutoff)) {
+                                cnv_array->cnvs[i].raw_bin_end = binned_data_wrapper->data[j].end;
+                                addRawBinToCNV(binned_data_wrapper, j, cnv_array->cnvs, i);
+                                j++;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
@@ -733,14 +756,11 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                 exit(EXIT_FAILURE);
             }
 
-            /*if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
+            if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
                 fprintf(stderr, "CNV_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             } else {
                 fprintf(stderr, "Breakpoint_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
-            }*/
-
-            //if (cnv_index == -1)
-            //    continue;
+            }
 
             // when current position is an end and counter >= 1, there is an intersect
             // There might be multiple breakpoints associated with this CNV 
@@ -750,7 +770,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                 uint32_t cnv_start = 0;
 
                 // because the max length of breakpoint interval used for intersection is only 600
-                // so we don't have to worry that breakpoiint interval completely engulf a CNV
+                // so we don't have to worry that breakpoint interval completely engulf a CNV
                 //
                 uint32_t cur_anchor_breakpoint = 0;
                 if (checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i])) {
@@ -774,7 +794,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                         }
                     }
 
-                    // deleter the breakpoint start in the live_bpt_start_hash
+                    // delete the breakpoint start in the live_bpt_start_hash
                     //
                     iter = kh_get(m32, live_bpt_start_hash, cur_anchor_breakpoint - DISTANCE_CUTOFF);
                     kh_del(m32, live_bpt_start_hash, iter);
@@ -848,14 +868,14 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                     exit(EXIT_FAILURE);
                 }
                 setValueToKhashBucket32(live_cnv_start_hash, all_starts_ends[i], cnv_index);
-                //fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             }
 
             // get current breakpoint start position
             //
             if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i])) {
                 setValueToKhashBucket32(live_bpt_start_hash, all_starts_ends[i], i);
-                //fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             }
         }
     }
@@ -1008,9 +1028,9 @@ void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index,
             //
             uint16_t num_of_paired_reads = cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].num_of_paired_reads;
                 
-            if (cnv_index == 2524 && anchor_breakpoint==208664075) {
-                fprintf(stderr, "cnv_index %"PRIu32"; cnv_breakpoints_size %"PRIu32"; num_of_paired_reads %"PRIu16"\n", cnv_index, cnv_breakpoints_size, num_of_paired_reads );
-            }
+            //if (cnv_index == 2524 && anchor_breakpoint==208664075)
+            //fprintf(stderr, "cnv_index %"PRIu32"; cnv_breakpoints_size %"PRIu32"; num_of_paired_reads %"PRIu16"; anchor_breakpoint %"PRIu32"; start %"PRIu32"; end %"PRIu32"\n", cnv_index, cnv_breakpoints_size, num_of_paired_reads, anchor_breakpoint, cnv_array->cnvs[cnv_index].equal_bin_start, cnv_array->cnvs[cnv_index].equal_bin_end );
+
             cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_starts[num_of_paired_reads] = start;
             cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].paired_read_ends[num_of_paired_reads] = end;
             cnv_array->cnvs[cnv_index].cnv_breakpoints[cnv_breakpoints_size].num_of_paired_reads++;
@@ -1231,6 +1251,10 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 }
 
 void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array) {
+    // To-remove: used for no MC tag testing
+    //
+    //return;
+
     // some bam/cram files don't have 'MC' tag, so skip the function
     // num_of_groups was originally set to -1
     //

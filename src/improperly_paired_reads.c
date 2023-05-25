@@ -144,6 +144,11 @@ int32_t getMateMatchLengthFromMCTag(char *mate_cigar) {
 }
 
 void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR_array, khash_t(khStrInt)* unmapped_read_hash, bam1_t *rec) {
+    // to-remove
+    // this is used for no 'MC' testing
+    //
+    //return;
+
     // Here MAPQ == 0 will be eliminated, no matter the situation
     //
     if (rec->core.qual == 0)
