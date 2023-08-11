@@ -21,7 +21,6 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include "htslib/sam.h"
 #include "terms.h"
 #include "user_inputs.h"
 #include "utility.h"

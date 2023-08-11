@@ -22,7 +22,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <omp.h>
-#include "htslib/sam.h"
+#include "htslib/include/htslib/sam.h"
 
 #include "data_structure.h"
 #include "coverage_tracking.h"

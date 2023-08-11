@@ -43,8 +43,8 @@ void usage() {
     printf("                         It Is Mandatory\n");
     printf("--output_dir         -o  output directory. It Is Mandatory\n");
     printf("--sample_name        -N  the sample name to be processed. It Is Mandatory\n");
-    printf("--mappability_file   -M  the genomic mappability file. It Is Mandatory\n");
-    printf("--gc_content_file    -G  the genomic GC%% file. It Is Mandatory\n");
+    //printf("--mappability_file   -M  the genomic mappability file. It Is Mandatory\n");
+    //printf("--gc_content_file    -G  the genomic GC%% file. It Is Mandatory\n");
     printf("--equal_size_window  -w  the equal size window bed file. It Is Mandatory\n");
     printf("--reference          -R  the file path of the reference sequence. \n");
     printf("                         It is Mandatory for CRAM files\n\n");
@@ -99,14 +99,14 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             {"output_dir",          required_argument,  0,  'o'},
             {"reference",           required_argument,  0,  'R'},
             {"sample_name",         required_argument,  0,  'N'},
-            {"mappability_file",    required_argument,  0,  'M'},
-            {"gc_content_file",     required_argument,  0,  'G'},
+            //{"mappability_file",    required_argument,  0,  'M'},
+            //{"gc_content_file",     required_argument,  0,  'G'},
             {"ref_version",         required_argument,  0,  'V'},
             {"percentage",          required_argument,  0,  'p'},
             {"excluded_regions",    required_argument,  0,  'e'},
             {"equal_bin_size",      required_argument,  0,  'S'},
             {"equal_size_window",   required_argument,  0,  'w'},
-            {"mappability_cutoff",  required_argument,  0,  'c'},
+            //{"mappability_cutoff",  required_argument,  0,  'c'},
             {"threads",             required_argument,  0,  'T'},
             {"duplicate",           no_argument,  0,  'd'},
             {"help",                no_argument,  0,  'h'},
@@ -120,7 +120,8 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arg = getopt_long_only (argc, argv, "b:c:de:gG:hi:m:M:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
+        arg = getopt_long_only (argc, argv, "b:de:ghi:m:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
+        //arg = getopt_long_only (argc, argv, "b:c:de:gG:hi:m:M:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (arg == -1) break;
@@ -138,9 +139,9 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 }
                 user_inputs->min_base_quality = atoi(optarg);
                 break;
-            case 'c':
-                user_inputs->mappability_cutoff = atof(optarg);
-                break;
+            //case 'c':
+            //    user_inputs->mappability_cutoff = atof(optarg);
+            //    break;
             case 'd': 
                 user_inputs->remove_duplicate = false;
                 break;
@@ -152,10 +153,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             case 'g':
                 user_inputs->debug_ON = true;
                 break;
-            case 'G':
-                user_inputs->gc_content_file = calloc(strlen(optarg)+1, sizeof(char));
-                strcpy(user_inputs->gc_content_file, optarg);
-                break;
+            //case 'G':
+            //    user_inputs->gc_content_file = calloc(strlen(optarg)+1, sizeof(char));
+            //    strcpy(user_inputs->gc_content_file, optarg);
+            //    break;
             case 'h': usage(); exit(EXIT_FAILURE);
             case 'i':
                 user_inputs->bam_file = (char *) malloc((strlen(optarg)+1) * sizeof(char));
@@ -168,10 +169,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 }
                 user_inputs->min_map_quality = atoi(optarg);
                 break;
-            case 'M':
-                user_inputs->mappability_file = calloc(strlen(optarg)+1, sizeof(char));
-                strcpy(user_inputs->mappability_file, optarg);
-                break;
+            //case 'M':
+            //    user_inputs->mappability_file = calloc(strlen(optarg)+1, sizeof(char));
+            //    strcpy(user_inputs->mappability_file, optarg);
+            //    break;
             case 'N':
                 user_inputs->sample_name = calloc(strlen(optarg)+1, sizeof(char));
                 strcpy(user_inputs->sample_name, optarg);
@@ -218,8 +219,8 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 user_inputs->Write_WGS_cov_fasta = true;
                 break;
             case '?':       //"b:de:gG:hi:m:M:o:p:Or:R:s:T:W:"
-                if ( optopt == 'b' || optopt == 'e' || optopt == 'G' || optopt == 'i' 
-                        || optopt == 'm' || optopt == 'M' || optopt == 'o' || optopt == 'p' || optopt == 'r'
+                if ( optopt == 'b' || optopt == 'e' || optopt == 'i' || optopt == 'm' 
+                        || optopt == 'o' || optopt == 'p' || optopt == 'r'
                         || optopt == 'R' || optopt == 's' || optopt == 'T' || optopt == 'V')
                     fprintf(stderr, "ERROR: Option -%c requires an argument.\n", optopt);
                 else if (isprint (optopt))
@@ -247,15 +248,15 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         input_error_flag=true;
     }
 
-    if (user_inputs->mappability_file == NULL) {
+    /*if (user_inputs->mappability_file == NULL) {
         fprintf(stderr, "ERROR: --mappability_file (or -M)\toption is mandatory!\n");
         input_error_flag=true;
     }
 
-    if (user_inputs->mappability_file == NULL) {
+    if (user_inputs->gc_content_file == NULL) {
         fprintf(stderr, "ERROR: --gc_content_file (or -G)\toption is mandatory!\n");
         input_error_flag=true;
-    }
+    }*/
 
     if (user_inputs->equal_size_window == NULL) {
         fprintf(stderr, "ERROR: --equal_size_window (or -w)\toption is mandatory!\n");
@@ -413,11 +414,11 @@ void outputUserInputOptions(User_Input *user_inputs) {
         fprintf(stderr, "\tRemove supplementary alignments is OFF\n");
     }
 
-    if (user_inputs->mappability_file)
-        fprintf(stderr, "\tThe mappability file used is %s\n", user_inputs->mappability_file);
+    //if (user_inputs->mappability_file)
+    //    fprintf(stderr, "\tThe mappability file used is %s\n", user_inputs->mappability_file);
     
-    if (user_inputs->gc_content_file)
-        fprintf(stderr, "\tThe GC content file used is %s\n", user_inputs->gc_content_file);
+    //if (user_inputs->gc_content_file)
+    //    fprintf(stderr, "\tThe GC content file used is %s\n", user_inputs->gc_content_file);
 
     if (user_inputs->debug_ON) {
         fprintf(stderr, "\tThe developer debugging is ON\n");
@@ -519,14 +520,14 @@ void userInputDestroy(User_Input *user_inputs) {
     if (user_inputs->merged_bin_file)
         free(user_inputs->merged_bin_file);
 
-    if (user_inputs->mappability_file)
-        free(user_inputs->mappability_file);
+    //if (user_inputs->mappability_file)
+    //    free(user_inputs->mappability_file);
 
     if (user_inputs->mappability_outfile)
         free(user_inputs->mappability_outfile);
 
-    if (user_inputs->gc_content_file)
-        free(user_inputs->gc_content_file);
+    //if (user_inputs->gc_content_file)
+    //    free(user_inputs->gc_content_file);
 
     if (user_inputs->gc_content_outfile)
         free(user_inputs->gc_content_outfile);

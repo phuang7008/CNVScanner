@@ -32,8 +32,8 @@
 #include <stdio.h>      // for file read and write
 
 // Users defined header files
-#include "htslib/sam.h"
-#include "htslib/khash.h"
+#include "htslib/include/htslib/sam.h"
+#include "htslib/include/htslib/khash.h"
 
 #include "data_structure.h"
 #include "coverage_tracking.h"

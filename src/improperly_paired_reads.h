@@ -19,7 +19,7 @@
 #ifndef IMPROPERLY_PAIRED_READS
 #define IMPROPERLY_PAIRED_READS
 
-#include "htslib/sam.h"
+#include "htslib/include/htslib/sam.h"
 
 #include "data_structure.h"
 #include "coverage_tracking.h"

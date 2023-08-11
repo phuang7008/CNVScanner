@@ -23,7 +23,6 @@
 //#include <mysql.h>
 //#include <stdbool.h>
 #include "breakpoints.h"
-#include "htslib/sam.h"
 #include "terms.h"
 #include "improperly_paired_reads.h"
 
