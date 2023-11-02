@@ -2,8 +2,8 @@ IDIR=/opt/rh/devtoolset-8/root/usr/include
 CODEDIR=/stornext/snfs130/NGIRD/scratch/phuang/repo/wgs_cnv/src
 HTSDIR=/stornext/snfs130/NGIRD/scratch/phuang/
 MYLIB=/stornext/snfs130/NGIRD/scratch/phuang/repo/common_libs
-CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
-#CC=gcc
+#CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
+CC=gcc
 
 # no compiler optimization
 CFLAGS= -g -Wall -Wextra -fopenmp
@@ -40,7 +40,7 @@ SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
 
 # define the executable file
-MAIN = wgs_cnv.moab
+MAIN = wgs_cnv3.slurm
 
 #
 # The following part of the makefile is generic; it can be used to 

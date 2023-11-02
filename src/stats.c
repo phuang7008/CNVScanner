@@ -45,6 +45,8 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
     //
     int32_t tlen = rec->core.isize;         // the right-hand read will have tlen < 0
 
+    // for properly paired reads
+    //
     if (one_pass_stdev != NULL && tlen >= 0 && (rec->core.flag & BAM_FPROPER_PAIR)) {
         one_pass_stdev->total_tlen_sum += tlen;
         one_pass_stdev->sum_of_tlen_square += tlen * tlen;
@@ -54,8 +56,16 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
         } else {
             one_pass_stdev->total_reads++;
         }
+        //fprintf(stderr, "TLEN %"PRId32"\n", tlen);
     }
 
+    // For improperly paired reads on the same chromosome
+    /*
+    if (one_pass_stdev != NULL && tlen >= 0 && !(rec->core.flag & BAM_FPROPER_PAIR)) {
+        if (rec->core.tid == rec->core.mtid) {
+            fprintf(stderr, "TLEN %"PRId32"\n", tlen);
+        }
+    }*/
 
     // Need to check various 'READ' flags regarding the current read before doing statistics analysis
     // But the order here is quite important,

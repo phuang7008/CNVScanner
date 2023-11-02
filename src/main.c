@@ -91,16 +91,16 @@ int main(int argc, char *argv[]) {
     if (user_inputs->reference_file) {
         fn_ref = getReferenceFaiPath(user_inputs->reference_file);
 
-        if (hts_set_fai_filename(sfh[0], fn_ref) != 0) {
-            fprintf(stderr, "ERROR: Failed to use reference at hts_set_fai_filename() \"%s\".\n", fn_ref);
-            if (fn_ref) free(fn_ref);
-            return -1;
+        for (t=0; t<user_inputs->num_of_threads; t++) {
+            if (hts_set_fai_filename(sfh[t], fn_ref) != 0) {
+                fprintf(stderr, "ERROR: Failed to use reference at hts_set_fai_filename() \"%s\".\n", fn_ref);
+                if (fn_ref) free(fn_ref);
+                return -1;
+            }
         }
     } else {
-        if ( sfh[0]->is_cram || sfh[0]->format.format == cram ) {
-            fprintf(stderr, "ERROR: Please provide the reference sequences for the input CRAM file \n%s\n", user_inputs->bam_file);
-            return -1;
-        }
+        fprintf(stderr, "ERROR: Please provide the reference sequences for the input BAM/CRAM/SAM file \n%s\n", user_inputs->bam_file);
+        return -1;
     }
 
     // check if bam file named as .cram and cram file named as .bam
