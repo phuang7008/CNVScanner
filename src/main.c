@@ -107,11 +107,11 @@ int main(int argc, char *argv[]) {
     //
     checkFileExtension(user_inputs->bam_file, sfh[0]);
 
-    // use sam_hdr_read to process both bam and cram header
+    // use sam_hdr_read to process both bam and cram headers
     //
-    bam_hdr_t **header = calloc(user_inputs->num_of_threads, sizeof(bam_hdr_t*));
+    bam_hdr_t **headers = calloc(user_inputs->num_of_threads, sizeof(bam_hdr_t*));
     for (t=0; t<user_inputs->num_of_threads; t++) {
-        if ((header[t] = sam_hdr_read(sfh[t])) == 0) return -1;
+        if ((headers[t] = sam_hdr_read(sfh[t])) == 0) return -1;
     }
 
     // for the overall stats_info
@@ -133,18 +133,18 @@ int main(int argc, char *argv[]) {
     if (user_inputs->chromosome_bed_file != NULL) {
         stats_info->wgs_cov_stats->total_genome_bases = loadWantedChromosomes(wanted_chromosome_hash, 
                 user_inputs->reference_version, user_inputs->chromosome_bed_file);
-        chromosomeTrackingInit2(wanted_chromosome_hash, chrom_tracking, header[0]);
+        chromosomeTrackingInit2(wanted_chromosome_hash, chrom_tracking, headers[0]);
 
         // here we need to verify if the chromosome naming convention matches 
         // between the bam/cram file and the chromosome bed file specified by the end user
         //
-        checkNamingConvention(header[0], wanted_chromosome_hash);
+        checkNamingConvention(headers[0], wanted_chromosome_hash);
 
     } else {
         stats_info->wgs_cov_stats->total_genome_bases = 
-            loadGenomeInfoFromBamHeader(wanted_chromosome_hash, header[0], user_inputs->reference_version);
-        chrom_tracking->number_of_chromosomes = header[0]->n_targets;
-        chromosomeTrackingInit1(chrom_tracking, wanted_chromosome_hash, header[0]);
+            loadGenomeInfoFromBamHeader(wanted_chromosome_hash, headers[0], user_inputs->reference_version);
+        chrom_tracking->number_of_chromosomes = headers[0]->n_targets;
+        chromosomeTrackingInit1(chrom_tracking, wanted_chromosome_hash, headers[0]);
     }
 
     fprintf(stderr, "The total genome bases is %"PRIu64"\n", stats_info->wgs_cov_stats->total_genome_bases);
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
     // get all unmapped read names
     //
     khash_t(khStrInt) *unmapped_read_hash = kh_init(khStrInt);
-    getAllUnmappedReads(unmapped_read_hash, sfh_idx[0], header[0], sfh[0]);
+    getAllUnmappedReads(unmapped_read_hash, sfh_idx[0], headers[0], sfh[0]);
 
     // store anchor breakpoints into a hash array (array is for each chromosome)
     //
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
     //
     Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
     SimpleStatsInit(wgs_simple_stats);
-    OnePassCalculateSedev(user_inputs, header, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, anchor_breakpoints_hash_array, improperly_PR_array, unmapped_read_hash);
+    OnePassCalculateSedev(user_inputs, headers, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, anchor_breakpoints_hash_array, improperly_PR_array, unmapped_read_hash);
 
     // The following is for debugging purpose
     //
@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
 
             // get the iterator for the current chromosome
             //
-            hts_itr_t *iter = sam_itr_querys(sfh_idx[thread_id], header[thread_id], chrom_tracking->chromosome_ids[chrom_index]);
+            hts_itr_t *iter = sam_itr_querys(sfh_idx[thread_id], headers[thread_id], chrom_tracking->chromosome_ids[chrom_index]);
             if (iter == NULL) {
                 fprintf(stderr, "ERROR: iterator creation failed: chr %s\n", chrom_tracking->chromosome_ids[chrom_index]);
                 exit(EXIT_FAILURE);
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
             int result=0;
             bam1_t *b = bam_init1();
             while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-              processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL, NULL, NULL);
+              processCurrentRecord(user_inputs, b, headers[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL, NULL, NULL);
             }
 
             if (result < -1) {
@@ -367,7 +367,7 @@ int main(int argc, char *argv[]) {
 
     // merge and expand the CNV calls using raw bin data
     //
-    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, anchor_breakpoints_hash_array, improperly_PR_array, chrom_tracking, the_stats, user_inputs, header, sfh_idx, sfh);
+    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, anchor_breakpoints_hash_array, improperly_PR_array, chrom_tracking, the_stats, user_inputs, headers, sfh_idx, sfh);
 
     // clean up
     //
@@ -397,7 +397,7 @@ int main(int argc, char *argv[]) {
 
     for (t=0; t<user_inputs->num_of_threads; t++) {
         sam_close(sfh[t]);
-        bam_hdr_destroy(header[t]);
+        bam_hdr_destroy(headers[t]);
         hts_idx_destroy(sfh_idx[t]);
     }
 

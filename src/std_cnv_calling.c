@@ -20,7 +20,7 @@
 
 #include <omp.h>
 
-void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh) {
+void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, User_Input *user_inputs, bam_hdr_t **headers, hts_idx_t **sfh_idx, samFile **sfh) {
 
 #pragma omp parallel shared(the_stats) num_threads(user_inputs->num_of_threads)
     {
@@ -55,7 +55,7 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
             expandMergedCNVWithRawBins(raw_bin_data_wrappers[raw_bin_index], equal_bin_cnv_array[cnv_array_index], the_stats);
 
-            checkBreakpointForEachCNV(equal_bin_cnv_array[cnv_array_index], anchor_breakpoints_hash_array[cnv_array_index], header[thread_id], sfh_idx[thread_id], sfh[thread_id], user_inputs);
+            checkBreakpointForEachCNV(equal_bin_cnv_array[cnv_array_index], anchor_breakpoints_hash_array[cnv_array_index], headers[thread_id], sfh_idx[thread_id], sfh[thread_id], user_inputs);
 
             checkImproperlyPairedReadsForEachCNV(equal_bin_cnv_array[cnv_array_index], improperly_PR_array[improper_array_index]);
 
@@ -751,6 +751,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
             counter--;
 
             if (counter < 0) {
+                fprintf(stderr, "Error: chr id is %s\n", cnv_array->chromosome_id);
                 fprintf(stderr, "Error: the counter %"PRId16" should NOT be negative in breakpoint/cnv intersection\n", counter);
                 fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
                 exit(EXIT_FAILURE);

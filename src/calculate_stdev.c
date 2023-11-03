@@ -18,7 +18,7 @@
 
 #include "calculate_stdev.h"
 
-void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash) {
+void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **headers, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash) {
 
     // for tmp chromosome tracking
     //
@@ -30,13 +30,13 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
 
     if (user_inputs->chromosome_bed_file != NULL) {
         loadWantedChromosomes(wanted_chromosome_hash, user_inputs->reference_version, user_inputs->chromosome_bed_file);
-        chromosomeTrackingInit2(wanted_chromosome_hash, chrom_tracking, header[0]);
+        chromosomeTrackingInit2(wanted_chromosome_hash, chrom_tracking, headers[0]);
 
-        checkNamingConvention(header[0], wanted_chromosome_hash);
+        checkNamingConvention(headers[0], wanted_chromosome_hash);
     } else {
-        loadGenomeInfoFromBamHeader(wanted_chromosome_hash, header[0], user_inputs->reference_version);
-        chrom_tracking->number_of_chromosomes = header[0]->n_targets;
-        chromosomeTrackingInit1(chrom_tracking, wanted_chromosome_hash, header[0]);
+        loadGenomeInfoFromBamHeader(wanted_chromosome_hash, headers[0], user_inputs->reference_version);
+        chrom_tracking->number_of_chromosomes = headers[0]->n_targets;
+        chromosomeTrackingInit1(chrom_tracking, wanted_chromosome_hash, headers[0]);
     }
 
     // setup the stats_info for each individual chromosome for each threads and initialize them
@@ -72,7 +72,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
 
                     // get the iterator for the current chromosome
                     //
-                    hts_itr_t *iter = sam_itr_querys(sfh_idx[thread_id], header[thread_id], chrom_tracking->chromosome_ids[chrom_index]);
+                    hts_itr_t *iter = sam_itr_querys(sfh_idx[thread_id], headers[thread_id], chrom_tracking->chromosome_ids[chrom_index]);
                     if (iter == NULL) {
                         fprintf(stderr, "ERROR: iterator creation failed: chr %s\n", chrom_tracking->chromosome_ids[chrom_index]);
                         exit(EXIT_FAILURE);
@@ -93,7 +93,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_
                     int result = 0;
                     bam1_t *b = bam_init1();
                     while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-                        processCurrentRecord(user_inputs, b, header[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], one_pass_stdev[chrom_index], improperly_paired_reads_array[imp_chr_idx], unmapped_read_hash);
+                        processCurrentRecord(user_inputs, b, headers[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], one_pass_stdev[chrom_index], improperly_paired_reads_array[imp_chr_idx], unmapped_read_hash);
                     }
 
                     if (result < -1) {
