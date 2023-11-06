@@ -757,11 +757,12 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                 exit(EXIT_FAILURE);
             }
 
+            /*
             if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
                 fprintf(stderr, "CNV_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             } else {
                 fprintf(stderr, "Breakpoint_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
-            }
+            }*/
 
             // when current position is an end and counter >= 1, there is an intersect
             // There might be multiple breakpoints associated with this CNV 
@@ -869,14 +870,14 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                     exit(EXIT_FAILURE);
                 }
                 setValueToKhashBucket32(live_cnv_start_hash, all_starts_ends[i], cnv_index);
-                fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                //fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             }
 
             // get current breakpoint start position
             //
             if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i])) {
                 setValueToKhashBucket32(live_bpt_start_hash, all_starts_ends[i], i);
-                fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                //fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
             }
         }
     }
