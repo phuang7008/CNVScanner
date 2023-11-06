@@ -1,0 +1,74 @@
+                Building and Installing HGSC_WGS_CNV
+                ====================================
+
+Requirements
+============
+Building HGSC_WGS_CNV requires a few programs and libraries to be present.
+
+Check to ensure the system provides the followings
+
+    GNU make
+    Both C and C++ compiler (e.g. gcc/g++ or related modules)
+
+The build requires autotools scripts like,
+
+    autoheader
+    autoconf
+    autoreconf
+
+The following external libraries are needed for the HGSC_WGS_CNV installation
+    libbz2
+    libcrypto
+    libcurl
+    libdl
+    liblzma
+    libm
+    libpthread
+    librt
+    libssl
+    libz
+
+Building Configure
+==================
+Before the installation of HGSC_WGS_CNV, users need to first install htslib package.
+https://github.com/samtools/htslib
+
+HGSC_WGS_CNV has been tested against htslib from version 1.10 to 1.17.
+
+Important Note:
+htslib must be installed inside wgs_cnv directory. Please create a 'htslib' 
+sub-directory like wgs_cnv/htslib if the 'htslib' sub-directory doesn't exist.
+The 'htslib' sub-directory name should NOT include any version numbers.
+
+Please follow the htslib 'INSTALL' instructions all the way to the final 
+step 'make install' such as
+    make prefix=<path to wgs_cnv/htslib directory> install
+
+Once htslib is successfully installed, users can proceeds to build HGSC_WGS_CNV.
+Please download any release package you prefer and decompress the package
+    tar zxvf HGSC_WGS_CNV-release-version.tar.gz
+    cd HGSC_WGS_CNV-release-version
+
+Run the following to create a brand new configure for your system
+    autoreconf -i
+
+Once users have generated the configure file, then do the following
+    ./configure
+    make
+    make install
+
+The './configure' generates Makefiles for the compilation.
+
+The 'make' compiles source code in both src/ and lib/
+and generates executables.
+
+The 'make install' command installs the compiled executables into the /usr/local
+directory. Users can change the installation location by adding --prefix=DIR
+option to the ./configure run or via 'make prefix=DIR install'.
+
+NOTES
+=====
+
+Contact Info
+============
+If users encounter any issues, please contact pemhuang@gmail.com
