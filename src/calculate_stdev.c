@@ -18,7 +18,7 @@
 
 #include "calculate_stdev.h"
 
-void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **headers, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash) {
+void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **headers, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array) {
 
     // for tmp chromosome tracking
     //
@@ -93,7 +93,7 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **headers, hts_idx
                     int result = 0;
                     bam1_t *b = bam_init1();
                     while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-                        processCurrentRecord(user_inputs, b, headers[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], one_pass_stdev[chrom_index], improperly_paired_reads_array[imp_chr_idx], unmapped_read_hash);
+                        processCurrentRecord(user_inputs, b, headers[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, breakpoint_array[bpt_chr_idx], one_pass_stdev[chrom_index], improperly_paired_reads_array[imp_chr_idx]);
                     }
 
                     if (result < -1) {

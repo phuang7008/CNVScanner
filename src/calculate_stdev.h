@@ -30,7 +30,7 @@
 #include "excluded_regions.h"
 #include "utility.h"
 
-void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, khash_t(khStrInt) *unmapped_read_hash);
+void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **header, hts_idx_t **sfh_idx, samFile **sfh, Bed_Info *excluded_bed_info,  Simple_Stats *simple_stats, Breakpoint_Array **breakpoint_array, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_paired_reads_array);
 
 void OnePassStdevInit(OnePassStdev **one_pass_stdev, Chromosome_Tracking *chrom_tracking);
 

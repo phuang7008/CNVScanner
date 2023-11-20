@@ -193,11 +193,6 @@ int main(int argc, char *argv[]) {
     Not_Properly_Paired_Reads_Array** improperly_PR_array = calloc(chrom_tracking->number_of_chromosomes, sizeof (Not_Properly_Paired_Reads_Array*));
     NotProperlyPairedReadsInit(improperly_PR_array, chrom_tracking);
 
-    // get all unmapped read names
-    //
-    khash_t(khStrInt) *unmapped_read_hash = kh_init(khStrInt);
-    getAllUnmappedReads(unmapped_read_hash, sfh_idx[0], headers[0], sfh[0]);
-
     // store anchor breakpoints into a hash array (array is for each chromosome)
     //
     khash_t(m32) **anchor_breakpoints_hash_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(khash_t(m32)));
@@ -207,7 +202,7 @@ int main(int argc, char *argv[]) {
     //
     Simple_Stats *wgs_simple_stats = calloc(1, sizeof(Simple_Stats));
     SimpleStatsInit(wgs_simple_stats);
-    OnePassCalculateSedev(user_inputs, headers, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, anchor_breakpoints_hash_array, improperly_PR_array, unmapped_read_hash);
+    OnePassCalculateSedev(user_inputs, headers, sfh_idx, sfh, excluded_bed_info, wgs_simple_stats, breakpoint_array, anchor_breakpoints_hash_array, improperly_PR_array);
 
     // The following is for debugging purpose
     //
@@ -260,7 +255,7 @@ int main(int argc, char *argv[]) {
             int result=0;
             bam1_t *b = bam_init1();
             while ((result = sam_itr_next(sfh[thread_id], iter, b)) >= 0) {
-              processCurrentRecord(user_inputs, b, headers[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL, NULL, NULL);
+              processCurrentRecord(user_inputs, b, headers[thread_id], stats_info_per_chr[chrom_index], chrom_tracking, chrom_index, NULL, NULL, NULL);
             }
 
             if (result < -1) {
@@ -383,7 +378,6 @@ int main(int argc, char *argv[]) {
     //BreakpointStatsArrayDestroy(bpt_stats_array);
     NotProperlyPairedReadsDestroy(improperly_PR_array, chrom_tracking);
     AnchorBreakpointsHashArrayDestroy(anchor_breakpoints_hash_array, chrom_tracking);
-    cleanAllUnmappedReadHash(unmapped_read_hash);
 
     if (excluded_bed_info != NULL)
         cleanBedInfo(excluded_bed_info);
@@ -396,9 +390,9 @@ int main(int argc, char *argv[]) {
         statsInfoDestroy(stats_info);
 
     for (t=0; t<user_inputs->num_of_threads; t++) {
-        sam_close(sfh[t]);
         bam_hdr_destroy(headers[t]);
         hts_idx_destroy(sfh_idx[t]);
+        sam_close(sfh[t]);
     }
 
     if (fn_ref) free(fn_ref);

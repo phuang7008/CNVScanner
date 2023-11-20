@@ -32,13 +32,9 @@ void NotProperlyPairedReadsInit(Not_Properly_Paired_Reads_Array** improperly_pai
 
 void NotProperlyPairedReadsDestroy(Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking);
 
-void getAllUnmappedReads(khash_t(khStrInt) *unmapped_read_hash, hts_idx_t *sfh_idx, bam_hdr_t* header, samFile* sfh);
-
-void cleanAllUnmappedReadHash(khash_t(khStrInt) *unmapped_read_hash);
-
 uint32_t fetchImproperPRArrayChrIndex(Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, Chromosome_Tracking* chrom_tracking, uint32_t chrom_index);
 
-void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_paired_reads_array, khash_t(khStrInt)* unmapped_read_hash, bam1_t *rec);
+void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_paired_reads_array, bam1_t *rec);
 
 void organizeImproperlyPairedReadArray(Not_Properly_Paired_Reads_Array* improperly_PR_array);
 

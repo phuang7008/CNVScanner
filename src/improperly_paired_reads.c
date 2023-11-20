@@ -69,41 +69,6 @@ void NotProperlyPairedReadsDestroy(Not_Properly_Paired_Reads_Array** improperly_
     }
 }
 
-void getAllUnmappedReads(khash_t(khStrInt) *unmapped_read_hash, hts_idx_t *sfh_idx, bam_hdr_t* header, samFile* sfh) {
-    uint64_t total_unmapped_reads=0;
-    hts_itr_t *iter_umpd = sam_itr_querys(sfh_idx, header, "*");
-    int res, absent;
-
-    if (iter_umpd) {
-        bam1_t *b = bam_init1();
-        while ((res = sam_itr_next(sfh, iter_umpd, b)) >= 0) {
-            khiter_t iter = kh_put(khStrInt, unmapped_read_hash, bam_get_qname(b), &absent);
-            if (absent) 
-                kh_key(unmapped_read_hash, iter) = strdup(bam_get_qname(b));
-            kh_value(unmapped_read_hash, iter) = 1;
-            total_unmapped_reads++;
-        }
-        fprintf(stderr, "total unmapped reads with *\t%"PRIu64"\n", total_unmapped_reads);
-        bam_destroy1(b);
-        hts_itr_destroy(iter_umpd);
-    }
-}
-
-void cleanAllUnmappedReadHash(khash_t(khStrInt) *unmapped_read_hash) {
-    khiter_t iter;
-    for (iter=kh_begin(unmapped_read_hash); iter!=kh_end(unmapped_read_hash); iter++) {
-        if (kh_exist(unmapped_read_hash, iter)) {
-            free((char *) kh_key(unmapped_read_hash, iter));
-            kh_key(unmapped_read_hash, iter) = NULL;
-        }
-    }
-
-    if (unmapped_read_hash) {
-        free(unmapped_read_hash);
-        unmapped_read_hash = NULL;
-    }
-}
-
 uint32_t fetchImproperPRArrayChrIndex(Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking* chrom_tracking, uint32_t chrom_index) {
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
@@ -143,7 +108,7 @@ int32_t getMateMatchLengthFromMCTag(char *mate_cigar) {
     return match_length;
 }
 
-void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR_array, khash_t(khStrInt)* unmapped_read_hash, bam1_t *rec) {
+void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR_array, bam1_t *rec) {
     // to-remove
     // this is used for no 'MC' testing
     //
@@ -289,7 +254,6 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
         improperly_PR_array->grouped_improperly_PRs[g_idx].total_paired_reads = 0;
         improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000 = 0;
         improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash = kh_init(m32);
-        improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_unmapped_reads = 0;
         improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_mapped_reads_on_diff_chrom = 0;
         improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_mapped_reads_on_same_chrom = 0;
     }
@@ -297,28 +261,17 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
     improperly_PR_array->grouped_improperly_PRs[g_idx].group_start_end = rec->core.pos;
     improperly_PR_array->grouped_improperly_PRs[g_idx].total_paired_reads++;
 
-    khiter_t iter_g = kh_get(khStrInt, unmapped_read_hash, bam_get_qname(rec));
-    if (iter_g == kh_end(unmapped_read_hash)) {
-        // both are mapped reads
-        //
-        if (rec->core.tid == rec->core.mtid) {
-            improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_mapped_reads_on_same_chrom++;
+    // both are mapped reads
+    //
+    improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_mapped_reads_on_same_chrom++;
             
-            // we are only take care of right-hand side as the other side will be left-hand size with negative value
-            //
-            if (rec->core.isize >= 1000) {
-                improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000++;
-                improperly_PR_array->grouped_improperly_PRs[g_idx].group_mate_end = improperly_PR_array->grouped_improperly_PRs[g_idx].group_start + rec->core.isize;
+    // we are only take care of right-hand side as the other side will be left-hand size with negative value
+    //
+    if (rec->core.isize >= 1000) {
+        improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000++;
+        improperly_PR_array->grouped_improperly_PRs[g_idx].group_mate_end = improperly_PR_array->grouped_improperly_PRs[g_idx].group_start + rec->core.isize;
 
-                setValueToKhashBucket32(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, rec->core.mpos, 1);
-            }
-        } else {
-            improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_mapped_reads_on_diff_chrom++;
-        }
-    } else {
-        // one of the paired reads is unmapped reads
-        //
-        improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_unmapped_reads++;
+        setValueToKhashBucket32(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, rec->core.mpos, 1);
     }
 
     // resize the group size of improperly_PR_array dynamically
@@ -361,7 +314,7 @@ void outputGroupedImproperlyPairedReads(Not_Properly_Paired_Reads_Array** improp
     FILE *fh = fopen ("Grouped_Improperly_Paired_Reads.txt", "w");
     fileOpenError(fh, "Grouped_Improperly_Paired_Reads.txt");
 
-    fprintf(fh, "chr\tgroup_start\tgroup_start_end\tgroup_mate_end\tlength\tcumulative_TLEN\ttotal_paired_reads\tnum_of_pairs_TLEN_ge_1000\tnum_of_unmapped_reads\tnum_of_mapped_reads_on_diff_chrom\tnum_of_mapped_reads_on_same_chrom\n");
+    fprintf(fh, "chr\tgroup_start\tgroup_start_end\tgroup_mate_end\tlength\tcumulative_TLEN\ttotal_paired_reads\tnum_of_pairs_TLEN_ge_1000\tnum_of_mapped_reads_on_diff_chrom\tnum_of_mapped_reads_on_same_chrom\n");
 
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         int32_t g;
@@ -371,7 +324,7 @@ void outputGroupedImproperlyPairedReads(Not_Properly_Paired_Reads_Array** improp
                 cumulative_TLEN = improperly_PR_array[i]->grouped_improperly_PRs[g].group_mate_end - \
                                   improperly_PR_array[i]->grouped_improperly_PRs[g].group_start;
 
-            fprintf(fh, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", improperly_PR_array[i]->chrom_id,
+            fprintf(fh, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", improperly_PR_array[i]->chrom_id,
                     improperly_PR_array[i]->grouped_improperly_PRs[g].group_start,  \
                     improperly_PR_array[i]->grouped_improperly_PRs[g].group_start_end,    \
                     improperly_PR_array[i]->grouped_improperly_PRs[g].group_mate_end,     \
@@ -380,7 +333,6 @@ void outputGroupedImproperlyPairedReads(Not_Properly_Paired_Reads_Array** improp
                     cumulative_TLEN,
                     improperly_PR_array[i]->grouped_improperly_PRs[g].total_paired_reads,    \
                     improperly_PR_array[i]->grouped_improperly_PRs[g].num_of_pairs_TLEN_ge_1000,  \
-                    improperly_PR_array[i]->grouped_improperly_PRs[g].num_of_unmapped_reads,      \
                     improperly_PR_array[i]->grouped_improperly_PRs[g].num_of_mapped_reads_on_diff_chrom, \
                     improperly_PR_array[i]->grouped_improperly_PRs[g].num_of_mapped_reads_on_same_chrom
             );

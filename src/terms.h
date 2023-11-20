@@ -263,7 +263,6 @@ typedef struct {
  *              group_end
  *              total_paired_reads (within the group)
  *              num_of_pairs_TLEN_ge_1000
- *              num_of_unmapped_reads
  *              num_of_mapped_reads_on_diff_chrom
  *              num_of_mapped_reads_on_same_chrom
  *    
@@ -279,7 +278,6 @@ typedef struct {
     khash_t(m32) * mate_ends_hash;                  // hash of mate end positions that have the paired-read TLEN >= 1000
                                                     // the difference of neighboring ends (sorted) should be <= 150 
                                                     // just like the starts (the hash will be converted to array)
-    uint32_t num_of_unmapped_reads;
     uint32_t num_of_mapped_reads_on_diff_chrom;
     uint32_t num_of_mapped_reads_on_same_chrom;
 } Grouped_Not_Properly_Paired_Reads;
