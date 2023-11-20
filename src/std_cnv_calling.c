@@ -47,8 +47,12 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
             }
 
             for (improper_array_index=0; improper_array_index<chrom_tracking->number_of_chromosomes; improper_array_index++) {
-                if (strcmp(improperly_PR_array[improper_array_index]->chrom_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0)
+                if (strcmp(improperly_PR_array[improper_array_index]->chrom_id, equal_bin_cnv_array[cnv_array_index]->chromosome_id) == 0) {
+                    // need to process the last group of improperly paired reads
+                    //
+                    processPairedReadsWithinTheSameGroup(improperly_PR_array[improper_array_index]);
                     break;
+                }
             }
 
             mergeNeighboringBinsBasedOnZscore(equal_bin_cnv_array[cnv_array_index], equal_size_window_wrappers[equal_bin_index], the_stats, equal_bin_cnv_array[cnv_array_index]->chromosome_id, user_inputs, 2);

@@ -43,8 +43,10 @@ void NotProperlyPairedReadsDestroy(Not_Properly_Paired_Reads_Array** improperly_
 
         if (improperly_PR_array[i]->grouped_improperly_PRs) {
             if (improperly_PR_array[i]->num_of_groups >= 0) {
-                uint32_t g_idx = improperly_PR_array[i]->num_of_groups;
-                uint32_t j;
+                // should be signed value
+                //
+                int32_t g_idx = improperly_PR_array[i]->num_of_groups;
+                int32_t j;
                 for (j=0; j<g_idx; j++) {
                     if (improperly_PR_array[i]->grouped_improperly_PRs[j].mate_ends_hash)
                         kh_destroy(m32, improperly_PR_array[i]->grouped_improperly_PRs[j].mate_ends_hash);
@@ -108,12 +110,68 @@ int32_t getMateMatchLengthFromMCTag(char *mate_cigar) {
     return match_length;
 }
 
-void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR_array, bam1_t *rec) {
-    // to-remove
-    // this is used for no 'MC' testing
-    //
-    //return;
+void processPairedReadsWithinTheSameGroup(Not_Properly_Paired_Reads_Array* improperly_PR_array) {
+    int32_t g_idx = improperly_PR_array->num_of_groups;   // need to be signed
+    uint16_t size = improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000;
+    if (size >= 2) {
+        uint32_t * ends = calloc(size, sizeof(uint32_t));
+        khiter_t iter;
+        uint32_t j=0;
+        for (iter=kh_begin(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash); \
+                iter!=kh_end(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash); iter++) {
+            if (kh_exist(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, iter)) {
+                // Note, all ends at the mate_end_hash have the TLEN >= 1000bp when compare to the corresponding start
+                //
+                uint32_t i;
+                for (i=0; i<kh_value(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, iter); i++) {
+                    ends[j] = kh_key(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, iter);
+                    j++;
+                }
+            }
+        }
 
+        // sort the ends array
+        //
+        qsort(ends, j, sizeof(uint32_t), compare);
+
+        // group ends into bins so that data within a group have sizes differ < 1000
+        // eliminate all singletons and update the num_of_pairs_TLEN_ge_1000 to the
+        // one with the group size of the highest number of members
+        //
+        uint32_t i, group_mate_end=0;
+        uint16_t cur_group_size=1, max=0;
+        for (i=1; i<j; i++) {
+            if (ends[i] - ends[i-1] < 300) {
+                // same group
+                //
+                cur_group_size++;
+                group_mate_end = ends[i];
+            } else {
+                if (cur_group_size > max && cur_group_size >= 2) {
+                    max = cur_group_size;
+                    cur_group_size = 1;
+                }
+            }
+        }
+
+        if (cur_group_size > max)
+            max = cur_group_size;
+
+        // update the num_of_pairs_TLEN_ge_1000 and reset the group_mate_end
+        //
+        improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000 = max;
+        improperly_PR_array->grouped_improperly_PRs[g_idx].group_mate_end = group_mate_end;
+
+        if (ends != NULL) {
+            free(ends);
+            ends = NULL;
+        }
+    }
+
+    improperly_PR_array->num_of_groups++;
+}
+
+void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR_array, bam1_t *rec) {
     // Here MAPQ == 0 will be eliminated, no matter the situation
     //
     if (rec->core.qual == 0)
@@ -181,63 +239,7 @@ void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_PR
         // different set of TLEN from 1234 to 1234567890 in length. So need to elimiate singletons
         // Here we choose the end positions is because all the starts are closed by (~150bp)
         //
-        uint16_t size = improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000;
-        if (size >= 2) {
-            uint32_t * ends = calloc(size, sizeof(uint32_t));
-            khiter_t iter;
-            uint32_t j=0;
-            for (iter=kh_begin(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash); \
-                    iter!=kh_end(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash); iter++) {
-                if (kh_exist(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, iter)) {
-                    // Note, all ends at the mate_end_hash have the TLEN >= 1000bp when compare to the corresponding start
-                    //
-                    uint32_t i;
-                    for (i=0; i<kh_value(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, iter); i++) {
-                        ends[j] = kh_key(improperly_PR_array->grouped_improperly_PRs[g_idx].mate_ends_hash, iter);
-                        j++;
-                    }
-                }
-            }
-
-            // sort the ends array
-            //
-            qsort(ends, j, sizeof(uint32_t), compare);
-
-            // group ends into bins so that data within a group have sizes differ < 1000
-            // eliminate all singletons and update the num_of_pairs_TLEN_ge_1000 to the 
-            // one with the group size of the highest number of members
-            //
-            uint32_t i, group_mate_end=0;
-            uint16_t cur_group_size=1, max=0;
-            for (i=1; i<j; i++) {
-                if (ends[i] - ends[i-1] < 300) {
-                    // same group
-                    //
-                    cur_group_size++;
-                    group_mate_end = ends[i];
-                } else {
-                    if (cur_group_size > max && cur_group_size >= 2) {
-                        max = cur_group_size;
-                        cur_group_size = 1;
-                    }
-                }
-            }
-
-            if (cur_group_size > max) 
-                max = cur_group_size;
-
-            // update the num_of_pairs_TLEN_ge_1000 and reset the group_mate_end
-            //
-            improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000 = max;
-            improperly_PR_array->grouped_improperly_PRs[g_idx].group_mate_end = group_mate_end;
-
-            if (ends != NULL) {
-                free(ends);
-                ends = NULL;
-            }
-        }
-
-        improperly_PR_array->num_of_groups++;
+        processPairedReadsWithinTheSameGroup(improperly_PR_array);
         g_idx++;
         new_group = true;
 

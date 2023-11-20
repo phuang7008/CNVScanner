@@ -34,6 +34,8 @@ void NotProperlyPairedReadsDestroy(Not_Properly_Paired_Reads_Array** improperly_
 
 uint32_t fetchImproperPRArrayChrIndex(Not_Properly_Paired_Reads_Array** improperly_paired_reads_array, Chromosome_Tracking* chrom_tracking, uint32_t chrom_index);
 
+void processPairedReadsWithinTheSameGroup(Not_Properly_Paired_Reads_Array* improperly_PR_array);
+
 void processImproperlyPairedReads(Not_Properly_Paired_Reads_Array* improperly_paired_reads_array, bam1_t *rec);
 
 void organizeImproperlyPairedReadArray(Not_Properly_Paired_Reads_Array* improperly_PR_array);
