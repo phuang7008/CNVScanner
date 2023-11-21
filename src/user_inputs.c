@@ -60,7 +60,7 @@ void usage() {
     printf("                         need to be processed in bed format. Default: Not Provided\n");
     printf("--threads            -T  the number of threads \n");
     printf("                         (Note: when used with HPC's msub, make sure that the number of\n"); 
-    printf("                         processors:ppn matches to number of threads). Default 3\n");
+    printf("                         processors:ppn matches to number of threads). Default 2\n");
     printf("--equal_bin_size     -S  the final bin size after dividing chromosomes into equal sized bins. Default 500\n");
     printf("--mappability_cutoff -c  the minimal mappability used to filter out low mappability regions. Default 0.0\n");
     printf("--ref_version        -V  the reference version used. Default hg38\n");
@@ -69,7 +69,7 @@ void usage() {
     printf("--duplicate          -d  Specify this flag only when you want to keep Duplicates reads.\n");
     printf("                         Default: Remove Duplicate is ON\n");
     printf("--supplemental       -s  Remove Supplementary alignments and DO NOT use them for statistics. Default: off\n");
-    printf("--overlap            -O  Remove Overlapping Bases to avoid double counting. Default: off\n");
+    printf("--overlap            -O  Turn off Remove Overlapping Bases to avoid double counting. Default: on\n");
     printf("--wgs_depth          -W  Write/Dump the WGS base coverage depth into Coverage.fasta file \n");
     printf("                         (both -w and -W needed). Default: off\n");
     printf("--help               -h  Print this help/usage message\n");
@@ -182,7 +182,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 strcpy(user_inputs->output_dir, optarg);
                 break;
             case 'O':
-                user_inputs->excluding_overlapping_bases = true;
+                user_inputs->excluding_overlapping_bases = false;
                 break;
             case 'p': 
                    flag_float = isFloat(optarg, &(user_inputs->percentage)); 
@@ -442,11 +442,11 @@ User_Input * userInputInit() {
     //user_inputs->average_coverage = -1;
     user_inputs->min_map_quality  = 0;
     user_inputs->min_base_quality = 0;
-    user_inputs->num_of_threads   = 3;
+    user_inputs->num_of_threads   = 2;
     user_inputs->equal_bin_size   = 500;
     user_inputs->mappability_cutoff  = 0.0;
     user_inputs->Write_WGS_cov_fasta = false;
-    user_inputs->excluding_overlapping_bases = false;
+    user_inputs->excluding_overlapping_bases = true;
     user_inputs->remove_duplicate = true;
     user_inputs->remove_supplementary_alignments = false;
 
