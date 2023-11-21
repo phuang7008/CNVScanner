@@ -671,11 +671,21 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
             if (kh_value(anchor_breakpoints_hash, k) >= 2) {
                 uint32_t breakpoint_pos = kh_key(anchor_breakpoints_hash, k);
 
-                all_starts_ends[counter] = breakpoint_pos - DISTANCE_CUTOFF;
+                if ((int32_t)breakpoint_pos - DISTANCE_CUTOFF < 0) {
+                    // prevent negative value or value overflow
+                    //
+                    all_starts_ends[counter] = 1;
+                } else {
+                    all_starts_ends[counter] = breakpoint_pos - DISTANCE_CUTOFF;
+                }
                 setValueToKhashBucket32(breakpoint_start_hash, all_starts_ends[counter], breakpoint_pos);
                 counter++;
 
-                all_starts_ends[counter] = breakpoint_pos + DISTANCE_CUTOFF;
+                if (breakpoint_pos + DISTANCE_CUTOFF > cnv_array->chrom_length) {
+                    all_starts_ends[counter] = cnv_array->chrom_length - 1;
+                } else {
+                    all_starts_ends[counter] = breakpoint_pos + DISTANCE_CUTOFF;
+                }
                 setValueToKhashBucket32(breakpoint_end_hash, all_starts_ends[counter], breakpoint_pos);
                 counter++;
 
@@ -747,25 +757,44 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
         //if (all_starts_ends[i] == 188566994 || all_starts_ends[i] == 6652610)
         //    printf("here it is\n");
 
-        if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
-                checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i])) {
+        // if a key is present in both start and end position, we have to process start first
+        //
+        bool start_first = false;
+        if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_hash, all_starts_ends[i]))
+            start_first = true;
+
+        if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i]) && checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i]))
+            start_first = true;
+
+        if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i]) && checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i]))
+            start_first = true;
+
+        if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_hash, all_starts_ends[i]))
+            start_first = true;
+
+        if (!start_first && (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
+                checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i]))) {
 
             // always decrease count if it is the end position
             //
             counter--;
 
             if (counter < 0) {
-                fprintf(stderr, "Error: chr id is %s\n", cnv_array->chromosome_id);
-                fprintf(stderr, "Error: the counter %"PRId16" should NOT be negative in breakpoint/cnv intersection\n", counter);
-                fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
-                exit(EXIT_FAILURE);
+                if (i == 0) {
+                    counter = 0;    // this happens when breakpoint_pos - DISTANCE_CUTOFF
+                } else {
+                    fprintf(stderr, "Error: chr id is %s and index i is %"PRIu32"\n", cnv_array->chromosome_id, i);
+                    fprintf(stderr, "Error: the counter %"PRId16" should NOT be negative in breakpoint/cnv intersection\n", counter);
+                    fprintf(stderr, "current pos: %"PRIu32" and the prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
+                    exit(EXIT_FAILURE);
+                }
             }
 
             /*
             if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
-                fprintf(stderr, "CNV_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                fprintf(stderr, "%s\tCNV_End\t%"PRIu32"\t%"PRId32"\n", cnv_array->chromosome_id, all_starts_ends[i], counter);
             } else {
-                fprintf(stderr, "Breakpoint_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                fprintf(stderr, "%s\tBreakpoint_End\t%"PRIu32"\t%"PRId32"\n", cnv_array->chromosome_id, all_starts_ends[i], counter);
             }*/
 
             // when current position is an end and counter >= 1, there is an intersect
@@ -874,14 +903,28 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                     exit(EXIT_FAILURE);
                 }
                 setValueToKhashBucket32(live_cnv_start_hash, all_starts_ends[i], cnv_index);
-                //fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                //fprintf(stderr, "%s\tCNV_Start\t%"PRIu32"\t%"PRId32"\n", cnv_array->chromosome_id, all_starts_ends[i], counter);
             }
 
             // get current breakpoint start position
             //
             if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i])) {
                 setValueToKhashBucket32(live_bpt_start_hash, all_starts_ends[i], i);
-                //fprintf(stderr, "Breakpoint_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], counter);
+                //fprintf(stderr, "%s\tBreakpoint_Start\t%"PRIu32"\t%"PRId32"\n", cnv_array->chromosome_id, all_starts_ends[i], counter);
+            }
+
+            // delete the items in the hashtable
+            //
+            if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i])) {
+                iter = kh_get(m32, cnv_start_hash, all_starts_ends[i]);
+                if (iter != kh_end(cnv_start_hash)) {
+                    kh_del(m32, cnv_start_hash, iter);
+                }
+            } else if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i])) {
+                iter = kh_get(m32, breakpoint_start_hash, all_starts_ends[i]);
+                if (iter != kh_end(breakpoint_start_hash)) {
+                    kh_del(m32, breakpoint_start_hash, iter);        // this deletes the key
+                }
             }
         }
     }
@@ -1257,10 +1300,6 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 }
 
 void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array) {
-    // To-remove: used for no MC tag testing
-    //
-    //return;
-
     // some bam/cram files don't have 'MC' tag, so skip the function
     // num_of_groups was originally set to -1
     //
@@ -1371,8 +1410,21 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
         //if (all_starts_ends[i] == 117125005)
         //    printf("I am here\n");
 
-        if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
-                checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i])) {
+        bool start_first = false;
+        if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_hash, all_starts_ends[i]))
+            start_first = true;
+
+        if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i]) && checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i]))
+            start_first = true;
+
+        if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i]) && checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i]))
+            start_first = true;
+
+        if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_hash, all_starts_ends[i]))
+            start_first = true;
+
+        if (!start_first && (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
+                checkm32KhashKey(imp_PR_end_hash, all_starts_ends[i]))) {
 
             // always decrease count first if it is an end position
             //
@@ -1385,9 +1437,13 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             }*/
 
             if (count < 0) {
-                fprintf(stderr, "Error: the count %"PRId16" should NOT be negative in imp/cnv intersection", count);
-                fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
-                exit(EXIT_FAILURE);
+                if (i == 0) {
+                    count = 0;
+                } else {
+                    fprintf(stderr, "Error: the count %"PRId16" should NOT be negative in imp/cnv intersection", count);
+                    fprintf(stderr, "current pos: %"PRIu32" with prev pos %"PRIu32"\n", all_starts_ends[i], all_starts_ends[i-1]);
+                    exit(EXIT_FAILURE);
+                }
             }
 
             // when current position is an end and count >= 1, there is an intersect 
@@ -1483,7 +1539,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             }
 
             // it is possible that some starts and ends are the same value
-            // we need to delete the end position as it goes first in both this loop and in the data
+            // delete the processed positions, so it won't interfere with next position
             //
             if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
                 iter = kh_get(m32, cnv_end_hash, all_starts_ends[i]);
@@ -1509,7 +1565,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
                     fprintf(stderr, "Something went wrong with CNV start at %"PRIu32"\n", all_starts_ends[i]);
                     exit(EXIT_FAILURE);
                 }
-                //fprintf(stderr, "CNV_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
+                //fprintf(stderr, "%s\tCNV_Start\t%"PRIu32"\t%"PRId32"\n", cnv_array->chromosome_id, all_starts_ends[i], count);
                 setValueToKhashBucket32(live_cnv_start_hash, all_starts_ends[i], cnv_index);
             }
 
@@ -1518,6 +1574,20 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i])) {
                 setValueToKhashBucket32(live_imp_start_hash, all_starts_ends[i], 1);
                 //fprintf(stderr, "IMP_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
+            }
+
+            // now delete all the processed starts
+            //
+            if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i])) {
+                iter = kh_get(m32, cnv_start_hash, all_starts_ends[i]);
+                if (iter != kh_end(cnv_start_hash)) {
+                    kh_del(m32, cnv_start_hash, iter);
+                }
+            } else if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i])) {
+                iter = kh_get(m32, imp_PR_start_hash, all_starts_ends[i]);
+                if (iter != kh_end(imp_PR_start_hash)) {
+                    kh_del(m32, imp_PR_start_hash, iter);        // this deletes the key
+                }
             }
         }
     }
@@ -1760,6 +1830,7 @@ void cnvArrayInit(CNV_Array **cnv_array, Chromosome_Tracking *chrom_tracking) {
 
         // initialize CNVs on each chromosome
         //
+        cnv_array[i]->chrom_length = chrom_tracking->chromosome_lengths[i];
         cnv_array[i]->capacity = 5*PR_INIT_SIZE;
         cnv_array[i]->cnvs = calloc(cnv_array[i]->capacity, sizeof(CNV));
         cnv_array[i]->size = 0;

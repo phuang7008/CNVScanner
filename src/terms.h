@@ -46,7 +46,8 @@
 #define DIFF_COV_TO_MERGE 5
 #define SMALL_LENGTH_CUTOFF 50
 #define EQUAL_BIN_SIZE 20
-#define DISTANCE_CUTOFF 300     // Qiaoyan: use 2 x seq-length = 2 x 150 = 300 on either size
+//#define DISTANCE_CUTOFF 300     // Qiaoyan: use 2 x seq-length = 2 x 150 = 300 on either size
+#define DISTANCE_CUTOFF 500     // if we use equal bin size 2000, we need to search a larger region 500 instead
 #define BREAKPOINT_DISTANCE_TO_GROUP 5      // group neighboring breakpoint within 5bp together
 
 // We need to declared the followings as glabal since the program will change these values!!!
@@ -196,6 +197,7 @@ typedef struct {
 
 typedef struct {
     char *chromosome_id;
+    uint32_t chrom_length;
     uint32_t size;
     uint32_t capacity;
     CNV* cnvs;              // CNV array per chromosome
