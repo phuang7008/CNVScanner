@@ -1807,8 +1807,12 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
                 strcpy(GT, "./.");
             }
 
-            fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t.\t%s\tEND=%"PRIu32";SVLEN=%"PRIu32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8"\tGT\t%s\n", \
-                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, FILTER, cnv_end, cnv_end-cnv_start, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, GT);
+            int32_t svLen = cnv_end-cnv_start;      // must be signed
+            if (cnv_array->cnvs[j].cnv_type == 'L')
+                svLen *= -1;
+
+            fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t.\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8"\tGT\t%s\n", \
+                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, FILTER, cnv_end, svLen, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, GT);
         } // end equal_bin_cnv_array
     } // end chromosome list
 }
