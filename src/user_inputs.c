@@ -346,8 +346,13 @@ void setupOutputReportFiles(User_Input *user_inputs) {
 
     // output the final CNVs in VCF file format
     //
-    sprintf(string_to_add, ".WGS_CNV.vcf");
+    sprintf(string_to_add, ".cnv.vcf");
     generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->vcf_output_file, string_to_add);
+
+    // output the simple CNV vcf file in TSV format
+    //
+    sprintf(string_to_add, ".cnv.txt");
+    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->simple_vcf_output_file, string_to_add);
 
     // KEEP the following Please!
     // free the memory

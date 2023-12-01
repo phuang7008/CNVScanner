@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
 
     // merge and expand the CNV calls using raw bin data
     //
-    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, anchor_breakpoints_hash_array, improperly_PR_array, chrom_tracking, the_stats, user_inputs, headers, sfh_idx, sfh);
+    generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, anchor_breakpoints_hash_array, improperly_PR_array, chrom_tracking, the_stats, stats_info,  user_inputs, headers, sfh_idx, sfh);
 
     // clean up
     //

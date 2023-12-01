@@ -20,7 +20,7 @@
 
 #include <omp.h>
 
-void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, User_Input *user_inputs, bam_hdr_t **headers, hts_idx_t **sfh_idx, samFile **sfh) {
+void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_size_window_wrappers, Binned_Data_Wrapper **raw_bin_data_wrappers, khash_t(m32) **anchor_breakpoints_hash_array, Not_Properly_Paired_Reads_Array** improperly_PR_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *the_stats, Stats_Info *stats_info, User_Input *user_inputs, bam_hdr_t **headers, hts_idx_t **sfh_idx, samFile **sfh) {
 
 #pragma omp parallel shared(the_stats) num_threads(user_inputs->num_of_threads)
     {
@@ -80,8 +80,9 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
     // produce vcf file
     //
     FILE *fh = fopen(user_inputs->vcf_output_file, "w");
+    FILE *smfh = fopen(user_inputs->simple_vcf_output_file, "w");
     generateVCF_MetaData(user_inputs, chrom_tracking, fh);
-    generateVCFresults(equal_bin_cnv_array, chrom_tracking, fh);
+    generateVCFresults(equal_bin_cnv_array, chrom_tracking, the_stats, stats_info, fh, smfh);
     fclose(fh);
 }
 
@@ -1755,7 +1756,14 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
     //fprintf(fh, "");
 }
 
-void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, FILE *fp) {
+void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, FILE *fp, FILE *sfh) {
+    // According to Eric, we also need to produce one more file for loading CNV for the review in the TSV format with the following fields
+    // chr, start, end, type, quality, var reads, total reads
+    // while the 'var reads' is the normalized number of reads in the region (var reads) to what is expected (total reads).
+    // we will use zScore for quality
+    //
+    fprintf(sfh, "chr\tstart\tend\ttype\tquality\tvar-reads\ttotal-reads\n");
+    
     // walk through chromosome list
     //
     uint32_t i, j, cnv_start, cnv_end;
@@ -1811,8 +1819,22 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             if (cnv_array->cnvs[j].cnv_type == 'L')
                 svLen *= -1;
 
-            fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t.\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8"\tGT\t%s\n", \
-                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, FILTER, cnv_end, svLen, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, GT);
+            // now calculate QUAL score using zscore for simple CNV output
+            //
+            double qual = (cnv_array->cnvs[j].ave_coverage - equal_window_stats->average_coverage) / equal_window_stats->stdev;
+
+            if (strcmp(FILTER, "PASS") == 0) {
+                // For the sample CNV output in TSV format
+                // chr, start, end, type, quality, var reads, total reads
+                // calculate the total number of reads based on Atlas CNV approach
+                //
+                int32_t total_reads = cnv_array->cnvs[j].ave_coverage * (cnv_end-cnv_start) / stats_info->read_cov_stats->read_length;
+
+                fprintf(sfh, "%s\t%"PRIu32"\t%"PRIu32"\t%s\t%.2f\t.\t%"PRIu32"\n", chrom_tracking->chromosome_ids[i], cnv_start, cnv_end, CNV, qual, (uint32_t) total_reads);
+            }
+
+            fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8"\tGT\t%s\n", \
+                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, qual, FILTER, cnv_end, svLen, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, GT);
         } // end equal_bin_cnv_array
     } // end chromosome list
 }

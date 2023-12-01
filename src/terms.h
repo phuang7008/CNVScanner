@@ -87,6 +87,7 @@ typedef struct {
     char * merged_bin_file;             // output the merged binned data from raw binned data
     char * normalized_result_file;
     char * vcf_output_file;             // produce output CNV file in VCF format
+    char * simple_vcf_output_file;      // Simple CNV output in TSV format for easy and quick review
     char * sample_name;
     int16_t equal_bin_size;
     int8_t min_map_quality;

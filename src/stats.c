@@ -127,6 +127,9 @@ void processCurrentRecord(User_Input *user_inputs, bam1_t *rec, bam_hdr_t *heade
     if (strcmp("*", header->target_name[rec->core.tid]) == 0)
         return;
 
+    if (tmp_stats_info->read_cov_stats->read_length <= 0)
+        tmp_stats_info->read_cov_stats->read_length = rec->core.l_qseq;
+
     processRecord(user_inputs, tmp_stats_info, rec, chrom_tracking, chrom_index, breakpoint_array);
 
     //printf("Done read bam for thread %d\n", thread_id);
