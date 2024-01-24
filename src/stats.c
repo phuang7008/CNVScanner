@@ -402,7 +402,7 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
     uint32_t i=0, j=0, total_num=0;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         for (j=0; j<binned_data_wrapper[i]->size; j++) {
-            // Need to skip those windows with repeat maskers, mappbility <0.2, Ns regions etc
+            // Need to skip those windows with Ns regions, segdup or tandem repeats (>10kb) etc.
             //
             if (binned_data_wrapper[i]->data[j].length == 0)
                 continue;
@@ -420,7 +420,6 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
 
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         for (j=0; j<binned_data_wrapper[i]->size; j++) {
-            //if (binned_data_wrapper[i]->data[j].weighted_mappability > user_inputs->mappability_cutoff) {
             if (binned_data_wrapper[i]->data[j].length > 0) {
                 sum_of_values += binned_data_wrapper[i]->data[j].ave_coverage;
                 sum_of_squares += pow(binned_data_wrapper[i]->data[j].ave_coverage, 2);
@@ -455,15 +454,34 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
     //the_stats->zScore = 1.96 * the_stats->stdev;    // 95% confident inverval for z score
     //the_stats->zScore_99_p7_pct = 3.00 * the_stats->stdev;    // 99% confident interval for z score (99.7%)
 
+    // now calculate the median
+    //
+    qsort(average_coverage_array->array, average_coverage_array->size, sizeof(double), compare_double);
+    int mid_point = (int) average_coverage_array->size/2;
+    the_stats->median = average_coverage_array->array[mid_point];
+
     // clean up
     //
     free(average_coverage_array->array);
     free(average_coverage_array);
 }
 
+void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking) {
+    uint32_t i=0, j=0;
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        for (j=0; j<binned_data_wrapper[i]->size; j++) {
+            // this is to prevent the 'na' in log2 ratio
+            // log2 0 is not defined. so to overcome this, I add 0.001 before doing log2 ratio
+            // This is taken from ViZCNV
+            //
+            binned_data_wrapper[i]->data[j].log2ratio = log2((binned_data_wrapper[i]->data[j].ave_coverage / the_stats->median) + 0.001);
+        }
+    }
+}
+
 // the following function is used to for double number array qsort()
 //
-int compareDouble(const void * val1, const void * val2) {
+int compare_double(const void * val1, const void * val2) {
     double tmp_val1 = *((double*) val1);
     double tmp_val2 = *((double*) val2);
 
@@ -475,7 +493,7 @@ int compareDouble(const void * val1, const void * val2) {
 double CalcualtePercentile(DoubleArray *array_in, int percentile) {
     // sort arry first
     //
-    qsort(array_in->array, array_in->size, sizeof(double), compareDouble);
+    qsort(array_in->array, array_in->size, sizeof(double), compare_double);
 
     // get the index where the 
     //

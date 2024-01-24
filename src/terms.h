@@ -88,6 +88,7 @@ typedef struct {
     char * normalized_result_file;
     char * vcf_output_file;             // produce output CNV file in VCF format
     char * simple_vcf_output_file;      // Simple CNV output in TSV format for easy and quick review
+    char * log2ratio_output_file;       // log2ratio output file for segmentation
     char * sample_name;
     int16_t equal_bin_size;
     int8_t min_map_quality;
@@ -112,6 +113,7 @@ typedef struct {
     uint32_t length;
     uint32_t index;
     double   ave_coverage;
+    double   log2ratio;
     float    gc_pct;
     double   weighted_mappability;
     double   ave_cov_gc_normalized;
@@ -365,6 +367,7 @@ typedef struct {
 typedef struct {
     double average_coverage;
     double stdev;
+    double median;
 
     uint32_t total_bases_used;      // excluding N-regsions
 

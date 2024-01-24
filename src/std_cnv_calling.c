@@ -83,7 +83,9 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
     FILE *smfh = fopen(user_inputs->simple_vcf_output_file, "w");
     generateVCF_MetaData(user_inputs, chrom_tracking, fh);
     generateVCFresults(equal_bin_cnv_array, chrom_tracking, the_stats, stats_info, fh, smfh);
+    outputLog2Ratio(equal_size_window_wrappers, chrom_tracking, user_inputs);
     fclose(fh);
+    fclose(smfh);
 }
 
 // Type 1: raw varying sized bins;  Type 2: Equal window bins
@@ -1837,6 +1839,21 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
                     chrom_tracking->chromosome_ids[i], cnv_start, CNV, qual, FILTER, cnv_end, svLen, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, GT);
         } // end equal_bin_cnv_array
     } // end chromosome list
+}
+
+void outputLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Chromosome_Tracking *chrom_tracking, User_Input *user_inputs) {
+    FILE *log2r_fh = fopen(user_inputs->log2ratio_output_file, "w");
+
+    uint32_t i=0, j=0;
+    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        for (j=0; j<binned_data_wrapper[i]->size; j++) {
+            if (binned_data_wrapper[i]->data[j].length > 0) {
+                fprintf(log2r_fh, "%s\t%"PRIu32"\t%.2f\t%.2f\n", chrom_tracking->chromosome_ids[i], binned_data_wrapper[i]->data[j].start, binned_data_wrapper[i]->data[j].log2ratio, binned_data_wrapper[i]->data[j].ave_coverage);
+            }
+        }
+    }
+
+    fclose(log2r_fh);
 }
 
 void dynamicIncreaseBinArraySize(Equal_Window_Bin **merged_equal_bin_array, uint32_t bin_capacity) {

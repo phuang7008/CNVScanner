@@ -347,12 +347,17 @@ int main(int argc, char *argv[]) {
     Simple_Stats *the_stats = calloc(1, sizeof(Simple_Stats));
     calculateMeanAndStdev(equal_size_window_wrappers, the_stats, chrom_tracking);
     fprintf(stderr, "Mean:  %.2f\n", the_stats->average_coverage);
+    fprintf(stderr, "Median:  %.2f\n", the_stats->median);
     fprintf(stderr, "Stdev: %.2f\n", the_stats->stdev);
     fprintf(stderr, "99_percentile: %.2f\n", the_stats->ninty_nine_percentile);
     fprintf(stderr, "98_percentile: %.2f\n", the_stats->ninty_eight_percentile);
     fprintf(stderr, "Z Score: %.2f\n", the_stats->zScore);
     fprintf(stderr, "Haploid cutoff: %.2f\n", the_stats->average_coverage - the_stats->zScore);
     fprintf(stderr, "Duplicate cutoff: %.2f\n\n", the_stats->average_coverage + the_stats->zScore);
+
+    // once the median is calculated, we need to obtain the log2ratio for each equal-window bin
+    //
+    calculateLog2Ratio(equal_size_window_wrappers, the_stats, chrom_tracking);
 
     // for Equal bin window CNV Calls
     //

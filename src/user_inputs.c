@@ -354,6 +354,11 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     sprintf(string_to_add, ".cnv.txt");
     generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->simple_vcf_output_file, string_to_add);
 
+    // output log2ratio for segmentation
+    //
+    sprintf(string_to_add, ".log2ratio.txt");
+    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->log2ratio_output_file, string_to_add);
+
     // KEEP the following Please!
     // free the memory
     // However, here is the quote from the basename() official site

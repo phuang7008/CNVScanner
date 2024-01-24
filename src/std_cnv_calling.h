@@ -55,6 +55,8 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
 
 void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, FILE *fh, FILE *sfh);
 
+void outputLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Chromosome_Tracking *chrom_tracking, User_Input *user_inputs);
+
 void dynamicIncreaseBinArraySize(Equal_Window_Bin **merged_equal_bin_array, uint32_t bin_capacity);
 
 void cnvArrayInit(CNV_Array **cnv_array, Chromosome_Tracking *chrom_tracking);
