@@ -83,7 +83,7 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
     FILE *smfh = fopen(user_inputs->simple_vcf_output_file, "w");
     generateVCF_MetaData(user_inputs, chrom_tracking, fh);
     generateVCFresults(equal_bin_cnv_array, chrom_tracking, the_stats, stats_info, fh, smfh);
-    outputLog2Ratio(equal_size_window_wrappers, chrom_tracking, user_inputs);
+    //outputLog2Ratio(equal_size_window_wrappers, chrom_tracking, user_inputs);
     fclose(fh);
     fclose(smfh);
 }

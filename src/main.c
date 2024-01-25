@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
 
     setupOutputReportFiles(user_inputs);
 
-    // need to setup data struture to store the binned regions
+    // need to setup data struture to store the raw binned regions
     //
     Binned_Data_Wrapper **binned_data_wrappers = calloc(chrom_tracking->number_of_chromosomes, sizeof(Binned_Data_Wrapper*));
     checkMemoryAllocation(binned_data_wrappers, "Binned_Data_Wrapper **binned_data_wrappers");
@@ -300,18 +300,11 @@ int main(int argc, char *argv[]) {
 
             // create equal-sized-bins
             //
-            khash_t(khIntStr) *window_starts = kh_init(khIntStr);
-            khash_t(khIntStr) *window_ends   = kh_init(khIntStr);
-            int total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index], user_inputs->equal_size_window, 
-                                        window_starts, window_ends, equal_size_window_wrappers[chrom_index]);
+            int total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index], \
+                                            user_inputs->equal_size_window, equal_size_window_wrappers[chrom_index]);
 
             generateEqualSizedBins(user_inputs, binned_data_wrappers[chrom_index], \
                     equal_size_window_wrappers[chrom_index],  total_lines, chrom_tracking->chromosome_ids[chrom_index]);
-
-            // clean-up
-            //
-            cleanKhashIntStr(window_starts);
-            cleanKhashIntStr(window_ends);
 
           } // omp task
         } // for loop
@@ -357,7 +350,7 @@ int main(int argc, char *argv[]) {
 
     // once the median is calculated, we need to obtain the log2ratio for each equal-window bin
     //
-    calculateLog2Ratio(equal_size_window_wrappers, the_stats, chrom_tracking);
+    calculateLog2Ratio(equal_size_window_wrappers, the_stats, chrom_tracking, user_inputs);
 
     // for Equal bin window CNV Calls
     //

@@ -466,17 +466,47 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
     free(average_coverage_array);
 }
 
-void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking) {
-    uint32_t i=0, j=0;
+void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking, User_Input* user_inputs) {
+    // output file 
+    //
+    FILE *log2r_fh = fopen(user_inputs->log2ratio_output_file, "w");
+
+    uint32_t i=0;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        for (j=0; j<binned_data_wrapper[i]->size; j++) {
-            // this is to prevent the 'na' in log2 ratio
-            // log2 0 is not defined. so to overcome this, I add 0.001 before doing log2 ratio
-            // This is taken from ViZCNV
-            //
-            binned_data_wrapper[i]->data[j].log2ratio = log2((binned_data_wrapper[i]->data[j].ave_coverage / the_stats->median) + 0.001);
+        // obtain equal window template
+        //
+        Binned_Data_Wrapper *equal_size_window = calloc(1, sizeof(Binned_Data_Wrapper));
+        checkMemoryAllocation(equal_size_window, "Binned_Data_Wrapper *equal_size_window");
+        equal_size_window->size     = 0;
+        equal_size_window->capacity = INIT_SIZE;
+        equal_size_window->data     = calloc(INIT_SIZE, sizeof(Binned_Data));
+        equal_size_window->starts   = calloc(INIT_SIZE, sizeof(uint32_t));
+        equal_size_window->ends     = calloc(INIT_SIZE, sizeof(uint32_t));
+
+        int total_lines = processFile(chrom_tracking->chromosome_ids[i], user_inputs->equal_size_window, equal_size_window);
+        uint32_t j=0, k=0, new_start=0;
+
+        for (j=0; j<total_lines; j++) {
+            for (k=new_start; k<binned_data_wrapper[i]->size; k++) {
+                // this is to prevent the 'na' in log2 ratio
+                // log2 0 is not defined. so to overcome this, I add 0.001 before doing log2 ratio
+                // This is taken from ViZCNV
+                //
+                if (equal_size_window->data[j].start == binned_data_wrapper[i]->data[k].start) {
+                    double log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + 0.001);
+                    fprintf(log2r_fh, "%s\t%"PRIu32"\t%.2f\t%.2f\n", chrom_tracking->chromosome_ids[i], 
+                            binned_data_wrapper[i]->data[k].start, log2ratio, binned_data_wrapper[i]->data[k].ave_coverage);
+                    new_start = k+1;
+                } else {
+                    fprintf(log2r_fh, "%s\t%"PRIu32"\t%.2f\t%.2f\n", chrom_tracking->chromosome_ids[i],
+                            equal_size_window->data[j].start, log2(0.001), 0.0);
+                }
+                break;
+            }
         }
     }
+
+    fclose(log2r_fh);
 }
 
 // the following function is used to for double number array qsort()

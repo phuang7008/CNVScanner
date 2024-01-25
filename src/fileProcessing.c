@@ -20,9 +20,12 @@
 
 #include "fileProcessing.h"
 
-uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts, khash_t(khIntStr) * ends, Binned_Data_Wrapper *binned_data_wrapper) {
+uint32_t processFile(char* chrom_id, char* file_name, Binned_Data_Wrapper *binned_data_wrapper) {
     FILE *fp = fopen(file_name, "r");
     fileOpenError(fp, file_name);
+
+    khash_t(khIntStr) *starts = kh_init(khIntStr);      // equal window starts
+    khash_t(khIntStr) *ends   = kh_init(khIntStr);      // equal window ends
 
     char *line = NULL;
     size_t len = 0;
@@ -85,6 +88,11 @@ uint32_t processFile(char* chrom_id, char* file_name, khash_t(khIntStr) * starts
     if (fclose(fp) == -1)
         printf("feof=%d ferror=%d: %s\n", feof(fp), ferror(fp), strerror(errno));
     if (line) free(line);
+
+    // clean-up
+    //
+    cleanKhashIntStr(starts);
+    cleanKhashIntStr(ends);
 
     return total_items;
 }

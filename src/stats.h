@@ -23,6 +23,7 @@
 //#include <mysql.h>
 //#include <stdbool.h>
 #include "breakpoints.h"
+#include "fileProcessing.h"
 #include "terms.h"
 #include "improperly_paired_reads.h"
 
@@ -56,7 +57,7 @@ bool getOverlapInfo(User_Input *user_inputs, Stats_Info *stats_info, bam1_t *rec
 
 void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wraper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking);
 
-void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking);
+void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking, User_Input* user_inputs);
 
 int compare_double(const void * val1, const void * val2);
 
