@@ -112,6 +112,8 @@ int32_t getMateMatchLengthFromMCTag(char *mate_cigar) {
 
 void processPairedReadsWithinTheSameGroup(Not_Properly_Paired_Reads_Array* improperly_PR_array) {
     int32_t g_idx = improperly_PR_array->num_of_groups;   // need to be signed
+    if (g_idx < 0) return;
+
     uint16_t size = improperly_PR_array->grouped_improperly_PRs[g_idx].num_of_pairs_TLEN_ge_1000;
     if (size >= 2) {
         uint32_t * ends = calloc(size, sizeof(uint32_t));
