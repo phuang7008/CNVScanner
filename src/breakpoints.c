@@ -289,10 +289,10 @@ uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anc
     // output anchor breakpoint grouping info for debugging purpose
     // and get rid of anchors with only single breakpoint
     //
-    char *filename = calloc(strlen(bpt_arr->chrom_id) + 100, sizeof(char));
-    FILE *fp = NULL;
+    //char *filename = calloc(strlen(bpt_arr->chrom_id) + 100, sizeof(char));
+    //FILE *fp = NULL;
 
-    if (user_inputs->debug_ON) {
+    /*if (user_inputs->debug_ON) {
         sprintf(filename, "Anchor_Breakpoint_Details_Unique_%s.txt", bpt_arr->chrom_id);
         fp = fopen(filename, "w");
         fileOpenError(fp, filename);
@@ -339,6 +339,6 @@ uint32_t recordAnchorBreakpoints(uint32_t *sorted_breakpoints, khash_t(m32) *anc
     if (user_inputs->debug_ON) fclose(fp);
     kh_destroy(m32, seen_anchors_hash);
     if (filename) free(filename);
-
+    */
     return num_of_anchors;
 }

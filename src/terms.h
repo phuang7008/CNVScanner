@@ -369,6 +369,12 @@ typedef struct {
     double stdev;
     double median;
 
+    double ave_log2ratio;
+    double stdev_log2ratio;
+    double zScore_log2_ratio;
+    double del_log2ratio;
+    double dup_log2ratio;
+
     uint32_t total_bases_used;      // excluding N-regsions
 
     double tlen_mean;               // average TLEN from all data point

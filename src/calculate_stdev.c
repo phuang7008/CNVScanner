@@ -129,10 +129,10 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **headers, hts_idx
                         chrom_tracking->coverage[chrom_index] = NULL;
                     }
 
-                    // output breakpoint array and paired_reads across breakpointsfor debugging
+                    // output breakpoint array and paired_reads across breakpoints for debugging
                     //
                     if (user_inputs->debug_ON) {
-                        outputBreakpointArray(breakpoint_array[bpt_chr_idx]);
+                        //outputBreakpointArray(breakpoint_array[bpt_chr_idx]);
                     }
                 } // omp task
             } // for loop

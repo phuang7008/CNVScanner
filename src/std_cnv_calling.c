@@ -1183,7 +1183,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 
     uint32_t i;
     for (i=0; i<cnv_array->size; i++) {
-        if (cnv_array->cnvs[i].equal_bin_start == 6028000 || cnv_array->cnvs[i].equal_bin_start == 195592500)
+        if (cnv_array->cnvs[i].equal_bin_start == 70426000 || cnv_array->cnvs[i].equal_bin_start == 70421000)
             printf("stop 6\n");
 
         // Get the CNV start and end here as we need them for the checking
@@ -1241,16 +1241,27 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                     //       =============================== improperly paired reads
                     //         xx                         breakpoint
                     //
-                    if (cur_start < cnv_array->cnvs[i].imp_PR_start)
-                        cur_start = cnv_array->cnvs[i].imp_PR_start;
+                    if (cur_start < cnv_array->cnvs[i].imp_PR_start && cnv_array->cnvs[i].imp_PR_start < cur_end) {
+                        if (cnv_array->cnvs[i].imp_PR_start - cur_start < cur_end - cnv_array->cnvs[i].imp_PR_start)
+                            cur_start = cnv_array->cnvs[i].imp_PR_start;
+                    }
 
-                    if (cur_end > cnv_array->cnvs[i].imp_PR_end)
-                        cur_end = cnv_array->cnvs[i].imp_PR_end;
-                } 
+                    if (cur_end > cnv_array->cnvs[i].imp_PR_end && cnv_array->cnvs[i].imp_PR_end > cur_start) {
+                        if (cur_end - cnv_array->cnvs[i].imp_PR_end > cnv_array->cnvs[i].imp_PR_end - cur_start)
+                            cur_end = cnv_array->cnvs[i].imp_PR_end;
+                    }
+                }
                 
                 if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) < \
                     abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end)))
                     left = true;
+
+                // NOTE: here I won't check IF (cur_start > cnv_array->cnvs[i].imp_PR_start) to reset
+                // the start position as the length of the improperly paired reads might be quite long
+                // i.e., 3 times longer. It will make CNV too long. The same is true for the end position
+                //            -----------------------          raw-bin
+                //  ==...==============================...==== improperly paired reads
+                //  Do not use this case to reset start and end positions
             }
 
             // however, cur_start and cur_end might change based on the above code changes
@@ -1456,12 +1467,12 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             // always decrease count first if it is an end position
             //
             count--;
-
+            /*
             if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
                 fprintf(stderr, "CNV_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
             } else {
                 fprintf(stderr, "IMP_End\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
-            }
+            }*/
 
             if (count < 0) {
                 if (i == 0) {
@@ -1601,7 +1612,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
                     fprintf(stderr, "Something went wrong with CNV start at %"PRIu32"\n", all_starts_ends[i]);
                     exit(EXIT_FAILURE);
                 }
-                fprintf(stderr, "%s\tCNV_Start\t%"PRIu32"\t%"PRId32"\n", cnv_array->chromosome_id, all_starts_ends[i], count);
+                //fprintf(stderr, "%s\tCNV_Start\t%"PRIu32"\t%"PRId32"\n", cnv_array->chromosome_id, all_starts_ends[i], count);
                 setValueToKhashBucket32(live_cnv_start_hash, all_starts_ends[i], cnv_index);
             }
 
@@ -1609,7 +1620,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
             //
             if (checkm32KhashKey(imp_PR_start_hash, all_starts_ends[i])) {
                 setValueToKhashBucket32(live_imp_start_hash, all_starts_ends[i], 1);
-                fprintf(stderr, "IMP_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
+                //fprintf(stderr, "IMP_Start\t%"PRIu32"\t%"PRId32"\n", all_starts_ends[i], count);
             }
 
             // now delete all the processed starts
@@ -1639,6 +1650,10 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     kh_destroy(m32, cnv_end_hash);
     kh_destroy(m32, live_cnv_start_hash);
     kh_destroy(m32, live_imp_start_hash);
+    kh_destroy(m32, seen_cnv_starts_hash);
+    kh_destroy(m32, seen_imp_starts_hash);
+    kh_destroy(m32, seen_cnv_ends_hash);
+    kh_destroy(m32, seen_imp_ends_hash);
 }
 
 void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
