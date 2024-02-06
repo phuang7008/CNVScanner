@@ -46,8 +46,8 @@ step 'make install' such as
 
 Once htslib is successfully installed, users can proceeds to build HGSC_WGS_CNV.
 Please download any release package you prefer and decompress the package
-    tar zxvf HGSC_WGS_CNV-release-version.tar.gz
-    cd HGSC_WGS_CNV-release-version
+    tar zxvf CNVScanner-release-version.tar.gz
+    cd CNVScanner-release-version
 
 Run the following to create a brand new configure for your system
     autoreconf -i

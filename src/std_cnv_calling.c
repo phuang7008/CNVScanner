@@ -757,8 +757,8 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
     counter = 0;
     int32_t cnv_index = -1;             // need to use signed value as sometimes, no value found
     for (i=0; i<(uint32_t)capacity; i++) {
-        if (all_starts_ends[i] == 6028000 || all_starts_ends[i] == 6033935)
-            printf("here it is\n");
+        //if (all_starts_ends[i] == 33846000 || all_starts_ends[i] == 6033935)
+        //    printf("here it is\n");
 
         // if a key is present in both start and end position, we have to process start first
         //
@@ -1183,8 +1183,8 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 
     uint32_t i;
     for (i=0; i<cnv_array->size; i++) {
-        if (cnv_array->cnvs[i].equal_bin_start == 70426000 || cnv_array->cnvs[i].equal_bin_start == 70421000)
-            printf("stop 6\n");
+        //if (cnv_array->cnvs[i].equal_bin_start == 33846000 || cnv_array->cnvs[i].equal_bin_start == 33838000)
+        //    printf("stop 6\n");
 
         // Get the CNV start and end here as we need them for the checking
         //
@@ -1216,41 +1216,52 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                     cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints, 
                     cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000);
             */
+            
             // All anchor breakpoints associated with the current CNV should be ordered from the left most to the right most.
             //
             if ((cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints < 2) &&
                     (cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000 < 2))
                 continue;
 
-            // pass the first 2 criteria
-            // 
-            //printf("%"PRIu32"\t%"PRIu32"\n", cur_start, cur_end);
-            // because values are uint32_t, so the subtraction will cause overflow as it won't be negative
-            //
-            uint16_t prev_bpts=0, prev_tlen=0, cur_bpts=0, cur_tlen=0;
             bool left=false;
+
+            if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) < \
+                    abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end))) {
+                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) > DISTANCE_CUTOFF*2) {
+                    continue;
+                } else {
+                    left = true;
+                }
+            } else {
+                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end)) > DISTANCE_CUTOFF*2)
+                    continue;
+            }
+
+            uint16_t prev_bpts=0, prev_tlen=0, cur_bpts=0, cur_tlen=0;
 
             if (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint < cur_start) {
                 left = true;
             } else if (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint > cur_end) {
                 left = false;
             } else {
-                if (cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 >= 2) {
+                /*if (cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 >= 2) {
                     // need to locate the intersected region with raw-bin or equal-bin
                     //   -------------------------------- raw-bin
                     //       =============================== improperly paired reads
                     //         xx                         breakpoint
                     //
                     if (cur_start < cnv_array->cnvs[i].imp_PR_start && cnv_array->cnvs[i].imp_PR_start < cur_end) {
-                        if (cnv_array->cnvs[i].imp_PR_start - cur_start < cur_end - cnv_array->cnvs[i].imp_PR_start)
+                        if (cnv_array->cnvs[i].imp_PR_start - cur_start < cur_end - cnv_array->cnvs[i].imp_PR_start \
+                                && cnv_array->cnvs[i].imp_PR_start - cur_start < DISTANCE_CUTOFF)
                             cur_start = cnv_array->cnvs[i].imp_PR_start;
                     }
 
                     if (cur_end > cnv_array->cnvs[i].imp_PR_end && cnv_array->cnvs[i].imp_PR_end > cur_start) {
-                        if (cur_end - cnv_array->cnvs[i].imp_PR_end > cnv_array->cnvs[i].imp_PR_end - cur_start)
+                        if (cur_end - cnv_array->cnvs[i].imp_PR_end > cnv_array->cnvs[i].imp_PR_end - cur_start \
+                                && cur_end - cnv_array->cnvs[i].imp_PR_end < DISTANCE_CUTOFF)
                             cur_end = cnv_array->cnvs[i].imp_PR_end;
                     }
-                }
+                }*/
                 
                 if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) < \
                     abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end)))
@@ -1338,9 +1349,9 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     for (g=0; g<improperly_PR_array->num_of_groups; g++) {
         uint32_t num_TLEN_1000 = improperly_PR_array->grouped_improperly_PRs[g].num_of_pairs_TLEN_ge_1000;
 
-        if (improperly_PR_array->grouped_improperly_PRs[g].group_start == 6028590) {
+        /*if (improperly_PR_array->grouped_improperly_PRs[g].group_start == 6028590) {
             printf("stopped\n");
-        }
+        }*/
 
         if (num_TLEN_1000 >= 2 ) {
             // TODO Once I add the condition using perfect matched paired reads, I will remove the 2nd condition checking

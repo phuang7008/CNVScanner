@@ -135,6 +135,16 @@ typedef struct {
     uint32_t size;
 } DoubleArray;
 
+typedef struct {
+    char *chromosome_id;
+    uint32_t * starts;
+    uint32_t * ends;
+    uint32_t *block_size;
+    uint32_t *seg_mean;
+    uint32_t size;
+    uint32_t capacity;
+} Segment_Array;
+
 // calculation mean, stdev, tlen_mean and tlen_stdev in one pass
 typedef struct {
     double total_sum;
