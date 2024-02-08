@@ -586,15 +586,15 @@ int compare(const void * val1, const void * val2) {
 }
 
 // the following comparison is used to compare the double array for qsort()
-//
-int compare(const void * val1, const void * val2) {
+/*
+int compare_double(const void * val1, const void * val2) {
     double tmp_val1 = *((double*) val1);
     double tmp_val2 = *((double*) val2);
 
     if (tmp_val1 == tmp_val2) return 0;
     else if (tmp_val1 < tmp_val2) return -1;
     else return 1;
-}
+}*/
 
 void checkReferenceVersion(char *chrom_id, char *db_version, char *file_in) {
     char *error_message = calloc(strlen(file_in)+150, sizeof(char));    // full path needs enough spaces for it

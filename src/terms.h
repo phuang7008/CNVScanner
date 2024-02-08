@@ -88,7 +88,7 @@ typedef struct {
     char * normalized_result_file;
     char * vcf_output_file;             // produce output CNV file in VCF format
     char * simple_vcf_output_file;      // Simple CNV output in TSV format for easy and quick review
-    char * log2ratio_output_file;       // log2ratio output file for segmentation
+    char * log2ratio_output_file;       // for log2ratio output file for segmentation of all chromosomes
     char * sample_name;
     int16_t equal_bin_size;
     int8_t min_map_quality;
@@ -134,16 +134,6 @@ typedef struct {
     double * array;
     uint32_t size;
 } DoubleArray;
-
-typedef struct {
-    char *chromosome_id;
-    uint32_t * starts;
-    uint32_t * ends;
-    uint32_t *block_size;
-    uint32_t *seg_mean;
-    uint32_t size;
-    uint32_t capacity;
-} Segment_Array;
 
 // calculation mean, stdev, tlen_mean and tlen_stdev in one pass
 typedef struct {

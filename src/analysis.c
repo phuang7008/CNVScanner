@@ -324,13 +324,13 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
     //
     FILE *equal_window_fp = NULL;
     
-    if (user_inputs->debug_ON) {
+    /*if (user_inputs->debug_ON) {
         char *filename = calloc(strlen(user_inputs->window_details_file) + strlen(chrom_id) + 10, sizeof(char));
         sprintf(filename, "%s%s.txt", user_inputs->window_details_file, chrom_id);
         equal_window_fp = fopen(filename, "w");
         fileOpenError(equal_window_fp, filename);
         free(filename);
-    }
+    }*/
 
     // do intersect
     //
@@ -437,7 +437,7 @@ void generateEqualSizedBins(User_Input *user_inputs, Binned_Data_Wrapper *binned
         }
     }
 
-    if (equal_window_fp) fclose(equal_window_fp);
+    //if (equal_window_fp) fclose(equal_window_fp);
 
     // clean-up
     //
@@ -481,9 +481,9 @@ void storeWindowResults(Binned_Data_Wrapper *binned_data_wraper, Binned_Data_Wra
     equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage += length * ave;
     equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].weighted_mappability += length * mappability;
 
-    if (user_inputs->debug_ON) {
+    /*if (user_inputs->debug_ON) {
         fprintf(equal_window_fp, "%s\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t%s\t%s\t%"PRIu32"\t%.2f\t%.2f\n", binned_array->theArray[1], prev_start, current_position, length, binned_data_wraper->data[strtoul(binned_array->theArray[0], NULL, 10)].weighted_mappability, binned_string, interval_string, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].length, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].ave_coverage, equal_size_window_wrapper->data[strtoul(window_bin_array->theArray[0], NULL, 10)].weighted_mappability);
-    }
+    }*/
 
     //clean-up
     //

@@ -28,8 +28,12 @@
 #include "coverage_tracking.h"
 #include "utility.h"
 
+#include "terms.h"
+#include "storage.h"
+
 #include "analysis.h"
 #include "breakpoints.h"
+#include "cnv_segmentation.h"
 #include "improperly_paired_reads.h"
 #include "calculate_stdev.h"
 #include "excluded_regions.h"
@@ -37,7 +41,6 @@
 #include "reports.h"
 #include "stats.h"
 #include "std_cnv_calling.h"
-#include "terms.h"
 #include "user_inputs.h"
 #include "utils.h"
 
@@ -277,8 +280,8 @@ int main(int argc, char *argv[]) {
             printf("Thread %d is conducting binning for chr %s\n", thread_id, chrom_tracking->chromosome_ids[chrom_index]);
 
             coverageBinningWrapper(chrom_tracking, user_inputs, stats_info, binned_data_wrappers[chrom_index], chrom_index, wgs_simple_stats, thread_id);
-            if (user_inputs->debug_ON)
-                outputBinnedData(binned_data_wrappers[chrom_index], user_inputs, 1, chrom_tracking->chromosome_ids[chrom_index]);
+            //if (user_inputs->debug_ON)
+            //    outputBinnedData(binned_data_wrappers[chrom_index], user_inputs, 1, chrom_tracking->chromosome_ids[chrom_index]);
 
             // clean-up array
             //
@@ -349,6 +352,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Duplicate cutoff: %.2f\n\n", the_stats->average_coverage + the_stats->zScore);
 
     // once the median is calculated, we need to obtain the log2ratio for each equal-window bin
+    // and output to a log2R file
     //
     calculateLog2Ratio(equal_size_window_wrappers, the_stats, chrom_tracking, user_inputs);
 
@@ -361,6 +365,25 @@ int main(int argc, char *argv[]) {
     // merge and expand the CNV calls using raw bin data
     //
     generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, anchor_breakpoints_hash_array, improperly_PR_array, chrom_tracking, the_stats, stats_info,  user_inputs, headers, sfh_idx, sfh);
+
+    // Create segmentation storage
+    //
+    Segment_Array **segment_arrays = calloc(chrom_tracking->number_of_chromosomes, sizeof (Segment_Array));
+    checkMemoryAllocation(segment_arrays, "Binned_Data_Wrapper **binned_data_wrappers");
+    segmentArrysInit(segment_arrays, chrom_tracking);
+
+    // Do segmentation
+    //
+    cnv_segmentation(chrom_tracking, segment_arrays, user_inputs);
+
+    CNV_Array **final_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
+    checkMemoryAllocation(equal_size_window_wrappers, "CNV_Array **final_cnv_array");
+    cnvArrayInit(final_cnv_array, chrom_tracking);
+
+    // find final CNVs after segmentation
+    //
+
+
 
     // clean up
     //

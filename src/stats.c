@@ -469,15 +469,21 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
 void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking, User_Input* user_inputs) {
     // output file 
     //
-    FILE *log2r_fh = fopen(user_inputs->log2ratio_output_file, "w");
 
     // Calculate log2ration stats from autosomes and non-Ns regions only
+    // not needed as log2 will transform the dataset into a non-normal distribution
     //
     double log2ration_sum = 0.0, sum_of_squares = 0.0;
     int32_t total_equal_window_size = 0;
 
     uint32_t i=0;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
+        // process one chromosome at a time
+        //
+        char *filename = calloc(5000, sizeof(char));
+        sprintf(filename, "%s%s%s", user_inputs->log2ratio_output_file, chrom_tracking->chromosome_ids[i], ".txt");
+        FILE *log2r_fh = fopen(filename, "w");
+
         // obtain equal window template
         //
         Binned_Data_Wrapper *equal_size_window = calloc(1, sizeof(Binned_Data_Wrapper));
@@ -495,8 +501,9 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
             for (k=new_start; k<binned_data_wrapper[i]->size; k++) {
                 // this is to prevent the 'na' in log2 ratio
                 // log2 0 is not defined. so to overcome this, I add 0.0001 before doing log2 ratio
-                // This is taken from ViZCNV
+                // This is adjusted based on ViZCNV
                 //
+
                 if (equal_size_window->data[j].start == binned_data_wrapper[i]->data[k].start) {
                     double log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + 0.0001);
                     fprintf(log2r_fh, "%s\t%"PRIu32"\t%.2f\t%.2f\n", chrom_tracking->chromosome_ids[i], 
@@ -519,9 +526,13 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                 break;
             }
         }
+
+        free(filename);
+        filename=NULL;
+        fclose(log2r_fh);
     }
 
-    // calculate log2ratio stats, but not needed 
+    // calculate log2ratio stats, but not needed as the log2 function transforms the original data into a non-normal data
     // The formula and the results are correct!!!
     //
     the_stats->ave_log2ratio = log2ration_sum / (double) total_equal_window_size;
@@ -541,7 +552,6 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
     fprintf(stderr, "del_log2ratio: %.4f\n", the_stats->del_log2ratio);
     fprintf(stderr, "dup_log2ratio: %.4f\n", the_stats->dup_log2ratio);
     */
-    fclose(log2r_fh);
 }
 
 // the following function is used to for double number array qsort()

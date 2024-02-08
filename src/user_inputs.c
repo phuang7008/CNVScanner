@@ -356,7 +356,7 @@ void setupOutputReportFiles(User_Input *user_inputs) {
 
     // output log2ratio for segmentation
     //
-    sprintf(string_to_add, ".log2ratio.txt");
+    sprintf(string_to_add, ".log2ratio.");
     generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->log2ratio_output_file, string_to_add);
 
     // KEEP the following Please!
