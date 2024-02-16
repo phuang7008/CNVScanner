@@ -374,16 +374,16 @@ int main(int argc, char *argv[]) {
 
     // Do segmentation
     //
-    cnv_segmentation(chrom_tracking, segment_arrays, user_inputs);
+    cnvSegmentation(chrom_tracking, segment_arrays, user_inputs);
 
-    CNV_Array **final_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(CNV_Array*));
-    checkMemoryAllocation(equal_size_window_wrappers, "CNV_Array **final_cnv_array");
-    cnvArrayInit(final_cnv_array, chrom_tracking);
+    Segmented_CNV_Array **seg_cnv_array = calloc(chrom_tracking->number_of_chromosomes, sizeof(Segmented_CNV_Array*));
+    checkMemoryAllocation(seg_cnv_array, "CNV_Array **final_cnv_array");
+    SegmentedCNVArrayInit(seg_cnv_array, chrom_tracking);
+    storeSegmentsLocallyAndInit(segment_arrays, seg_cnv_array, chrom_tracking);
 
     // find final CNVs after segmentation
     //
-
-
+    processSegmentationData(equal_bin_cnv_array, seg_cnv_array, chrom_tracking, anchor_breakpoints_hash_array, user_inputs, the_stats, stats_info);
 
     // clean up
     //

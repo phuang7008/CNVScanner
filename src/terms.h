@@ -87,6 +87,7 @@ typedef struct {
     char * merged_bin_file;             // output the merged binned data from raw binned data
     char * normalized_result_file;
     char * vcf_output_file;             // produce output CNV file in VCF format
+    char * segmented_vcf_output_file;   // produce segmented output CNV file in VCF format
     char * simple_vcf_output_file;      // Simple CNV output in TSV format for easy and quick review
     char * log2ratio_output_file;       // for log2ratio output file for segmentation of all chromosomes
     char * sample_name;
@@ -168,6 +169,26 @@ typedef struct {
 } CNV_Breakpints;
 
 typedef struct {
+    uint32_t start;
+    uint32_t end;
+    bool passed;
+    double qual;
+    double ave_coverage;
+    char cnv_type;                  // L: for deletion, while P for Dup
+    bool valid_cnv;                 // if this is a valid cnv, if it is not, don't output
+    uint32_t left_breakpoint;
+    uint32_t right_breakpoint;
+    uint32_t left_breakpoint_count;
+    uint32_t right_breakpoint_count;
+    uint32_t num_larger_TLEN_left;
+    uint32_t num_larger_TLEN_right;
+    uint32_t imp_PR_start;
+    uint32_t imp_PR_end;
+    uint16_t num_larger_imp_RP_TLEN;
+    uint8_t evidence_count; 
+} INNER_CNV;
+
+typedef struct {
     uint32_t equal_bin_start;
     uint32_t equal_bin_end;
     uint32_t raw_bin_start;
@@ -196,6 +217,8 @@ typedef struct {
     uint32_t imp_PR_start;
     uint32_t imp_PR_end;
     uint16_t num_of_imp_RP_TLEN_1000;   // number of improperly paired-reads with TLEN >= 1000
+
+    INNER_CNV inner_cnv;
 } CNV;
 
 typedef struct {

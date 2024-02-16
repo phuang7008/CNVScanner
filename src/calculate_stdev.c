@@ -110,11 +110,6 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **headers, hts_idx
                     //
                     processBreakpoints(breakpoint_array[bpt_chr_idx], anchor_breakpoints_hash_array[chrom_index], user_inputs);
 
-                    // output improperly paired reads for debugging
-                    //
-                    if (user_inputs->debug_ON)
-                        outputGroupedImproperlyPairedReads(improperly_paired_reads_array, chrom_tracking);
-
                     if (user_inputs->excluded_region_file)
                         zeroAllExcludedRegions(chrom_tracking, chrom_index, excluded_bed_info);
 
@@ -139,6 +134,11 @@ void OnePassCalculateSedev(User_Input *user_inputs, bam_hdr_t **headers, hts_idx
 #pragma omp taskwait
         } // omp single
     } // omp parallel
+
+    // output improperly paired reads for debugging
+    //
+    if (user_inputs->debug_ON)
+        outputGroupedImproperlyPairedReads(improperly_paired_reads_array, chrom_tracking);
 
     StdevCalculation(one_pass_stdev, chrom_tracking, simple_stats);
 

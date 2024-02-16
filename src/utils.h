@@ -176,5 +176,6 @@ void fileOpenError(FILE *fp, char *message);
 
 void failureExit(void * data_point_in, char* message);
 
+void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tracking, FILE *fh);
 
 #endif //UTILS_H

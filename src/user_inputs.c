@@ -354,6 +354,11 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     sprintf(string_to_add, ".cnv.txt");
     generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->simple_vcf_output_file, string_to_add);
 
+    // output segmented CNV in VCF format
+    //
+    sprintf(string_to_add, ".segmented.cnv.vcf");
+    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->segmented_vcf_output_file, string_to_add);
+
     // output log2ratio for segmentation
     //
     sprintf(string_to_add, ".log2ratio.");

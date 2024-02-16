@@ -387,6 +387,25 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
     cnv_array->cnvs[cnv_index].imp_PR_start = 0;
     cnv_array->cnvs[cnv_index].imp_PR_end   = 0;
     cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 = 0;
+
+    // for inner_CNV (used in CNV segmentation merging step)
+    //
+    cnv_array->cnvs[cnv_index].inner_cnv.start = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.end = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.passed = false;
+    cnv_array->cnvs[cnv_index].inner_cnv.ave_coverage = 0.0;
+    cnv_array->cnvs[cnv_index].inner_cnv.cnv_type = ' ';
+    cnv_array->cnvs[cnv_index].inner_cnv.valid_cnv = false;
+    cnv_array->cnvs[cnv_index].inner_cnv.imp_PR_start = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.imp_PR_end = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.num_larger_imp_RP_TLEN = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.left_breakpoint  = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.right_breakpoint = 0;  // the real left breakpoint should start at 1
+    cnv_array->cnvs[cnv_index].inner_cnv.left_breakpoint_count  = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.right_breakpoint_count = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.num_larger_TLEN_left  = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.num_larger_TLEN_right = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.evidence_count = 0;
 }
 
 // The method will first check to see if the previous CNV should be merged with the current CNV 
@@ -694,8 +713,8 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
 
                 //fprintf(stderr, "Breakpoint\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[counter-2], all_starts_ends[counter-1], breakpoint_pos);
 
-                setValueToKhashBucket32(breakpoint_start_end_lookup, breakpoint_pos - DISTANCE_CUTOFF, breakpoint_pos + DISTANCE_CUTOFF);
-                setValueToKhashBucket32(breakpoint_end_start_lookup, breakpoint_pos + DISTANCE_CUTOFF, breakpoint_pos - DISTANCE_CUTOFF);
+                setValueToKhashBucket32(breakpoint_start_end_lookup, all_starts_ends[counter-1], all_starts_ends[counter]);
+                setValueToKhashBucket32(breakpoint_end_start_lookup, all_starts_ends[counter], all_starts_ends[counter-1]);
 
                 // dynamically increase the capacity of anchor breakpoint array
                 //
@@ -753,6 +772,9 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
     khash_t(m32) *live_cnv_start_hash = kh_init(m32);
     khash_t(m32) *live_bpt_start_hash = kh_init(m32);
 
+    khash_t(m32) *seen_cnv_start_hash = kh_init(m32);
+    khash_t(m32) *seen_bpt_start_hash = kh_init(m32);
+
     khiter_t iter;
     counter = 0;
     int32_t cnv_index = -1;             // need to use signed value as sometimes, no value found
@@ -763,16 +785,20 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
         // if a key is present in both start and end position, we have to process start first
         //
         bool start_first = false;
-        if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_hash, all_starts_ends[i]))
+        if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) \
+                && !checkm32KhashKey(seen_cnv_start_hash, all_starts_ends[i]) )
             start_first = true;
 
-        if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i]) && checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i]))
+        if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i]) && checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i]) \
+                && !checkm32KhashKey(seen_bpt_start_hash, all_starts_ends[i]) )
             start_first = true;
 
-        if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i]) && checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i]))
+        if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i]) && checkm32KhashKey(breakpoint_end_hash, all_starts_ends[i]) 
+                && !checkm32KhashKey(seen_cnv_start_hash, all_starts_ends[i]) )
             start_first = true;
 
-        if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_hash, all_starts_ends[i]))
+        if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) \
+                && !checkm32KhashKey(seen_bpt_start_hash, all_starts_ends[i]) )
             start_first = true;
 
         if (!start_first && (checkm32KhashKey(cnv_end_hash, all_starts_ends[i]) ||
@@ -900,6 +926,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
             // get current CNV start position in cnv_index
             //
             if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i])) {
+                setValueToKhashBucket32(seen_cnv_start_hash, all_starts_ends[i], i);
                 cnv_index = getSignedValueFromKhash32(cnv_start_hash, all_starts_ends[i]);
                 if (cnv_index == -1) {
                     fprintf(stderr, "Something went wrong with CNV/Breakpoint start at %"PRIu32"\n", all_starts_ends[i]);
@@ -912,12 +939,14 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
             // get current breakpoint start position
             //
             if (checkm32KhashKey(breakpoint_start_hash, all_starts_ends[i])) {
+                setValueToKhashBucket32(seen_bpt_start_hash, all_starts_ends[i], i);
                 setValueToKhashBucket32(live_bpt_start_hash, all_starts_ends[i], i);
                 //fprintf(stderr, "%s\tBreakpoint_Start\t%"PRIu32"\t%"PRId32"\n", cnv_array->chromosome_id, all_starts_ends[i], counter);
             }
 
-            // delete the items in the hashtable
-            //
+            // Note, we don't want to delete the hash keys here as we might need to use them later one
+            // instead, we will use the seen* hashtable for the 'skip' purpose
+            /*
             if (checkm32KhashKey(cnv_start_hash, all_starts_ends[i])) {
                 iter = kh_get(m32, cnv_start_hash, all_starts_ends[i]);
                 if (iter != kh_end(cnv_start_hash)) {
@@ -928,7 +957,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
                 if (iter != kh_end(breakpoint_start_hash)) {
                     kh_del(m32, breakpoint_start_hash, iter);        // this deletes the key
                 }
-            }
+            }*/
         }
     }
 
@@ -1233,11 +1262,17 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                     left = true;
                 }
             } else {
-                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end)) > DISTANCE_CUTOFF*2)
+                if ((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end) > DISTANCE_CUTOFF*2) {
+                    // no need to go any further
+                    //
+                    break;
+                }
+
+                if ((signed) (cur_end - cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint) > DISTANCE_CUTOFF*2)
                     continue;
             }
 
-            uint16_t prev_bpts=0, prev_tlen=0, cur_bpts=0, cur_tlen=0;
+            uint32_t prev_bpts=0, prev_tlen=0, cur_bpts=0, cur_tlen=0;
 
             if (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint < cur_start) {
                 left = true;
@@ -1731,7 +1766,7 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
                     // Note: the VCF output need 20, this is just for debugging
                     //
                     if (cnv_array->cnvs[j].cnv_type == 'P') {
-                        if (left_num_bpoint >= 15 || right_num_bpoint >= 15)
+                        if (left_num_bpoint >= 20 || right_num_bpoint >= 20)
                             supporting_evidences++;
                     }
                 }
@@ -1790,41 +1825,6 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
         }
     }
     fclose(fp);
-}
-
-void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tracking, FILE *fh) {
-    fprintf(fh, "##fileformat=VCFv4.2\n");
-    fprintf(fh, "##source=%s\n", SOURCE_);
-    fprintf(fh, "##reference=%s\n", user_inputs->reference_file);
-
-    // for chromosome ids
-    //
-    uint32_t i;
-    for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        fprintf(fh, "##contig=<ID=%s,length=%"PRIu32">\n", chrom_tracking->chromosome_ids[i], chrom_tracking->chromosome_lengths[i]);
-    }
-
-    fprintf(fh, "##ALT=<ID=CNV,Description=\"Copy Number Variant\">\n");
-    fprintf(fh, "##ALT=<ID=DEL,Description=\"Deletion relative to the reference\">\n");
-    fprintf(fh, "##ALT=<ID=DUP,Description=\"Duplication relative to the reference\">\n");
-    fprintf(fh, "##ALT=<ID=INS,Description=\"Insertion relative to the reference\">\n");
-    fprintf(fh, "##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the structural variant\">\n");
-    fprintf(fh, "##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of SV:DEL=Deletion, DUP=Duplication, INS=Insertion\">\n");
-    fprintf(fh, "##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">\n");
-    fprintf(fh, "##INFO=<ID=AVGCOV,Number=.,Type=Float,Description=\"Average Coverage of the CNV\">\n");
-    fprintf(fh, "##INFO=<ID=BPTL,Number=1,Type=Integer,Description=\"Breakpoint position at the left side of the CNV\">\n");
-    fprintf(fh, "##INFO=<ID=BPTR,Number=1,Type=Integer,Description=\"Breakpoint position at the right side of the CNV\">\n");
-    fprintf(fh, "##INFO=<ID=BPTLCOUNT,Number=1,Type=Integer,Description=\"Number of breakpoints at the left side of the CNV\">\n");
-    fprintf(fh, "##INFO=<ID=BPTRCOUNT,Number=1,Type=Integer,Description=\"Number of breakpoints at the right side of the CNV\">\n");
-    fprintf(fh, "##INFO=<ID=BPTLTLEN,Number=1,Type=Integer,Description=\"Number of Reads with Insertion size >= 1000bp across the breakpoints at the end of left side of the CNV\">\n");
-    fprintf(fh, "##INFO=<ID=BPTRTLEN,Number=1,Type=Integer,Description=\"Number of Reads with Insertion size >= 1000bp across the breakpoints at the end of right side of the CNV\">\n");
-    fprintf(fh, "##INFO=<ID=IMPPRLEN,Number=1,Type=Integer,Description=\"Number of Improperly Paired Reads with Insertion size >= 1000bp\">\n");
-    fprintf(fh, "##FILTER=<ID=noBreakpointAndImpSupport,Description=\"CNV without breakpoint and improperly paired reads support\">\n");
-    fprintf(fh, "##FILTER=<ID=littleBreakpointAndImpSupport,Description=\"CNV has breakpoint support or improperly paired reads support, but the support is too little to be useful\">\n");
-    fprintf(fh, "##FILTER=<ID=PASS,Description=\"CNV pass the filter\">\n");
-    fprintf(fh, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
-    fprintf(fh, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", user_inputs->sample_name);
-    //fprintf(fh, "");
 }
 
 void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, FILE *fp, FILE *sfh) {
@@ -1903,6 +1903,9 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
                 strcpy(GT, "./.");
             }
 
+            if (supporting_evidences >= 2)
+                cnv_array->cnvs[j].inner_cnv.passed = true;
+
             int32_t svLen = cnv_end-cnv_start;      // must be signed
             if (cnv_array->cnvs[j].cnv_type == 'L')
                 svLen *= -1;
@@ -1923,6 +1926,26 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
 
             fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8";IMPPRLEN=%"PRIu8"\tGT\t%s\n", \
                     chrom_tracking->chromosome_ids[i], cnv_start, CNV, qual, FILTER, cnv_end, svLen, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000, GT);
+
+            // update the inner_CNV variable for CNV segmentation
+            //
+            cnv_array->cnvs[j].inner_cnv.start = cnv_start;
+            cnv_array->cnvs[j].inner_cnv.end   = cnv_end;
+            cnv_array->cnvs[j].inner_cnv.qual  = qual;
+            cnv_array->cnvs[j].inner_cnv.cnv_type = cnv_array->cnvs[j].cnv_type;
+            cnv_array->cnvs[j].inner_cnv.ave_coverage = cnv_array->cnvs[j].ave_coverage;
+            cnv_array->cnvs[j].inner_cnv.valid_cnv = true;
+            cnv_array->cnvs[j].inner_cnv.left_breakpoint = left_breakpoint;
+            cnv_array->cnvs[j].inner_cnv.left_breakpoint_count = left_num_bpoint;
+            cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_left  = right_breakpoint;
+            cnv_array->cnvs[j].inner_cnv.right_breakpoint = right_breakpoint;
+            cnv_array->cnvs[j].inner_cnv.right_breakpoint_count = right_num_bpoint;
+            cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_right  = right_breakpoint;
+            cnv_array->cnvs[j].inner_cnv.imp_PR_start = cnv_array->cnvs[j].imp_PR_start;
+            cnv_array->cnvs[j].inner_cnv.imp_PR_end = cnv_array->cnvs[j].imp_PR_end;
+            cnv_array->cnvs[j].inner_cnv.num_larger_imp_RP_TLEN = cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000;
+            cnv_array->cnvs[j].inner_cnv.evidence_count = supporting_evidences;
+
         } // end equal_bin_cnv_array
     } // end chromosome list
 }
