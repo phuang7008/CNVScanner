@@ -905,6 +905,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
             }
 
             // as some start and end positions might be the same, it is quite confusion
+            // also some times both ends have the same value
             // so we need to delete the end ones once we have processed it
             //
             if (checkm32KhashKey(cnv_end_hash, all_starts_ends[i])) {
@@ -1841,6 +1842,9 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         CNV_Array *cnv_array = equal_bin_cnv_array[i];      // pointer assignment, don't need to be free-ed
         for (j=0; j<cnv_array->size; j++) {
+            if (cnv_array->cnvs[j].equal_bin_start == 77091000)
+                printf("stop vcf\n");
+
             int16_t left_idx  = cnv_array->cnvs[j].left_start_index;
             int16_t right_idx = cnv_array->cnvs[j].right_end_index;
 
@@ -1934,17 +1938,18 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             cnv_array->cnvs[j].inner_cnv.qual  = qual;
             cnv_array->cnvs[j].inner_cnv.cnv_type = cnv_array->cnvs[j].cnv_type;
             cnv_array->cnvs[j].inner_cnv.ave_coverage = cnv_array->cnvs[j].ave_coverage;
-            cnv_array->cnvs[j].inner_cnv.valid_cnv = true;
             cnv_array->cnvs[j].inner_cnv.left_breakpoint = left_breakpoint;
             cnv_array->cnvs[j].inner_cnv.left_breakpoint_count = left_num_bpoint;
-            cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_left  = right_breakpoint;
+            cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_left  = left_num_geTLEN;
             cnv_array->cnvs[j].inner_cnv.right_breakpoint = right_breakpoint;
             cnv_array->cnvs[j].inner_cnv.right_breakpoint_count = right_num_bpoint;
-            cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_right  = right_breakpoint;
+            cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_right  = right_num_geTLEN;
             cnv_array->cnvs[j].inner_cnv.imp_PR_start = cnv_array->cnvs[j].imp_PR_start;
             cnv_array->cnvs[j].inner_cnv.imp_PR_end = cnv_array->cnvs[j].imp_PR_end;
             cnv_array->cnvs[j].inner_cnv.num_larger_imp_RP_TLEN = cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000;
             cnv_array->cnvs[j].inner_cnv.evidence_count = supporting_evidences;
+            if (supporting_evidences >= 2)
+                cnv_array->cnvs[j].inner_cnv.valid_cnv = true;
 
         } // end equal_bin_cnv_array
     } // end chromosome list

@@ -68,7 +68,7 @@ typedef struct {
     char * output_dir;              // output directory (mandatory)
     char * reference_file;          // reference file name for cram input file
     char * chromosome_bed_file;     // a file contains chromosome ids and regions need to be processed in bed format
-    char * equal_size_window;       // a bed file contains equal sized bin windows for all chromosomes
+    char * equal_size_window_file;  // a bed file contains equal sized bin windows for all chromosomes
 
     // For whole genome (WGS) related outputs
     char * wgs_cov_file;        // output the whole genome coverage count information

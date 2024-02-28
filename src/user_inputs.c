@@ -212,8 +212,8 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 strcpy(user_inputs->reference_version, optarg);
                 break;
             case 'w':
-                user_inputs->equal_size_window = (char *) malloc((strlen(optarg)+1) * sizeof(char));
-                strcpy(user_inputs->equal_size_window, optarg);
+                user_inputs->equal_size_window_file = (char *) malloc((strlen(optarg)+1) * sizeof(char));
+                strcpy(user_inputs->equal_size_window_file, optarg);
                 break;
             case 'W': 
                 user_inputs->Write_WGS_cov_fasta = true;
@@ -258,7 +258,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         input_error_flag=true;
     }*/
 
-    if (user_inputs->equal_size_window == NULL) {
+    if (user_inputs->equal_size_window_file == NULL) {
         fprintf(stderr, "ERROR: --equal_size_window (or -w)\toption is mandatory!\n");
         input_error_flag=true;
     }
@@ -473,7 +473,7 @@ User_Input * userInputInit() {
     user_inputs->gc_content_file  = NULL;
     user_inputs->vcf_output_file  = NULL;
     user_inputs->mappability_file = NULL;
-    user_inputs->equal_size_window = NULL;
+    user_inputs->equal_size_window_file = NULL;
     user_inputs->mappability_outfile  = NULL;
     user_inputs->gc_content_outfile   = NULL;
     user_inputs->chromosome_bed_file  = NULL;
@@ -556,8 +556,8 @@ void userInputDestroy(User_Input *user_inputs) {
     if (user_inputs->normalized_result_file)
         free(user_inputs->normalized_result_file);
 
-    if (user_inputs->equal_size_window)
-        free(user_inputs->equal_size_window);
+    if (user_inputs->equal_size_window_file)
+        free(user_inputs->equal_size_window_file);
 
     if (user_inputs->window_details_file)
         free(user_inputs->window_details_file);

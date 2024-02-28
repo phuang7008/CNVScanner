@@ -304,7 +304,7 @@ int main(int argc, char *argv[]) {
             // create equal-sized-bins
             //
             int total_lines = processFile(chrom_tracking->chromosome_ids[chrom_index], \
-                                            user_inputs->equal_size_window, equal_size_window_wrappers[chrom_index]);
+                                            user_inputs->equal_size_window_file, equal_size_window_wrappers[chrom_index]);
 
             generateEqualSizedBins(user_inputs, binned_data_wrappers[chrom_index], \
                     equal_size_window_wrappers[chrom_index],  total_lines, chrom_tracking->chromosome_ids[chrom_index]);

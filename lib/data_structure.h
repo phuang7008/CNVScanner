@@ -61,7 +61,7 @@ KHASH_MAP_INIT_INT(m8, uint16_t)
 // void set_khStrInt(int val) { khStrInt = val; }
 
 /**
- * define a structure that holds the target coordinates
+ * define a structure that holds the target/excluded region's coordinates
  **/
 typedef struct {
     char *chrom_id;    // some chromosome ID would be quite long

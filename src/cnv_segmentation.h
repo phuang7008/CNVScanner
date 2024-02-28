@@ -23,6 +23,7 @@
 #include <omp.h>
 #include <stdlib.h>
 
+#include "fileProcessing.h"
 #include "terms.h"
 #include "storage.h"
 #include "utils.h"
@@ -56,6 +57,8 @@ typedef struct {
     uint32_t seg_imp_PR_start;
     uint32_t seg_imp_PR_end;
     uint16_t seg_num_of_imp_RP_TLEN_1000;   // number of improperly paired-reads with TLEN >= 1000
+
+    char* excluded_regions;                 // it contains Ns-regions, segdup and tandom repeat >= 10kb
 } Segmented_CNV;
 
 typedef struct {
@@ -89,6 +92,10 @@ void checkBreakpointsForEachSegment(Segmented_CNV_Array *seg_cnv_array, khash_t(
 void addBreakpoints(Segmented_CNV_Array *seg_cnv_array, uint32_t seg_index, khash_t(m32) *anchor_breakpoints_hash, uint32_t anchor_breakpoint);
 
 void setBreakpoinsAtSegmentEnds(Segmented_CNV_Array *seg_cnv_array);
+
+void removeExcludedRegionsFromSegments(Segmented_CNV_Array *seg_cnv_array, Binned_Data_Wrapper *excluded_regions, int total_size);
+
+void saveExcludedRegion(Segmented_CNV_Array *seg_cnv_array, uint32_t seg_cnv_index, char *regions_to_append);
 
 void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array);
 

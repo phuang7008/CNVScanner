@@ -450,8 +450,9 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
 
     // now calculate the z-score
     //
-    the_stats->zScore = 1.645 * the_stats->stdev;   // 90% confident inverval for z score
-    //the_stats->zScore = 1.96 * the_stats->stdev;    // 95% confident inverval for z score
+    //the_stats->zScore = 1.645 * the_stats->stdev;             // 90% confident inverval for z score
+    the_stats->zScore = 1.96 * the_stats->stdev;                // 95% confident inverval for z score
+    //the_stats->zScore_99_pct = 2.576 * the_stats->stdev;      // 99% confident interval for z score (99%)
     //the_stats->zScore_99_p7_pct = 3.00 * the_stats->stdev;    // 99% confident interval for z score (99.7%)
 
     // now calculate the median
@@ -494,7 +495,7 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
         equal_size_window->starts   = calloc(INIT_SIZE, sizeof(uint32_t));
         equal_size_window->ends     = calloc(INIT_SIZE, sizeof(uint32_t));
 
-        int total_lines = processFile(chrom_tracking->chromosome_ids[i], user_inputs->equal_size_window, equal_size_window);
+        int total_lines = processFile(chrom_tracking->chromosome_ids[i], user_inputs->equal_size_window_file, equal_size_window);
         uint32_t j=0, k=0, new_start=0;
 
         for (j=0; j<total_lines; j++) {
