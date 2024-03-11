@@ -11,9 +11,18 @@ This is the connector between C++ and C
 extern "C" {
 #endif
 
-void slmseg_call(char* chr, char* file_in, char* out_file_name, Segment_Array* segment_array, double omega, double eta, double stepeta, double fw) {
-    if (strcmp(chr, segment_array->chrom_id) != 0) {
-        fprintf(stderr, "Something went wrong as chr %s and chrom_id %s not the same!\n", chr, segment_array->chrom_id);
+void slmseg_call(unsigned int chr, char* file_in, char* out_file_name, Segment_Array* segment_array, double omega, double eta, double stepeta, double fw) {
+    unsigned int tmp_chr = 0;
+    if (strcmp(segment_array->chrom_id, "X") == 0 || strcmp(segment_array->chrom_id, "chrX") == 0) {
+        tmp_chr = 23;
+    } else if (strcmp(segment_array->chrom_id, "Y") == 0 || strcmp(segment_array->chrom_id, "chrY") == 0) {
+        tmp_chr = 24;
+    } else {
+        tmp_chr = atoi(segment_array->chrom_id);
+    }
+
+    if (tmp_chr != chr) {
+        fprintf(stderr, "Something went wrong as chr %d and chrom_id %s not the same!\n", chr, segment_array->chrom_id);
         exit(EXIT_FAILURE);
     }
 
@@ -25,7 +34,7 @@ void slmseg_call(char* chr, char* file_in, char* out_file_name, Segment_Array* s
     fprintf(stderr, "Performing analysis...\n");
     segdata.SLM();
 
-    fprintf(stderr, "Data output for chromosome %s:\n", chr);
+    fprintf(stderr, "Data output for chromosome %d:\n", chr);
 
     FILE * out_fhd;
     out_fhd = fopen(out_file_name, "w");
@@ -47,7 +56,8 @@ void slmseg_call(char* chr, char* file_in, char* out_file_name, Segment_Array* s
 	    //fprintf(out_fhd, "%d\t%" PRIu32 "\t%.2f\n",chr, data_pos.at(i), data_seg.at(i));
 	    if (beginning_flag || (int(data_seg.at(i) * 10000) != int(prev_data * 10000)) ) {
 	        if (!beginning_flag) {
-		        fprintf(out_fhd, "%s\t%" PRIu32 "\t%" PRIu32 "\t%.2f\n",chr, prev_pos, data_pos.at(i), prev_data);
+		        fprintf(out_fhd, "%s\t%" PRIu32 "\t%" PRIu32 "\t%.2f\n", segment_array->chrom_id, prev_pos, data_pos.at(i), prev_data);
+		        //fprintf(out_fhd, "%s\t%" PRIu32 "\t%" PRIu32 "\t%.2f\n",chr, prev_pos, data_pos.at(i), prev_data);
                 segment_array->segments[counter].start = prev_pos;
                 segment_array->segments[counter].end   = data_pos.at(i);
                 segment_array->segments[counter].log2R_mean    = prev_data;
@@ -75,7 +85,7 @@ void slmseg_call(char* chr, char* file_in, char* out_file_name, Segment_Array* s
     }
 
     // output the last line
-    fprintf(out_fhd, "%s\t%" PRIu32 "\t%" PRIu32 "\t%.2f\n",chr, prev_pos, data_pos.at(data_seg.size()-1), prev_data);
+    fprintf(out_fhd, "%s\t%" PRIu32 "\t%" PRIu32 "\t%.2f\n", segment_array->chrom_id, prev_pos, data_pos.at(data_seg.size()-1), prev_data);
     segment_array->segments[counter].start = prev_pos;
     segment_array->segments[counter].end   = data_pos.at(data_seg.size()-1);
     segment_array->segments[counter].log2R_mean  = prev_data;

@@ -1076,7 +1076,8 @@ void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index,
 
         if(b->core.qual < user_inputs->min_map_quality) continue;       // doesn't pass MAPQ
 
-        if (abs(b->core.isize) >= 1000 && abs(b->core.isize) <= 3*cnv_length) {
+        if (abs(b->core.isize) >= 1000 && (abs(b->core.isize)*3 >= cnv_length) && (abs(b->core.isize) <= 3*cnv_length)) {
+
             uint32_t start = (b->core.pos <= b->core.mpos) ? b->core.pos : b->core.mpos;
             uint32_t end = start + abs(b->core.isize);
             uint32_t start_cutoff = start - 500;
@@ -1228,7 +1229,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
         uint32_t cnv_length = cur_end - cur_start;
         uint32_t imp_PR_length = cnv_array->cnvs[i].imp_PR_end - cnv_array->cnvs[i].imp_PR_start;
         //if (imp_PR_length > 5*cnv_length)
-        if (imp_PR_length > 3*cnv_length)
+        if (imp_PR_length > 3*cnv_length || imp_PR_length*3 < cnv_length)
             cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 = 0;
 
         // some of the CNVs don't have breakpoints associated them, so skip
@@ -1553,6 +1554,9 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
                             if ( (all_starts_ends[i] - imp_start) > (3*cnv_array->cnvs[cnv_index].length) )
                                 continue;
 
+                            if ( (all_starts_ends[i] - imp_start)*3 < cnv_array->cnvs[cnv_index].length )
+                                continue;
+
                             cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 += cur_TLEN;
 
                             if (cnv_array->cnvs[cnv_index].imp_PR_start == 0 ||
@@ -1586,6 +1590,9 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
                             imp_start = kh_key(live_imp_start_hash, iter);
                             imp_end = getValueFromKhash32(imp_PR_start_end_lookup, imp_start);
                             if ( (imp_end - imp_start) > (3*cnv_array->cnvs[cnv_index].length) )
+                                continue;
+
+                            if ( (imp_end - imp_start)*3 < cnv_array->cnvs[cnv_index].length )
                                 continue;
 
                             cur_TLEN = getValueFromKhash32(imp_PR_start_hash, imp_start);

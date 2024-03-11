@@ -49,8 +49,8 @@ typedef struct {
     CNV_Breakpints *seg_breakpoints;
     uint32_t seg_breakpoints_size;
     uint32_t seg_breakpoints_capacity;
-    int16_t seg_left_start_index;            // the signed index is set when there is a left-hand breakpoint (0-index is valid)
-    int16_t seg_right_end_index;             // the signed index is set when there is a right-hand breakpoint (0-index is valid)
+    int16_t seg_left_start_index;       // the signed index is set when there is a left-hand breakpoint (0-index is valid)
+    int16_t seg_right_end_index;        // the signed index is set when there is a right-hand breakpoint (0-index is valid)
 
     // store improperly paired reads with perfect mapping and TLEN > 1000 and count >= 2
     //
@@ -71,7 +71,7 @@ typedef struct {
 
 void segmentArrysInit(Segment_Array **segment_arrays, Chromosome_Tracking *chrom_tracking);
 
-void segmentArrysDestory(Segment_Array **segment_arrays, Chromosome_Tracking *chrom_tracking);
+void segmentArrysDestroy(Segment_Array **segment_arrays, Chromosome_Tracking *chrom_tracking);
 
 void SegmentedCNVArrayInit(Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking);
 
@@ -96,6 +96,12 @@ void setBreakpoinsAtSegmentEnds(Segmented_CNV_Array *seg_cnv_array);
 void removeExcludedRegionsFromSegments(Segmented_CNV_Array *seg_cnv_array, Binned_Data_Wrapper *excluded_regions, int total_size);
 
 void saveExcludedRegion(Segmented_CNV_Array *seg_cnv_array, uint32_t seg_cnv_index, char *regions_to_append);
+
+void segmentInnerCNVInit(Segmented_CNV *seg_cnv, uint32_t capacity);
+
+void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t index);
+
+int obtainSupportingEvidences(INNER_CNV inner_cnv, int* total_breakpoints);
 
 void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array);
 

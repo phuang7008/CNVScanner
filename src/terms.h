@@ -47,7 +47,7 @@
 #define SMALL_LENGTH_CUTOFF 50
 #define EQUAL_BIN_SIZE 20
 //#define DISTANCE_CUTOFF 300     // Qiaoyan: use 2 x seq-length = 2 x 150 = 300 on either size
-#define DISTANCE_CUTOFF 500     // if we use equal bin size 2000, we need to search a larger region 500 instead
+#define DISTANCE_CUTOFF 1000     // Dragen uses 1000bp for the junction detection
 #define BREAKPOINT_DISTANCE_TO_GROUP 5      // group neighboring breakpoint within 5bp together
 
 // We need to declared the followings as glabal since the program will change these values!!!
@@ -166,6 +166,7 @@ typedef struct {
     uint32_t *paired_read_ends;     // an array of ends associated with the paired reads across the breakpoint
     uint16_t num_of_paired_reads;
     uint16_t capacity;
+    char orientation;               // left 'L' or right 'R' breakpoint associated w/ merged CNV per segment
 } CNV_Breakpints;
 
 typedef struct {
@@ -186,6 +187,10 @@ typedef struct {
     uint32_t imp_PR_end;
     uint16_t num_larger_imp_RP_TLEN;
     uint8_t evidence_count; 
+    uint8_t num_merged_CNVs;
+    CNV_Breakpints *cnv_breakpoints;    // Used to store breakpoints associated with CNV merging per segment
+    uint16_t breakpoint_size;
+    uint16_t breakpoint_capacity;
 } INNER_CNV;
 
 typedef struct {

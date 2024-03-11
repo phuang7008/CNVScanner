@@ -460,6 +460,8 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
     qsort(average_coverage_array->array, average_coverage_array->size, sizeof(double), compare_double);
     int mid_point = (int) average_coverage_array->size/2;
     the_stats->median = average_coverage_array->array[mid_point];
+    if (the_stats->median == 0)         // too many 0s, causing median to be 0, which will be NAN by division
+        the_stats->median = the_stats->average_coverage;
 
     // clean up
     //
@@ -474,8 +476,8 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
     // Calculate log2ration stats from autosomes and non-Ns regions only
     // not needed as log2 will transform the dataset into a non-normal distribution
     //
-    double log2ration_sum = 0.0, sum_of_squares = 0.0;
-    int32_t total_equal_window_size = 0;
+    //double log2ration_sum = 0.0, sum_of_squares = 0.0;
+    //int32_t total_equal_window_size = 0;
 
     uint32_t i=0;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
@@ -496,33 +498,56 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
         equal_size_window->ends     = calloc(INIT_SIZE, sizeof(uint32_t));
 
         int total_lines = processFile(chrom_tracking->chromosome_ids[i], user_inputs->equal_size_window_file, equal_size_window);
-        uint32_t j=0, k=0, new_start=0;
+        uint32_t j=0, k=0, new_start=0, counter=0;
+        unsigned int tmp_chr = 0;
+
+        if (strcmp(chrom_tracking->chromosome_ids[i], "chrX") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "X") == 0) {
+            tmp_chr = 23;
+        } else if (strcmp(chrom_tracking->chromosome_ids[i], "chrY") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "Y") == 0) {
+            tmp_chr = 24;
+        } else {
+            tmp_chr = atoi(chrom_tracking->chromosome_ids[i]);
+        }
 
         for (j=0; j<total_lines; j++) {
+            counter++;
             for (k=new_start; k<binned_data_wrapper[i]->size; k++) {
                 // this is to prevent the 'na' in log2 ratio
                 // log2 0 is not defined. so to overcome this, I add 0.0001 before doing log2 ratio
                 // This is adjusted based on ViZCNV
+                // somehow, for the Y chr, it will cause the error: 
+                // Error in JointSeg(data_matrix, eta, omega, muk, mi, smu, sepsilon) : 
+                //   NA/NaN/Inf in foreign function call (arg 2)
+                // it looks like for equal bin 1000, at 45949th bin needs not be too low like -13.29
+                // instead, if it changed to -1.29, it will pass the error
                 //
-
+                double log2ratio = 0.0;
                 if (equal_size_window->data[j].start == binned_data_wrapper[i]->data[k].start) {
-                    double log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + 0.0001);
-                    fprintf(log2r_fh, "%s\t%"PRIu32"\t%.2f\t%.2f\n", chrom_tracking->chromosome_ids[i], 
-                            binned_data_wrapper[i]->data[k].start, log2ratio, binned_data_wrapper[i]->data[k].ave_coverage);
+                    if (tmp_chr == 24 && counter >= 45948) {
+                        log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + 0.001);
+                    } else {
+                        log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + 0.0001);
+                    }
+                    fprintf(log2r_fh, "%d\t%"PRIu32"\t%.2f\t%.2f\n", tmp_chr, binned_data_wrapper[i]->data[k].start,
+                                                                log2ratio, binned_data_wrapper[i]->data[k].ave_coverage);
                     new_start = k+1;
-                    if (strcmp(chrom_tracking->chromosome_ids[i], "chrX") == 0 \
+                    /*if (strcmp(chrom_tracking->chromosome_ids[i], "chrX") == 0 \
                             || strcmp(chrom_tracking->chromosome_ids[i], "chrY") == 0 \
                             || strcmp(chrom_tracking->chromosome_ids[i], "X") == 0 \
                             || strcmp(chrom_tracking->chromosome_ids[i], "Y") == 0 ) {
-                        continue;
+                        //continue;
                     } else {
                         total_equal_window_size++;
                         log2ration_sum += log2ratio;
                         sum_of_squares += pow(log2ratio, 2);
-                    }
+                    }*/
                 } else {
-                    fprintf(log2r_fh, "%s\t%"PRIu32"\t%.2f\t%.2f\n", chrom_tracking->chromosome_ids[i],
-                            equal_size_window->data[j].start, log2(0.0001), 0.0);
+                    if (tmp_chr == 24 && counter >= 45948) {
+                        log2ratio = log2(0.001);
+                    } else {
+                        log2ratio = log2(0.0001);
+                    }
+                    fprintf(log2r_fh, "%d\t%"PRIu32"\t%.2f\t%.2f\n", tmp_chr, equal_size_window->data[j].start, log2ratio, 0.0);
                 }
                 break;
             }
@@ -536,12 +561,12 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
     // calculate log2ratio stats, but not needed as the log2 function transforms the original data into a non-normal data
     // The formula and the results are correct!!!
     //
-    the_stats->ave_log2ratio = log2ration_sum / (double) total_equal_window_size;
-    the_stats->stdev_log2ratio = \
-        sqrt((sum_of_squares - pow(log2ration_sum,2)/total_equal_window_size) / (total_equal_window_size - 1 ));
-    the_stats->zScore_log2_ratio = 1.645 * the_stats->stdev_log2ratio;   // 90% confident inverval for z score
-    the_stats->del_log2ratio = the_stats->ave_log2ratio - the_stats->zScore_log2_ratio;
-    the_stats->dup_log2ratio = the_stats->ave_log2ratio + the_stats->zScore_log2_ratio;
+    //the_stats->ave_log2ratio = log2ration_sum / (double) total_equal_window_size;
+    //the_stats->stdev_log2ratio =
+    //    sqrt((sum_of_squares - pow(log2ration_sum,2)/total_equal_window_size) / (total_equal_window_size - 1 ));
+    //the_stats->zScore_log2_ratio = 1.645 * the_stats->stdev_log2ratio;   // 90% confident inverval for z score
+    //the_stats->del_log2ratio = the_stats->ave_log2ratio - the_stats->zScore_log2_ratio;
+    //the_stats->dup_log2ratio = the_stats->ave_log2ratio + the_stats->zScore_log2_ratio;
 
     // Not needed at this stage, might be needed in the future, who knows
     // The log2ratio should be calculated after the SLGSeg step!!!

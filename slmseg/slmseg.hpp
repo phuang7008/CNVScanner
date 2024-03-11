@@ -62,7 +62,7 @@ public:
         return true;
     }
 
-    bool load_signal_file(const char *file_name, char* chromosome)
+    bool load_signal_file(const char *file_name, unsigned int chromosome)
     {
         CcTable<unsigned int> *signal_file = new CcTable<unsigned int>();
 
@@ -76,23 +76,22 @@ public:
         for (unsigned int r = 0; r < signal_file->nrow(); r++)
         {
             bool dummy;
-            char* chr = (char*) calloc(100, sizeof(char));
+            unsigned int chr = 0;
 
             try
             {
-                strcpy(chr, signal_file->get_cell(r, 0, dummy).c_str());
+                chr = std::stoul(signal_file->get_cell(r, 0, dummy));
             }
             catch (...)
             {
-                strcpy(chr, "0");
+                chr = 0;
             }
 
-            if (strcmp(chr, chromosome) == 0)
+            if (chr == chromosome)
             {
                 pos_data_.push_back(std::stoi(signal_file->get_cell(r, 1, dummy)));
                 signal_data_.push_back(std::stof(signal_file->get_cell(r, 2, dummy)));
             }
-            free(chr);
         }
 
         delete signal_file;

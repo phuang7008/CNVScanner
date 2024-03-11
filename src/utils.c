@@ -614,6 +614,7 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
     fprintf(fh, "##FILTER=<ID=noBreakpointAndImpSupport,Description=\"CNV without breakpoint and improperly paired reads support\">\n");
     fprintf(fh, "##FILTER=<ID=littleBreakpointAndImpSupport,Description=\"CNV has breakpoint support or improperly paired reads support, but the support is too little to be useful\">\n");
     fprintf(fh, "##FILTER=<ID=PASS,Description=\"CNV pass the filter\">\n");
+    fprintf(fh, "##FILTER=<ID=qualLessThan99pctCI,Description=\"CNV has qual less than 99%% confident interval and insufficient breakpoint supports\">\n");
     fprintf(fh, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
     fprintf(fh, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", user_inputs->sample_name);
     //fprintf(fh, "");
