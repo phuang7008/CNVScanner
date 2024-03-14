@@ -67,6 +67,9 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
             setLeftRightCNVBreakpoints(equal_bin_cnv_array[cnv_array_index]);
 
+            fprintf(stderr, "%s\n", equal_bin_cnv_array[cnv_array_index]->chromosome_id);
+            cleanupOverlappingCNVs(equal_bin_cnv_array[cnv_array_index], the_stats);
+
             outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 2);
             outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 3);
 
@@ -1708,6 +1711,142 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
     kh_destroy(m32, seen_imp_starts_hash);
     kh_destroy(m32, seen_cnv_ends_hash);
     kh_destroy(m32, seen_imp_ends_hash);
+}
+
+void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_stats) {
+    char prev_type=' ', cur_type=' ';
+    double prev_qual=0.0;
+    int prev_supporting_evidences = 0;
+    uint16_t prev_left_idx=0, prev_right_idx=0;
+    uint32_t prev_start=0, prev_end=0, cur_start=0, cur_end=0;
+    uint32_t prev_left_breakpoint=0, prev_right_breakpoint=0;
+    uint32_t prev_left_num_bpoint=0, prev_right_num_bpoint=0;
+    uint32_t prev_left_num_geTLEN=0, prev_right_num_geTLEN=0;
+    uint32_t prev_num_of_imp_RP_TLEN_1000=0;
+    uint32_t j;
+    for (j=0; j<cnv_array->size; j++) {
+        int16_t left_idx  = cnv_array->cnvs[j].left_start_index;
+        int16_t right_idx = cnv_array->cnvs[j].right_end_index;
+
+        uint32_t left_breakpoint=0, left_num_bpoint=0, left_num_geTLEN=0;
+        uint32_t right_breakpoint=0, right_num_bpoint=0, right_num_geTLEN=0;
+        uint32_t num_of_imp_RP_TLEN_1000 = cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000;
+
+        if (left_idx >= 0 || right_idx >= 0 || num_of_imp_RP_TLEN_1000 >= 2) {
+            if (cnv_array->cnvs[j].cnv_breakpoints != NULL) {
+                left_breakpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint : 0;
+                left_num_bpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_breakpoints : 0;
+                left_num_geTLEN  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_TLEN_ge_1000 : 0;
+
+                right_breakpoint = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].breakpoint : 0;
+                right_num_bpoint = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_breakpoints : 0;
+                right_num_geTLEN = (right_idx >= 0) ? cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_TLEN_ge_1000 : 0;
+            }
+        }
+
+        cur_start = (left_idx >= 0) ? left_breakpoint : (cnv_array->cnvs[j].raw_bin_start > 0) ? \
+                            cnv_array->cnvs[j].raw_bin_start : cnv_array->cnvs[j].equal_bin_start;
+        cur_end   = (right_idx >= 0) ? right_breakpoint : (cnv_array->cnvs[j].raw_bin_end > 0) ? \
+                            cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
+        cur_type  = cnv_array->cnvs[j].cnv_type;
+
+        double qual = (cnv_array->cnvs[j].ave_coverage - equal_window_stats->average_coverage) / equal_window_stats->stdev;
+
+        int supporting_evidences = 0;
+        if (cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 >= 2) {
+            supporting_evidences += 2;
+
+            if (left_idx >= 0 || right_idx >= 0) { 
+                if (left_num_bpoint >= 2) supporting_evidences++;
+                if (left_num_geTLEN >= 2) supporting_evidences++;
+                if (right_num_bpoint >=2) supporting_evidences++;
+                if (right_num_geTLEN >=2) supporting_evidences++;
+            }
+
+            if (cnv_array->cnvs[j].cnv_type == 'P') {
+                if (left_num_bpoint >= 20 || right_num_bpoint >= 20)
+                    supporting_evidences++;
+            }
+        }
+
+        if (j > 0 && prev_right_breakpoint > 0 && prev_left_breakpoint > 0) {
+            if (prev_start <= cur_start && cur_start <= prev_end) {
+                // overlapping
+                //
+                if (prev_type == cur_type) {
+                    // same type, so merge it. Here we only check the previous values > current value
+                    //
+                    if ( prev_left_breakpoint >= 0 && left_breakpoint >= 0 && 
+                            (prev_left_num_bpoint + prev_left_num_geTLEN) > (left_num_bpoint + left_num_geTLEN)) {
+                        cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint = prev_left_breakpoint;
+                        cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_breakpoints = prev_left_num_bpoint;
+                    }
+
+                    if ( prev_right_breakpoint >= 0 && right_breakpoint >= 0 && 
+                            (prev_right_num_bpoint+prev_right_num_geTLEN) > (right_num_bpoint+right_num_geTLEN)) {
+                        cnv_array->cnvs[j].cnv_breakpoints[right_idx].breakpoint = prev_right_breakpoint;
+                        cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_breakpoints = prev_right_num_bpoint;
+                    }
+                
+                    cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 = prev_num_of_imp_RP_TLEN_1000;
+                    fprintf(stderr, "first: %"PRIu32"\n", j);
+                    voidCNVFromList(cnv_array, j-1, prev_left_idx, prev_right_idx);
+                } else { // not the same type
+                    if (prev_supporting_evidences > supporting_evidences) {
+                        //fprintf(stderr, "second: %"PRIu32"\n", j);
+                        voidCNVFromList(cnv_array, j, left_idx, right_idx);           
+                        right_breakpoint = 0;
+                        left_breakpoint  = 0;
+                    } else if (supporting_evidences > prev_supporting_evidences) {
+                        //fprintf(stderr, "third: %"PRIu32"\n", j);
+                        voidCNVFromList(cnv_array, j-1, prev_left_idx, prev_right_idx);
+                    }
+
+                    if (abs(prev_qual) >= abs(qual)) {
+                        //fprintf(stderr, "fourth %"PRIu32"\n", j);
+                        voidCNVFromList(cnv_array, j, left_idx, right_idx);
+                        right_breakpoint = 0;
+                        left_breakpoint  = 0;
+                    } else {
+                        //fprintf(stderr, "fifth %"PRIu32"\n", j);
+                        voidCNVFromList(cnv_array, j-1, prev_left_idx, prev_right_idx);
+                    }
+                }
+            }
+        }
+        
+        prev_start = cur_start;
+        prev_end   = cur_end;
+        prev_type  = cur_type;
+
+        prev_left_idx = left_idx;
+        prev_left_breakpoint = left_breakpoint;
+        prev_left_num_bpoint = left_num_bpoint;
+        prev_left_num_geTLEN = left_num_geTLEN;
+
+        prev_right_idx = right_idx;
+        prev_right_breakpoint = right_breakpoint;
+        prev_right_num_bpoint = right_num_bpoint;
+        prev_right_num_geTLEN = right_num_geTLEN;
+
+        prev_num_of_imp_RP_TLEN_1000 = num_of_imp_RP_TLEN_1000;
+        prev_supporting_evidences = supporting_evidences;
+        prev_qual = qual;
+    }
+}
+
+void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, uint16_t left_breakpoint_index, uint16_t right_breakpoint_index) {
+    cnv_array->cnvs[cnv_index].cnv_breakpoints[left_breakpoint_index].breakpoint = 0;
+    cnv_array->cnvs[cnv_index].cnv_breakpoints[right_breakpoint_index].breakpoint = 0;
+    cnv_array->cnvs[cnv_index].cnv_breakpoints[left_breakpoint_index].num_of_breakpoints = 0;
+    cnv_array->cnvs[cnv_index].cnv_breakpoints[right_breakpoint_index].num_of_breakpoints = 0;
+    cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 = 0;
+    cnv_array->cnvs[cnv_index].raw_bin_start = 0;
+    cnv_array->cnvs[cnv_index].raw_bin_end = 0;
+    cnv_array->cnvs[cnv_index].equal_bin_start = 0;
+    cnv_array->cnvs[cnv_index].equal_bin_end = 0;
+    cnv_array->cnvs[cnv_index].left_start_index = -1;
+    cnv_array->cnvs[cnv_index].right_end_index = -1;
 }
 
 void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {

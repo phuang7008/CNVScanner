@@ -47,6 +47,14 @@ void processPairedReadsAcrossABreakpointTlenInfo(CNV_Array *cnv_array);
 
 void setLeftRightCNVBreakpoints(CNV_Array *cnv_array);
 
+// some CNVs are overlapping with each other
+// it is caused by the extension of breakpoint search
+// Need to cleanup
+//
+void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_stats);
+
+void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, uint16_t left_breakpoint_index, uint16_t right_breakpoint_index);
+
 void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array);
 
 void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type);

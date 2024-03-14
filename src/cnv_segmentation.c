@@ -302,8 +302,8 @@ void findIntersectedCNVs(CNV_Array *cnv_array, Segmented_CNV_Array *seg_cnv_arra
     int32_t seg_index = -1;             // need to use signed value as negative value might return
 
     for (i=0; i<capacity; i++) {
-        if (all_starts_ends[i] == 180700000)
-            printf("Stop intersect 180700000\n");
+        if (all_starts_ends[i] == 11215000)
+            printf("Stop intersect 11215000\n");
 
         // if a key is present in both start and end position, we have to process start first
         //
@@ -1160,8 +1160,8 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
         uint32_t seg_start = seg_cnv_array->seg_cnvs[i].segment.start;
         uint32_t seg_end   = seg_cnv_array->seg_cnvs[i].segment.end;
 
-        //if (seg_start == 22342000)
-        //    printf("stopped in mergeCNV\n");
+        if (seg_start == 11215000)
+            printf("stopped in mergeCNV\n");
 
         // initialize the inner_cnv variable based on the cnv_index_size
         //
