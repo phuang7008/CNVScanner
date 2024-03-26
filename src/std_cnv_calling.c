@@ -716,8 +716,8 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
 
                 //fprintf(stderr, "Breakpoint\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", all_starts_ends[counter-2], all_starts_ends[counter-1], breakpoint_pos);
 
-                setValueToKhashBucket32(breakpoint_start_end_lookup, all_starts_ends[counter-1], all_starts_ends[counter]);
-                setValueToKhashBucket32(breakpoint_end_start_lookup, all_starts_ends[counter], all_starts_ends[counter-1]);
+                setValueToKhashBucket32(breakpoint_start_end_lookup, all_starts_ends[counter-2], all_starts_ends[counter-1]);
+                setValueToKhashBucket32(breakpoint_end_start_lookup, all_starts_ends[counter-1], all_starts_ends[counter-2]);
 
                 // dynamically increase the capacity of anchor breakpoint array
                 //
@@ -982,6 +982,8 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
     kh_destroy(m32, cnv_end_hash);
     kh_destroy(m32, live_cnv_start_hash);
     kh_destroy(m32, live_bpt_start_hash);
+    kh_destroy(m32, seen_bpt_start_hash);
+    kh_destroy(m32, seen_cnv_start_hash);
 }
 
 // The breakpoints will be stored in an array
@@ -1245,6 +1247,8 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
         bool left_most_set = false, right_most_set = false;
         uint32_t j;
         for (j=0; j<cnv_array->cnvs[i].cnv_breakpoints_size; j++) {
+            if (j == 65535)
+                printf("size max at 65535\n");
             /*printf("breakpoint: %"PRIu32"\tnum_of_breakpoints: %"PRIu8"\tnum_of_TLEN_ge_1000: %"PRIu8"\n", \
                     cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint,
                     cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints, 
@@ -1717,7 +1721,7 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
     char prev_type=' ', cur_type=' ';
     double prev_qual=0.0;
     int prev_supporting_evidences = 0;
-    uint16_t prev_left_idx=0, prev_right_idx=0;
+    int16_t prev_left_idx=0, prev_right_idx=0;
     uint32_t prev_start=0, prev_end=0, cur_start=0, cur_end=0;
     uint32_t prev_left_breakpoint=0, prev_right_breakpoint=0;
     uint32_t prev_left_num_bpoint=0, prev_right_num_bpoint=0;
@@ -1727,6 +1731,8 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
     for (j=0; j<cnv_array->size; j++) {
         int16_t left_idx  = cnv_array->cnvs[j].left_start_index;
         int16_t right_idx = cnv_array->cnvs[j].right_end_index;
+        if (right_idx == 65535)
+            printf("inside\n");
 
         uint32_t left_breakpoint=0, left_num_bpoint=0, left_num_geTLEN=0;
         uint32_t right_breakpoint=0, right_num_bpoint=0, right_num_geTLEN=0;
@@ -1789,7 +1795,7 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
                     }
                 
                     cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 = prev_num_of_imp_RP_TLEN_1000;
-                    fprintf(stderr, "first: %"PRIu32"\n", j);
+                    //fprintf(stderr, "first: %"PRIu32"\n", j);
                     voidCNVFromList(cnv_array, j-1, prev_left_idx, prev_right_idx);
                 } else { // not the same type
                     if (prev_supporting_evidences > supporting_evidences) {
@@ -1803,7 +1809,7 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
                     }
 
                     if (abs(prev_qual) >= abs(qual)) {
-                        //fprintf(stderr, "fourth %"PRIu32"\n", j);
+                        //fprintf(stderr, "fourth %"PRIu32"\t%d\n", j, right_idx);
                         voidCNVFromList(cnv_array, j, left_idx, right_idx);
                         right_breakpoint = 0;
                         left_breakpoint  = 0;
@@ -1835,18 +1841,24 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
     }
 }
 
-void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, uint16_t left_breakpoint_index, uint16_t right_breakpoint_index) {
-    cnv_array->cnvs[cnv_index].cnv_breakpoints[left_breakpoint_index].breakpoint = 0;
-    cnv_array->cnvs[cnv_index].cnv_breakpoints[right_breakpoint_index].breakpoint = 0;
-    cnv_array->cnvs[cnv_index].cnv_breakpoints[left_breakpoint_index].num_of_breakpoints = 0;
-    cnv_array->cnvs[cnv_index].cnv_breakpoints[right_breakpoint_index].num_of_breakpoints = 0;
+void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, int16_t left_breakpoint_index, int16_t right_breakpoint_index) {
+    if (left_breakpoint_index >= 0) {
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[left_breakpoint_index].breakpoint = 0;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[left_breakpoint_index].num_of_breakpoints = 0;
+        cnv_array->cnvs[cnv_index].left_start_index = -1;
+    }
+
+    if (right_breakpoint_index >= 0) {
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[right_breakpoint_index].breakpoint = 0;
+        cnv_array->cnvs[cnv_index].cnv_breakpoints[right_breakpoint_index].num_of_breakpoints = 0;
+        cnv_array->cnvs[cnv_index].right_end_index = -1;
+    }
+
     cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 = 0;
     cnv_array->cnvs[cnv_index].raw_bin_start = 0;
     cnv_array->cnvs[cnv_index].raw_bin_end = 0;
     cnv_array->cnvs[cnv_index].equal_bin_start = 0;
     cnv_array->cnvs[cnv_index].equal_bin_end = 0;
-    cnv_array->cnvs[cnv_index].left_start_index = -1;
-    cnv_array->cnvs[cnv_index].right_end_index = -1;
 }
 
 void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {

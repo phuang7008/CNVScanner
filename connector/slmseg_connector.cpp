@@ -91,6 +91,7 @@ void slmseg_call(unsigned int chr, char* file_in, char* out_file_name, Segment_A
     segment_array->segments[counter].log2R_mean  = prev_data;
     segment_array->segments[counter].ave_coverage  = exp2(prev_data);
     counter++;
+    segment_array->size++;
 
     // remove all elements in the vector data of SLMSeg
     //

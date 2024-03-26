@@ -368,7 +368,7 @@ int main(int argc, char *argv[]) {
 
     // Create segmentation storage
     //
-    Segment_Array **segment_arrays = calloc(chrom_tracking->number_of_chromosomes, sizeof (Segment_Array));
+    Segment_Array **segment_arrays = calloc(chrom_tracking->number_of_chromosomes, sizeof (Segment_Array*));
     checkMemoryAllocation(segment_arrays, "Binned_Data_Wrapper **binned_data_wrappers");
     segmentArrysInit(segment_arrays, chrom_tracking);
 

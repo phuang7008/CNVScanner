@@ -53,7 +53,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array);
 //
 void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_stats);
 
-void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, uint16_t left_breakpoint_index, uint16_t right_breakpoint_index);
+void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, int16_t left_breakpoint_index, int16_t right_breakpoint_index);
 
 void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array);
 

@@ -552,6 +552,10 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                 break;
             }
         }
+        if (equal_size_window->data) free(equal_size_window->data);
+        if (equal_size_window->starts) free(equal_size_window->starts);
+        if (equal_size_window->ends) free(equal_size_window->ends);
+        if (equal_size_window) free(equal_size_window);
 
         free(filename);
         filename=NULL;
