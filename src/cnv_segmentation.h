@@ -83,7 +83,7 @@ void storeSegmentsLocallyAndInit(Segment_Array** segment_array, Segmented_CNV_Ar
 
 void processSegmentationData(CNV_Array **cnv_array, Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, khash_t(m32) **anchor_breakpoints_hash_array, User_Input *user_inputs, Simple_Stats *equal_window_stats, Stats_Info *stats_info);
 
-void findIntersectedCNVs(CNV_Array *cnv_array, Segmented_CNV_Array *seg_cnv_array);
+void findIntersectedCNVs(CNV_Array *cnv_array, Segmented_CNV_Array *seg_cnv_array, User_Input *user_inputs);
 
 void addCNVindexToSegment(uint32_t cnv_index, Segmented_CNV_Array *seg_cnv_array, uint32_t seg_cnv_index);
 
@@ -101,7 +101,7 @@ void segmentInnerCNVInit(Segmented_CNV *seg_cnv, uint32_t capacity);
 
 void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t index);
 
-int obtainSupportingEvidences(INNER_CNV inner_cnv, int* total_breakpoints);
+int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints);
 
 void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array);
 

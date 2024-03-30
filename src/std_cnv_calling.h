@@ -57,9 +57,9 @@ void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, int16_t left_brea
 
 void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Paired_Reads_Array *improperly_PR_array);
 
-void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type);
+void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, User_Input *user_inputs, int type);
 
-void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, FILE *fh, FILE *sfh);
+void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, User_Input *user_inputs, FILE *fh, FILE *sfh);
 
 void outputLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Chromosome_Tracking *chrom_tracking, User_Input *user_inputs);
 

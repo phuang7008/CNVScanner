@@ -498,8 +498,9 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
         equal_size_window->ends     = calloc(INIT_SIZE, sizeof(uint32_t));
 
         int total_lines = processFile(chrom_tracking->chromosome_ids[i], user_inputs->equal_size_window_file, equal_size_window);
-        uint32_t j=0, k=0, new_start=0, counter=0;
+        uint32_t j=0, k=0, new_start=0, nan_counter=0;
         unsigned int tmp_chr = 0;
+        double small_value = 0.005;
 
         if (strcmp(chrom_tracking->chromosome_ids[i], "chrX") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "X") == 0) {
             tmp_chr = 23;
@@ -510,7 +511,6 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
         }
 
         for (j=0; j<total_lines; j++) {
-            counter++;
             for (k=new_start; k<binned_data_wrapper[i]->size; k++) {
                 // this is to prevent the 'na' in log2 ratio
                 // log2 0 is not defined. so to overcome this, I add 0.0001 before doing log2 ratio
@@ -520,14 +520,24 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                 //   NA/NaN/Inf in foreign function call (arg 2)
                 // it looks like for equal bin 1000, at 45949th bin needs not be too low like -13.29
                 // instead, if it changed to -1.29, it will pass the error
+                // Later, I found that this situation happens quite often
+                // The best way is to allow same value run through 15000 times and then switch to a different value
                 //
                 double log2ratio = 0.0;
                 if (equal_size_window->data[j].start == binned_data_wrapper[i]->data[k].start) {
-                    if (tmp_chr == 24 && counter >= 45948) {
-                        log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + 0.001);
-                    } else {
-                        log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + 0.0001);
+                    if ((int)(binned_data_wrapper[i]->data[k].ave_coverage * 100000) == 0) {
+                        nan_counter++;
+                        if (nan_counter > 10000) {
+                            if ((int)((small_value + 0.00005) * 1000) == 5) {
+                                small_value = 0.0001;
+                            } else {
+                                small_value = 0.005;
+                            }
+                            nan_counter = 0;
+                        }
                     }
+                        
+                    log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + small_value);
                     fprintf(log2r_fh, "%d\t%"PRIu32"\t%.2f\t%.2f\n", tmp_chr, binned_data_wrapper[i]->data[k].start,
                                                                 log2ratio, binned_data_wrapper[i]->data[k].ave_coverage);
                     new_start = k+1;
@@ -542,11 +552,17 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                         sum_of_squares += pow(log2ratio, 2);
                     }*/
                 } else {
-                    if (tmp_chr == 24 && counter >= 45948) {
-                        log2ratio = log2(0.001);
-                    } else {
-                        log2ratio = log2(0.0001);
+                    nan_counter++;
+                    if (nan_counter >= 10000) {
+                        if ((int)((small_value + 0.00005) * 1000) == 5) {
+                            small_value = 0.0001;
+                        } else {
+                            small_value = 0.005;
+                        }   
+                        nan_counter = 0;
                     }
+                    
+                    log2ratio = log2(small_value);
                     fprintf(log2r_fh, "%d\t%"PRIu32"\t%.2f\t%.2f\n", tmp_chr, equal_size_window->data[j].start, log2ratio, 0.0);
                 }
                 break;

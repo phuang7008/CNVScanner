@@ -70,8 +70,8 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
             fprintf(stderr, "%s\n", equal_bin_cnv_array[cnv_array_index]->chromosome_id);
             cleanupOverlappingCNVs(equal_bin_cnv_array[cnv_array_index], the_stats);
 
-            outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 2);
-            outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, 3);
+            outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, user_inputs, 2);
+            outputCNVArray(equal_bin_cnv_array[cnv_array_index], equal_bin_cnv_array[cnv_array_index]->chromosome_id, user_inputs, 3);
 
           } // end task 
         } // end for loop
@@ -85,7 +85,7 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
     FILE *fh = fopen(user_inputs->vcf_output_file, "w");
     FILE *smfh = fopen(user_inputs->simple_vcf_output_file, "w");
     generateVCF_MetaData(user_inputs, chrom_tracking, fh);
-    generateVCFresults(equal_bin_cnv_array, chrom_tracking, the_stats, stats_info, fh, smfh);
+    generateVCFresults(equal_bin_cnv_array, chrom_tracking, the_stats, stats_info, user_inputs, fh, smfh);
     //outputLog2Ratio(equal_size_window_wrappers, chrom_tracking, user_inputs);
     fclose(fh);
     fclose(smfh);
@@ -113,7 +113,7 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
     Equal_Window_Bin *merged_equal_bin_array = NULL;
 
     for (j=0; j<equal_size_window_wrapper->size; j++) {
-        //if ( equal_size_window_wrapper->data[j].start == 87720500) {
+        //if ( equal_size_window_wrapper->data[j].start == 106852000) {
         //    printf("stop\n");
         //}
         if (equal_size_window_wrapper->data[j].length == 0) {
@@ -209,8 +209,12 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
                 // NOTE: we won't count this as CNV if the length used for CNV call is < 500bp
                 //   OR: if the ratio between prev_len / (prev_end - prev_start) < 0.25, skip it
                 //
-                if (prev_end - prev_start >= 1000) {
-                    if (prev_len >= 500 || ((double)prev_len/((double)prev_end - (double)prev_start)) >= 0.25) {
+                if (prev_end - prev_start >= user_inputs->min_cnv_length) {
+                    int used_length=500;
+                    if (user_inputs->min_cnv_length < 1000)
+                        used_length = user_inputs->min_cnv_length;
+
+                    if (prev_len >= used_length || ((double)prev_len/((double)prev_end - (double)prev_start)) >= 0.25) {
                         double coverage = total_coverage / prev_len;
                         // further extend the CNV at both ends by one bin (500bp) each 
                         // if both ends connected with excluded regions (Ns regions, repeatmaskers etc.)
@@ -1247,8 +1251,6 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
         bool left_most_set = false, right_most_set = false;
         uint32_t j;
         for (j=0; j<cnv_array->cnvs[i].cnv_breakpoints_size; j++) {
-            if (j == 65535)
-                printf("size max at 65535\n");
             /*printf("breakpoint: %"PRIu32"\tnum_of_breakpoints: %"PRIu8"\tnum_of_TLEN_ge_1000: %"PRIu8"\n", \
                     cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint,
                     cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints, 
@@ -1265,19 +1267,19 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
 
             if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) < \
                     abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end))) {
-                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) > DISTANCE_CUTOFF*2) {
+                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) > DISTANCE_CUTOFF) {
                     continue;
                 } else {
                     left = true;
                 }
             } else {
-                if ((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end) > DISTANCE_CUTOFF*2) {
+                if ((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end) > DISTANCE_CUTOFF) {
                     // no need to go any further
                     //
                     break;
                 }
 
-                if ((signed) (cur_end - cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint) > DISTANCE_CUTOFF*2)
+                if ((signed) (cur_end - cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint) > DISTANCE_CUTOFF)
                     continue;
             }
 
@@ -1776,19 +1778,19 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
         }
 
         if (j > 0 && prev_right_breakpoint > 0 && prev_left_breakpoint > 0) {
-            if (prev_start <= cur_start && cur_start <= prev_end) {
+            if (prev_start < cur_start && cur_start < prev_end) {
                 // overlapping
                 //
                 if (prev_type == cur_type) {
                     // same type, so merge it. Here we only check the previous values > current value
                     //
-                    if ( prev_left_breakpoint >= 0 && left_breakpoint >= 0 && 
+                    if ( prev_left_breakpoint >= 0 && left_idx >= 0 && 
                             (prev_left_num_bpoint + prev_left_num_geTLEN) > (left_num_bpoint + left_num_geTLEN)) {
                         cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint = prev_left_breakpoint;
                         cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_breakpoints = prev_left_num_bpoint;
                     }
 
-                    if ( prev_right_breakpoint >= 0 && right_breakpoint >= 0 && 
+                    if ( prev_right_breakpoint >= 0 && right_idx >= 0 && 
                             (prev_right_num_bpoint+prev_right_num_geTLEN) > (right_num_bpoint+right_num_geTLEN)) {
                         cnv_array->cnvs[j].cnv_breakpoints[right_idx].breakpoint = prev_right_breakpoint;
                         cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_breakpoints = prev_right_num_bpoint;
@@ -1861,7 +1863,7 @@ void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, int16_t left_brea
     cnv_array->cnvs[cnv_index].equal_bin_end = 0;
 }
 
-void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
+void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, User_Input *user_inputs, int type) {
     char filename[200];
     FILE *fp;
     if (type == 1) {                // For raw varying size bin output
@@ -1938,8 +1940,8 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
                                     cnv_array->cnvs[j].raw_bin_start : cnv_array->cnvs[j].equal_bin_start;
             uint32_t cnv_end = (right_idx >= 0) ? right_breakpoint : (cnv_array->cnvs[j].raw_bin_end > 0) ? \
                                     cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
-            //if (cnv_end - cnv_start < 200)
-            if (cnv_end - cnv_start < 1000)
+
+            if (cnv_end - cnv_start < user_inputs->min_cnv_length)
                 continue;
 
             char CNV[10];
@@ -1986,7 +1988,7 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, int type) {
     fclose(fp);
 }
 
-void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, FILE *fp, FILE *sfh) {
+void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, User_Input *user_inputs, FILE *fp, FILE *sfh) {
     // According to Eric, we also need to produce one more file for loading CNV for the review in the TSV format with the following fields
     // chr, start, end, type, quality, var reads, total reads
     // while the 'var reads' is the normalized number of reads in the region (var reads) to what is expected (total reads).
@@ -2025,8 +2027,7 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             cnv_end = (right_breakpoint > 0) ? right_breakpoint : (cnv_array->cnvs[j].raw_bin_end > 0) ? \
                             cnv_array->cnvs[j].raw_bin_end : cnv_array->cnvs[j].equal_bin_end;
 
-            //if (cnv_end - cnv_start < 200)
-            if (cnv_end - cnv_start < 1000)
+            if (cnv_end - cnv_start < user_inputs->min_cnv_length)
                 continue;
 
             char CNV[10];

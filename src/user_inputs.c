@@ -61,7 +61,7 @@ void usage() {
     printf("--threads            -T  the number of threads \n");
     printf("                         (Note: when used with HPC's msub, make sure that the number of\n"); 
     printf("                         processors:ppn matches to number of threads). Default 2\n");
-    printf("--equal_bin_size     -S  the final bin size after dividing chromosomes into equal sized bins. Default 500\n");
+    printf("--min_cnv_length     -S  the minimal length of CNV required. Default 1000\n");
     printf("--mappability_cutoff -c  the minimal mappability used to filter out low mappability regions. Default 0.0\n");
     printf("--ref_version        -V  the reference version used. Default hg38\n");
 
@@ -104,7 +104,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             {"ref_version",         required_argument,  0,  'V'},
             {"percentage",          required_argument,  0,  'p'},
             {"excluded_regions",    required_argument,  0,  'e'},
-            {"equal_bin_size",      required_argument,  0,  'S'},
+            {"min_cnv_length",      required_argument,  0,  'S'},
             {"equal_size_window",   required_argument,  0,  'w'},
             //{"mappability_cutoff",  required_argument,  0,  'c'},
             {"threads",             required_argument,  0,  'T'},
@@ -200,7 +200,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 strcpy(user_inputs->reference_file, optarg);
                 break;
             case 's': user_inputs->remove_supplementary_alignments = true; break;
-            case 'S': user_inputs->equal_bin_size = atoi(optarg); break;
+            case 'S': user_inputs->min_cnv_length = atoi(optarg); break;
             case 'T':
                 if (!isNumber(optarg)) {
                     fprintf (stderr, "ERROR: Entered number of threads %s is not a number\n", optarg);
@@ -458,7 +458,7 @@ User_Input * userInputInit() {
     user_inputs->min_map_quality  = 0;
     user_inputs->min_base_quality = 0;
     user_inputs->num_of_threads   = 2;
-    user_inputs->equal_bin_size   = 500;
+    user_inputs->min_cnv_length   = 1000;
     user_inputs->mappability_cutoff  = 0.0;
     user_inputs->Write_WGS_cov_fasta = false;
     user_inputs->excluding_overlapping_bases = true;

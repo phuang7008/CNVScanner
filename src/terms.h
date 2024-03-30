@@ -91,7 +91,7 @@ typedef struct {
     char * simple_vcf_output_file;      // Simple CNV output in TSV format for easy and quick review
     char * log2ratio_output_file;       // for log2ratio output file for segmentation of all chromosomes
     char * sample_name;
-    int16_t equal_bin_size;
+    int16_t min_cnv_length;             // minimal length to pass a CNV; default 1000
     int8_t min_map_quality;
     int8_t min_base_quality;
     unsigned short num_of_threads;
@@ -181,6 +181,7 @@ typedef struct {
     uint32_t right_breakpoint;
     uint32_t left_breakpoint_count;
     uint32_t right_breakpoint_count;
+    uint32_t last_right_breakpoint_count;
     uint32_t num_larger_TLEN_left;
     uint32_t num_larger_TLEN_right;
     uint32_t imp_PR_start;
