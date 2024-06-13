@@ -521,13 +521,16 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                 // it looks like for equal bin 1000, at 45949th bin needs not be too low like -13.29
                 // instead, if it changed to -1.29, it will pass the error
                 // Later, I found that this situation happens quite often
-                // The best way is to allow same value run through 15000 times and then switch to a different value
+                // The best way is to allow same value run through 17,000 times and then switch to a different value
                 //
                 double log2ratio = 0.0;
                 if (equal_size_window->data[j].start == binned_data_wrapper[i]->data[k].start) {
+                    //if (tmp_chr == 19 && equal_size_window->data[j].start >= 41958000 && equal_size_window->data[j].start <= 41962000)
+                    //    binned_data_wrapper[i]->data[k].ave_coverage = 40.34;
+
                     if ((int)(binned_data_wrapper[i]->data[k].ave_coverage * 100000) == 0) {
                         nan_counter++;
-                        if (nan_counter > 10000) {
+                        if (nan_counter > 17000) {
                             if ((int)((small_value + 0.00005) * 1000) == 5) {
                                 small_value = 0.0001;
                             } else {
@@ -553,7 +556,7 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                     }*/
                 } else {
                     nan_counter++;
-                    if (nan_counter >= 10000) {
+                    if (nan_counter >= 17000) {
                         if ((int)((small_value + 0.00005) * 1000) == 5) {
                             small_value = 0.0001;
                         } else {

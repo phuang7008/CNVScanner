@@ -226,8 +226,12 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
                         cnv_counter++;
                         if (cnv_counter + 3 >= cnv_array->capacity) {
                             cnv_array->capacity += PR_INIT_SIZE * 2;
-                            cnv_array->cnvs = realloc(cnv_array->cnvs, cnv_array->capacity * sizeof(CNV));
-                            failureExit(cnv_array->cnvs, "mergeNeighboringBinsBasedOnZscore cnv_array->cnvs memory realloc failed\n");
+                            if (cnv_array->cnvs == NULL) {
+                                cnv_array->cnvs = calloc(cnv_array->capacity, sizeof(CNV));
+                            } else {
+                                cnv_array->cnvs = realloc(cnv_array->cnvs, cnv_array->capacity * sizeof(CNV));
+                                failureExit(cnv_array->cnvs, "mergeNeighboringBinsBasedOnZscore cnv_array->cnvs memory realloc failed\n");
+                            }
                         }
                     } else {
                         if (user_inputs->debug_ON)
@@ -786,8 +790,8 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
     counter = 0;
     int32_t cnv_index = -1;             // need to use signed value as sometimes, no value found
     for (i=0; i<(uint32_t)capacity; i++) {
-        //if (all_starts_ends[i] == 33846000 || all_starts_ends[i] == 6033935)
-        //    printf("here it is\n");
+        if (all_starts_ends[i] == 31732652 || all_starts_ends[i] == 31731653)
+            printf("here it is\n");
 
         // if a key is present in both start and end position, we have to process start first
         //
@@ -1085,7 +1089,8 @@ void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index,
 
         if(b->core.qual < user_inputs->min_map_quality) continue;       // doesn't pass MAPQ
 
-        if (abs(b->core.isize) >= 1000 && (abs(b->core.isize)*3 >= cnv_length) && (abs(b->core.isize) <= 3*cnv_length)) {
+        //(abs(b->core.isize) >= 1000 && (abs(b->core.isize)*3 >= cnv_length) && (abs(b->core.isize) <= 3*cnv_length))  => wrong
+        if (abs(b->core.isize) >= 1000 && (abs(b->core.isize) <= 3*cnv_length)) {
 
             uint32_t start = (b->core.pos <= b->core.mpos) ? b->core.pos : b->core.mpos;
             uint32_t end = start + abs(b->core.isize);
@@ -1219,12 +1224,33 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
     // 2). num_of_TLEN_ge_1000 >= 2 (handled during the intersection)
     // 3). left and right breakpoints should be separated by >= 1000
     //
-    //uint16_t num_left_breakpoints = 0, num_right_breakpoints = 0;
 
     uint32_t i;
     for (i=0; i<cnv_array->size; i++) {
-        //if (cnv_array->cnvs[i].equal_bin_start == 33846000 || cnv_array->cnvs[i].equal_bin_start == 33838000)
-        //    printf("stop 6\n");
+        // Note: when checking breakpoints, we need to ensure it doesn't cross into neighboring CNVs 
+        //
+        int32_t prev_cnv_end = -1;      // need to be signed for checking
+        int32_t next_cnv_start = -1;    // need to be signed for checking
+        if (i>0) {
+            if (cnv_array->cnvs[i-1].right_end_index > 0) {
+                prev_cnv_end = cnv_array->cnvs[i-1].cnv_breakpoints[cnv_array->cnvs[i-1].right_end_index].breakpoint; 
+            } else {
+                prev_cnv_end = cnv_array->cnvs[i-1].raw_bin_end > 0 ? \
+                    cnv_array->cnvs[i-1].raw_bin_end : cnv_array->cnvs[i-1].equal_bin_end;
+            }
+        }
+
+        if (i < (cnv_array->size - 1)) {
+            if (cnv_array->cnvs[i+1].left_start_index > 0) {
+                next_cnv_start = cnv_array->cnvs[i+1].cnv_breakpoints[cnv_array->cnvs[i+1].left_start_index].breakpoint;
+            } else {
+                next_cnv_start = cnv_array->cnvs[i+1].raw_bin_start > 0 ? \
+                    cnv_array->cnvs[i+1].raw_bin_start : cnv_array->cnvs[i+1].equal_bin_start;
+            }
+        }
+
+        if (cnv_array->cnvs[i].equal_bin_start == 31732000 || cnv_array->cnvs[i].equal_bin_start == 41643000)
+            printf("stop 6\n");
 
         // Get the CNV start and end here as we need them for the checking
         //
@@ -1232,6 +1258,32 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                              cnv_array->cnvs[i].raw_bin_start : cnv_array->cnvs[i].equal_bin_start;
         uint32_t cur_end   = cnv_array->cnvs[i].raw_bin_end > 0 ? \
                              cnv_array->cnvs[i].raw_bin_end : cnv_array->cnvs[i].equal_bin_end;
+
+        uint32_t left_distance_cutoff = 0, right_distance_cutoff = 0;
+
+        if (prev_cnv_end >= cur_start) {
+            left_distance_cutoff = 150;
+        } else {
+            if (cur_start - prev_cnv_end < 50) {
+                left_distance_cutoff = 150;
+            } else if (cur_start - prev_cnv_end < 900) {
+                left_distance_cutoff = cur_start - prev_cnv_end + 100;
+            } else {
+                left_distance_cutoff = DISTANCE_CUTOFF;
+            }
+        }
+
+        if (next_cnv_start <= cur_end) {
+            right_distance_cutoff = 150;
+        } else {
+            if (cur_end - next_cnv_start <= 50) {
+                right_distance_cutoff = 150;
+            } else if (cur_end - next_cnv_start < 900) {
+                right_distance_cutoff = cur_end - next_cnv_start + 100;
+            } else {
+                right_distance_cutoff = DISTANCE_CUTOFF;
+            }
+        }
 
         // Need to reset the improperly paired reads TLEN if the following condition is true
         //
@@ -1258,28 +1310,31 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
             */
             
             // All anchor breakpoints associated with the current CNV should be ordered from the left most to the right most.
-            //
+            // no need to check it here as this is checking during the intersect
+            /*
             if ((cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints < 2) &&
                     (cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000 < 2))
                 continue;
+            */
 
             bool left=false;
 
             if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) < \
                     abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end))) {
-                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) > DISTANCE_CUTOFF) {
+                if (abs((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_start)) > left_distance_cutoff) {
                     continue;
                 } else {
                     left = true;
                 }
             } else {
-                if ((signed) (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end) > DISTANCE_CUTOFF) {
+                if ((cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint > cur_end) && 
+                        (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint - cur_end) > right_distance_cutoff) {
                     // no need to go any further
                     //
                     break;
                 }
 
-                if ((signed) (cur_end - cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint) > DISTANCE_CUTOFF)
+                if (abs((signed) (cur_end - cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint)) > right_distance_cutoff)
                     continue;
             }
 
@@ -1292,7 +1347,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
             } else {
                 /*if (cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 >= 2) {
                     // need to locate the intersected region with raw-bin or equal-bin
-                    //   -------------------------------- raw-bin
+                    // (  -------------------------------- raw-bin
                     //       =============================== improperly paired reads
                     //         xx                         breakpoint
                     //
@@ -1733,8 +1788,8 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
     for (j=0; j<cnv_array->size; j++) {
         int16_t left_idx  = cnv_array->cnvs[j].left_start_index;
         int16_t right_idx = cnv_array->cnvs[j].right_end_index;
-        if (right_idx == 65535)
-            printf("inside\n");
+        //if (right_idx == 65535)
+        //    printf("inside\n");
 
         uint32_t left_breakpoint=0, left_num_bpoint=0, left_num_geTLEN=0;
         uint32_t right_breakpoint=0, right_num_bpoint=0, right_num_geTLEN=0;
@@ -2102,6 +2157,7 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_left  = left_num_geTLEN;
             cnv_array->cnvs[j].inner_cnv.right_breakpoint = right_breakpoint;
             cnv_array->cnvs[j].inner_cnv.right_breakpoint_count = right_num_bpoint;
+            cnv_array->cnvs[j].inner_cnv.last_right_breakpoint_count = right_num_bpoint;
             cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_right  = right_num_geTLEN;
             cnv_array->cnvs[j].inner_cnv.imp_PR_start = cnv_array->cnvs[j].imp_PR_start;
             cnv_array->cnvs[j].inner_cnv.imp_PR_end = cnv_array->cnvs[j].imp_PR_end;

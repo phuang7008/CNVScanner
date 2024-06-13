@@ -99,6 +99,8 @@ void saveExcludedRegion(Segmented_CNV_Array *seg_cnv_array, uint32_t seg_cnv_ind
 
 void segmentInnerCNVInit(Segmented_CNV *seg_cnv, uint32_t capacity);
 
+void segmentInnerCNVInit2(Segmented_CNV *seg_cnv, uint32_t index);
+
 void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t index);
 
 int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints);
