@@ -17,7 +17,7 @@ extern "C" {
 
 // Use type 'unsigned int' for chromosome ID, for X will be 23, while Y 24
 //
-void slmseg_call(unsigned int chr, char* file_in, char* out_file_name, Segment_Array* segments, double omega, double eta, double stepeta, double fw);
+void slmseg_call(char* chr, char* file_in, char* out_file_name, Segment_Array* segments, double omega, double eta, double stepeta, double fw);
 
 #ifdef __cplusplus
 }

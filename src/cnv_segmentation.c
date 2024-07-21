@@ -117,15 +117,6 @@ void cnvSegmentation(Chromosome_Tracking *chrom_tracking, Segment_Array** segmen
 
     uint32_t i;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
-        unsigned int tmp_chr = 0;
-        if (strcmp(chrom_tracking->chromosome_ids[i], "X") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "chrX") == 0) {
-            tmp_chr = 23;
-        } else if (strcmp(chrom_tracking->chromosome_ids[i], "Y") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "chrY") == 0) {
-            tmp_chr = 24;
-        } else {
-            tmp_chr = atoi(chrom_tracking->chromosome_ids[i]);
-        }
-
         // process one chromosome at a time
         //
         char *input_file = calloc(5000, sizeof(char));
@@ -133,7 +124,7 @@ void cnvSegmentation(Chromosome_Tracking *chrom_tracking, Segment_Array** segmen
 
         char *output_file  = calloc(5000, sizeof(char));
         sprintf(output_file, "%s/%s_%s_%s", user_inputs->output_dir, tmp_basename, chrom_tracking->chromosome_ids[i], "segments.txt");
-        slmseg_call(tmp_chr, input_file, output_file, segment_array[i], 0.3, 0.00004, 1000000, 0);
+        slmseg_call(chrom_tracking->chromosome_ids[i], input_file, output_file, segment_array[i], 0.3, 0.00004, 1000000, 0);
         
         free(input_file);
         free(output_file);

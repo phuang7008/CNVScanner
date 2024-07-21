@@ -11,21 +11,7 @@ This is the connector between C++ and C
 extern "C" {
 #endif
 
-void slmseg_call(unsigned int chr, char* file_in, char* out_file_name, Segment_Array* segment_array, double omega, double eta, double stepeta, double fw) {
-    unsigned int tmp_chr = 0;
-    if (strcmp(segment_array->chrom_id, "X") == 0 || strcmp(segment_array->chrom_id, "chrX") == 0) {
-        tmp_chr = 23;
-    } else if (strcmp(segment_array->chrom_id, "Y") == 0 || strcmp(segment_array->chrom_id, "chrY") == 0) {
-        tmp_chr = 24;
-    } else {
-        tmp_chr = atoi(segment_array->chrom_id);
-    }
-
-    if (tmp_chr != chr) {
-        fprintf(stderr, "Something went wrong as chr %d and chrom_id %s not the same!\n", chr, segment_array->chrom_id);
-        exit(EXIT_FAILURE);
-    }
-
+void slmseg_call(char* chr, char* file_in, char* out_file_name, Segment_Array* segment_array, double omega, double eta, double stepeta, double fw) {
     static SLMSeg segdata(omega, eta, stepeta, fw);
 
     fprintf(stderr, "Loading file...\n");
@@ -34,7 +20,7 @@ void slmseg_call(unsigned int chr, char* file_in, char* out_file_name, Segment_A
     fprintf(stderr, "Performing analysis...\n");
     segdata.SLM();
 
-    fprintf(stderr, "Data output for chromosome %d:\n", chr);
+    fprintf(stderr, "Data output for chromosome %s:\n", chr);
 
     FILE * out_fhd;
     out_fhd = fopen(out_file_name, "w");

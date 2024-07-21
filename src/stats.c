@@ -470,9 +470,6 @@ void calculateMeanAndStdev(Binned_Data_Wrapper **binned_data_wrapper, Simple_Sta
 }
 
 void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats *the_stats, Chromosome_Tracking *chrom_tracking, User_Input* user_inputs) {
-    // output file 
-    //
-
     // Calculate log2ration stats from autosomes and non-Ns regions only
     // not needed as log2 will transform the dataset into a non-normal distribution
     //
@@ -499,16 +496,14 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
 
         int total_lines = processFile(chrom_tracking->chromosome_ids[i], user_inputs->equal_size_window_file, equal_size_window);
         uint32_t j=0, k=0, new_start=0, nan_counter=0;
-        unsigned int tmp_chr = 0;
-        double small_value = 0.005;
+        double small_value = 0.001;
 
-        if (strcmp(chrom_tracking->chromosome_ids[i], "chrX") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "X") == 0) {
-            tmp_chr = 23;
-        } else if (strcmp(chrom_tracking->chromosome_ids[i], "chrY") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "Y") == 0) {
-            tmp_chr = 24;
-        } else {
-            tmp_chr = atoi(chrom_tracking->chromosome_ids[i]);
-        }
+        // The test showed that it is safe when the consecutive 0x coverage run is below 95, 
+        // It breaks when using 96, but at 95 all test samples pass! So the cutoff should be 95
+        // But, it is possible that for untested samples, the overfitting at 0x might be different
+        // so to avoid overfitting around 0x, use a value 50 to give enough cushions for any samples.
+        // 
+        int nan_cutoff = 50;
 
         for (j=0; j<total_lines; j++) {
             for (k=new_start; k<binned_data_wrapper[i]->size; k++) {
@@ -518,32 +513,31 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                 // somehow, for the Y chr, it will cause the error: 
                 // Error in JointSeg(data_matrix, eta, omega, muk, mi, smu, sepsilon) : 
                 //   NA/NaN/Inf in foreign function call (arg 2)
-                // it looks like for equal bin 1000, at 45949th bin needs not be too low like -13.29
-                // instead, if it changed to -1.29, it will pass the error
-                // Later, I found that this situation happens quite often
-                // The best way is to allow same value run through 17,000 times and then switch to a different value
+                // Not used: it looks like for equal bin 1000, at 45949th bin needs not be too low like -13.29
+                // Not used: instead, if it changed to -1.29, it will pass the error
+                // Not used: Later, I found that this situation happens quite often
+                // Not used: The best way is to allow same value run through 12,000 times and then switch to a different value
+                // However, according to online document, it is because of model overfitting around 0x coverage.
+                // also many coverage is between 0.01x - 0.09x, need to reduce it (consecutive runs) as well
                 //
                 double log2ratio = 0.0;
                 if (equal_size_window->data[j].start == binned_data_wrapper[i]->data[k].start) {
-                    //if (tmp_chr == 19 && equal_size_window->data[j].start >= 41958000 && equal_size_window->data[j].start <= 41962000)
                     //    binned_data_wrapper[i]->data[k].ave_coverage = 40.34;
 
-                    if ((int)(binned_data_wrapper[i]->data[k].ave_coverage * 100000) == 0) {
+                    if ((int)(binned_data_wrapper[i]->data[k].ave_coverage * 100000) <= 0.05 
+                            || (int)(binned_data_wrapper[i]->data[k].ave_coverage * 10) <= 1 ) {
+                        // this is because values with 0 is not easy to check
+                        //
                         nan_counter++;
-                        if (nan_counter > 17000) {
-                            if ((int)((small_value + 0.00005) * 1000) == 5) {
-                                small_value = 0.0001;
-                            } else {
-                                small_value = 0.005;
-                            }
-                            nan_counter = 0;
-                        }
+                        if (nan_counter > nan_cutoff) continue;
                     }
                         
                     log2ratio = log2((binned_data_wrapper[i]->data[k].ave_coverage / the_stats->median) + small_value);
-                    fprintf(log2r_fh, "%d\t%"PRIu32"\t%.2f\t%.2f\n", tmp_chr, binned_data_wrapper[i]->data[k].start,
-                                                                log2ratio, binned_data_wrapper[i]->data[k].ave_coverage);
+                    fprintf(log2r_fh, "%s\t%"PRIu32"\t%.2f\t%.2f\n", chrom_tracking->chromosome_ids[i], 
+                            binned_data_wrapper[i]->data[k].start, log2ratio, binned_data_wrapper[i]->data[k].ave_coverage);
                     new_start = k+1;
+                    if (nan_counter > nan_cutoff) nan_counter = 0;
+
                     /*if (strcmp(chrom_tracking->chromosome_ids[i], "chrX") == 0 \
                             || strcmp(chrom_tracking->chromosome_ids[i], "chrY") == 0 \
                             || strcmp(chrom_tracking->chromosome_ids[i], "X") == 0 \
@@ -556,17 +550,11 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                     }*/
                 } else {
                     nan_counter++;
-                    if (nan_counter >= 17000) {
-                        if ((int)((small_value + 0.00005) * 1000) == 5) {
-                            small_value = 0.0001;
-                        } else {
-                            small_value = 0.005;
-                        }   
-                        nan_counter = 0;
-                    }
+                    if (nan_counter > nan_cutoff) continue;
                     
                     log2ratio = log2(small_value);
-                    fprintf(log2r_fh, "%d\t%"PRIu32"\t%.2f\t%.2f\n", tmp_chr, equal_size_window->data[j].start, log2ratio, 0.0);
+                    fprintf(log2r_fh, "%s\t%"PRIu32"\t%.2f\t%.2f\n", chrom_tracking->chromosome_ids[i], 
+                                                                equal_size_window->data[j].start, log2ratio, 0.0);
                 }
                 break;
             }
