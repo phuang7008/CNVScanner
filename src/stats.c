@@ -502,8 +502,12 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
         // It breaks when using 96, but at 95 all test samples pass! So the cutoff should be 95
         // But, it is possible that for untested samples, the overfitting at 0x might be different
         // so to avoid overfitting around 0x, use a value 50 to give enough cushions for any samples.
+        // But for chrX, the cutoff need to be 10
         // 
         int nan_cutoff = 50;
+        if (strcmp(chrom_tracking->chromosome_ids[i], "X") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "chrX") == 0 
+                || strcmp(chrom_tracking->chromosome_ids[i], "CHRX") == 0)
+            nan_cutoff = 10;
 
         for (j=0; j<total_lines; j++) {
             for (k=new_start; k<binned_data_wrapper[i]->size; k++) {

@@ -39,8 +39,8 @@
 #include "coverage_tracking.h"
 
 // The followings are defined as macro/constants. The program should never try to change their values
-#define VERSION_ "##WGS_CNV_v1.0.0"
-#define SOURCE_ "WGS_CNV_v1.0.0"
+#define VERSION_ "##CNVScanner_v2.0.0"
+#define SOURCE_ "CNVScanner_v2.0.0"
 #define INIT_SIZE 500000
 #define PR_INIT_SIZE 200        // the init size for number of paired reads across a breakpoint
 #define DIFF_COV_TO_MERGE 5
@@ -89,6 +89,7 @@ typedef struct {
     char * vcf_output_file;             // produce output CNV file in VCF format
     char * segmented_vcf_output_file;   // produce segmented output CNV file in VCF format
     char * simple_vcf_output_file;      // Simple CNV output in TSV format for easy and quick review
+    char * simple_segmented_vcf_file;   // Simple segmentated CNV output in TSV format for easy and quick review
     char * log2ratio_output_file;       // for log2ratio output file for segmentation of all chromosomes
     char * sample_name;
     int16_t min_cnv_length;             // minimal length to pass a CNV; default 1000

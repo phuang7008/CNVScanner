@@ -354,6 +354,9 @@ void setupOutputReportFiles(User_Input *user_inputs) {
     sprintf(string_to_add, ".cnv.txt");
     generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->simple_vcf_output_file, string_to_add);
 
+    sprintf(string_to_add, ".segmented.cnv.txt");
+    generateFileName(user_inputs->output_dir, tmp_basename, &user_inputs->simple_segmented_vcf_file, string_to_add);
+
     // output segmented CNV in VCF format
     //
     sprintf(string_to_add, ".segmented.cnv.vcf");
@@ -473,14 +476,18 @@ User_Input * userInputInit() {
     user_inputs->gc_content_file  = NULL;
     user_inputs->vcf_output_file  = NULL;
     user_inputs->mappability_file = NULL;
-    user_inputs->equal_size_window_file = NULL;
     user_inputs->mappability_outfile  = NULL;
     user_inputs->gc_content_outfile   = NULL;
     user_inputs->chromosome_bed_file  = NULL;
     user_inputs->map_gc_details_file  = NULL;
-    user_inputs->excluded_region_file = NULL;
     user_inputs->window_details_file  = NULL;
+    user_inputs->excluded_region_file = NULL;
+    user_inputs->log2ratio_output_file = NULL;
+    user_inputs->simple_vcf_output_file = NULL;
     user_inputs->normalized_result_file = NULL;
+    user_inputs->equal_size_window_file = NULL;
+    user_inputs->segmented_vcf_output_file = NULL;
+    user_inputs->simple_segmented_vcf_file = NULL;
 
     user_inputs->reference_version = calloc(10, sizeof(char));
     strcpy(user_inputs->reference_version, "hg38");
@@ -561,6 +568,18 @@ void userInputDestroy(User_Input *user_inputs) {
 
     if (user_inputs->window_details_file)
         free(user_inputs->window_details_file);
+
+    if (user_inputs->simple_segmented_vcf_file)
+        free(user_inputs->simple_segmented_vcf_file);
+
+    if (user_inputs->log2ratio_output_file)
+        free(user_inputs->log2ratio_output_file);
+
+    if (user_inputs->segmented_vcf_output_file)
+        free(user_inputs->segmented_vcf_output_file);
+
+    if (user_inputs->simple_vcf_output_file)
+        free(user_inputs->simple_vcf_output_file);
 
     if (user_inputs)
         free(user_inputs);

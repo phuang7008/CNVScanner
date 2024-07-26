@@ -390,59 +390,59 @@ int main(int argc, char *argv[]) {
     // clean up
     //
     if (the_stats) free(the_stats);
-    printf("step 00\n");
+    //printf("step 00\n");
     if (wgs_simple_stats) free(wgs_simple_stats);
-    printf("step 0\n");
+    //printf("step 0\n");
     cnvArrayDestroy(equal_bin_cnv_array, chrom_tracking->number_of_chromosomes);
-    printf("step 1\n");
+    //printf("step 1\n");
     segmentArrysDestroy(segment_arrays, chrom_tracking);
-    printf("step 2\n");
+    //printf("step 2\n");
     SegmentedCNVArrayDestroy(seg_cnv_array, chrom_tracking);
-    printf("step 3\n");
+    //printf("step 3\n");
     
     binnedDataWrapperDestroy(binned_data_wrappers, chrom_tracking);
-    printf("step 4\n");
+    //printf("step 4\n");
     binnedDataWrapperDestroy(equal_size_window_wrappers, chrom_tracking);
-    printf("step 5\n");
+    //printf("step 5\n");
 
     BreakpointArrayDestroy(breakpoint_array, chrom_tracking);
     //BreakpointStatsArrayDestroy(bpt_stats_array);
-    printf("step 6\n");
+    //printf("step 6\n");
     NotProperlyPairedReadsDestroy(improperly_PR_array, chrom_tracking);
-    printf("step 7\n");
+    //printf("step 7\n");
     AnchorBreakpointsHashArrayDestroy(anchor_breakpoints_hash_array, chrom_tracking);
-    printf("step 8\n");
+    //printf("step 8\n");
 
     if (excluded_bed_info != NULL)
         cleanBedInfo(excluded_bed_info);
 
-    printf("step 9\n");
+    //printf("step 9\n");
     chromosomeTrackingDestroy(chrom_tracking);
-    printf("step 10\n");
+    //printf("step 10\n");
     if (chrom_tracking)
         free(chrom_tracking);
-    printf("step 11\n");
+    //printf("step 11\n");
 
     if (stats_info)
         statsInfoDestroy(stats_info);
-    printf("step 12\n");
+    //printf("step 12\n");
 
     for (t=0; t<user_inputs->num_of_threads; t++) {
         bam_hdr_destroy(headers[t]);
         hts_idx_destroy(sfh_idx[t]);
         sam_close(sfh[t]);
     }
-    printf("step 13\n");
+    //printf("step 13\n");
 
     if (fn_ref) free(fn_ref);
-    printf("step 14\n");
+    //printf("step 14\n");
 
     if (wanted_chromosome_hash != NULL)
         cleanKhashStrInt(wanted_chromosome_hash);
-    printf("step 15\n");
+    //printf("step 15\n");
 
     userInputDestroy(user_inputs);
-    printf("step 16\n");
+    //printf("step 16\n");
 
     return 0;
 }

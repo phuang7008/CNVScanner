@@ -2057,8 +2057,8 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
         CNV_Array *cnv_array = equal_bin_cnv_array[i];      // pointer assignment, don't need to be free-ed
         for (j=0; j<cnv_array->size; j++) {
-            if (cnv_array->cnvs[j].equal_bin_start == 77091000)
-                printf("stop vcf\n");
+            //if (cnv_array->cnvs[j].equal_bin_start == 77091000)
+            //    printf("stop vcf\n");
 
             int16_t left_idx  = cnv_array->cnvs[j].left_start_index;
             int16_t right_idx = cnv_array->cnvs[j].right_end_index;
@@ -2125,6 +2125,8 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
                 cnv_array->cnvs[j].inner_cnv.passed = true;
 
             int32_t svLen = cnv_end-cnv_start;      // must be signed
+            if (svLen < user_inputs->min_cnv_length) continue;
+
             if (cnv_array->cnvs[j].cnv_type == 'L')
                 svLen *= -1;
 

@@ -1193,8 +1193,10 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
         uint32_t seg_start = seg_cnv_array->seg_cnvs[i].segment.start;
         uint32_t seg_end   = seg_cnv_array->seg_cnvs[i].segment.end;
 
-        //(strcmp(seg_cnv_array->chromosome_id, "22") == 0 && 
-        if (seg_start == 247303000 || seg_end == 29129000)
+        if (strcmp(seg_cnv_array->chromosome_id, "22") == 0)
+            printf("stopped in mergeCNV for chr22 \n");
+
+        if (seg_start == 19022000 || seg_end == 20130000)
             printf("stopped in mergeCNV\n");
 
         // initialize the inner_cnv variable based on the cnv_index_size
@@ -1631,13 +1633,13 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
 int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints) {
 
     int evidences=0;
-    if (inner_cnv->left_breakpoint_count >= 2) evidences++;
+    if (inner_cnv->left_breakpoint > 0 && inner_cnv->left_breakpoint_count >= 2) evidences++;
     if (inner_cnv->last_right_breakpoint_count > 0 && (inner_cnv->right_breakpoint_count != inner_cnv->last_right_breakpoint_count)) {
         uint32_t tmp_count = inner_cnv->right_breakpoint_count;
         tmp_count = inner_cnv->right_breakpoint_count - (int)((float)inner_cnv->last_right_breakpoint_count/2.0 + 0.5);
         inner_cnv->right_breakpoint_count = tmp_count + inner_cnv->last_right_breakpoint_count;
     }
-    if (inner_cnv->right_breakpoint_count >=2) evidences++;
+    if (inner_cnv->right_breakpoint > 0 && inner_cnv->right_breakpoint_count >=2) evidences++;
 
     *total_breakpoints = inner_cnv->left_breakpoint_count + inner_cnv->right_breakpoint_count;
     if (*total_breakpoints >= 25) evidences++;
@@ -1656,6 +1658,10 @@ int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints) {
 
 void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, User_Input *user_inputs) {
     FILE *fp = fopen(user_inputs->segmented_vcf_output_file, "w");
+    FILE *sfh = fopen(user_inputs->simple_segmented_vcf_file, "w");
+    fprintf(sfh, "chr\tstart\tend\ttype\tquality\tvar-reads\ttotal-reads\n");
+
+    generateVCF_MetaData(user_inputs, chrom_tracking, fp);
 
     uint32_t i, j, k;
     for (i=0; i<chrom_tracking->number_of_chromosomes; i++) {
@@ -1725,8 +1731,26 @@ void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Trac
                 // must be signed
                 //
                 int32_t svLen = seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].end - seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].start;
+                if (svLen < user_inputs->min_cnv_length) continue;
+
                 if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].cnv_type == 'L')
                     svLen *= -1;
+
+                // now calculate QUAL score using zscore for simple CNV output
+                //
+                double qual2 = (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].ave_coverage - equal_window_stats->average_coverage) / equal_window_stats->stdev;
+
+                if (strcmp(FILTER, "PASS") == 0) {
+                    // For the sample CNV output in TSV format
+                    // chr, start, end, type, quality, var reads, total reads
+                    // calculate the total number of reads based on Atlas CNV approach
+                    //
+                    uint32_t cnv_start = seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].start;
+                    uint32_t cnv_end   = seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].end;
+                    int32_t total_reads = seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].ave_coverage * (cnv_end-cnv_start) / stats_info->read_cov_stats->read_length;
+
+                    fprintf(sfh, "%s\t%"PRIu32"\t%"PRIu32"\t%s\t%.2f\t.\t%"PRIu32"\n", chrom_tracking->chromosome_ids[i], cnv_start, cnv_end, CNV, qual2, (uint32_t) total_reads);
+                }
 
                 fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8";IMPPRLEN=%"PRIu8";\tMergedCNVs=%d\tGT\t%s\n", \
                         chrom_tracking->chromosome_ids[i],
@@ -1747,4 +1771,5 @@ void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Trac
     }
 
     fclose(fp);
+    fclose(sfh);
 }
