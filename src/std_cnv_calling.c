@@ -65,7 +65,7 @@ void generateCNVs(CNV_Array **equal_bin_cnv_array, Binned_Data_Wrapper **equal_s
 
             processPairedReadsAcrossABreakpointTlenInfo(equal_bin_cnv_array[cnv_array_index]);
 
-            setLeftRightCNVBreakpoints(equal_bin_cnv_array[cnv_array_index]);
+            setLeftRightCNVBreakpoints(equal_bin_cnv_array[cnv_array_index], user_inputs);
 
             fprintf(stderr, "%s\n", equal_bin_cnv_array[cnv_array_index]->chromosome_id);
             cleanupOverlappingCNVs(equal_bin_cnv_array[cnv_array_index], the_stats);
@@ -397,7 +397,7 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
     //
     cnv_array->cnvs[cnv_index].imp_PR_start = 0;
     cnv_array->cnvs[cnv_index].imp_PR_end   = 0;
-    cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 = 0;
+    cnv_array->cnvs[cnv_index].num_of_imp_PR_TLEN_1000 = 0;
 
     // for inner_CNV (used in CNV segmentation merging step)
     //
@@ -409,7 +409,7 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
     cnv_array->cnvs[cnv_index].inner_cnv.valid_cnv = false;
     cnv_array->cnvs[cnv_index].inner_cnv.imp_PR_start = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.imp_PR_end = 0;
-    cnv_array->cnvs[cnv_index].inner_cnv.num_larger_imp_RP_TLEN = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.num_larger_imp_PR_TLEN = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.left_breakpoint  = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.right_breakpoint = 0;  // the real left breakpoint should start at 1
     cnv_array->cnvs[cnv_index].inner_cnv.left_breakpoint_count  = 0;
@@ -704,20 +704,20 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
             if (kh_value(anchor_breakpoints_hash, k) >= 2) {
                 uint32_t breakpoint_pos = kh_key(anchor_breakpoints_hash, k);
 
-                if ((int32_t)breakpoint_pos - DISTANCE_CUTOFF < 0) {
+                if ((int32_t)breakpoint_pos - user_inputs->breakpoint_distance < 0) {
                     // prevent negative value or value overflow
                     //
                     all_starts_ends[counter] = 1;
                 } else {
-                    all_starts_ends[counter] = breakpoint_pos - DISTANCE_CUTOFF;
+                    all_starts_ends[counter] = breakpoint_pos - user_inputs->breakpoint_distance;
                 }
                 setValueToKhashBucket32(breakpoint_start_hash, all_starts_ends[counter], breakpoint_pos);
                 counter++;
 
-                if (breakpoint_pos + DISTANCE_CUTOFF > cnv_array->chrom_length) {
+                if (breakpoint_pos + user_inputs->breakpoint_distance > cnv_array->chrom_length) {
                     all_starts_ends[counter] = cnv_array->chrom_length - 1;
                 } else {
-                    all_starts_ends[counter] = breakpoint_pos + DISTANCE_CUTOFF;
+                    all_starts_ends[counter] = breakpoint_pos + user_inputs->breakpoint_distance;
                 }
                 setValueToKhashBucket32(breakpoint_end_hash, all_starts_ends[counter], breakpoint_pos);
                 counter++;
@@ -821,7 +821,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
 
             if (counter < 0) {
                 if (i == 0) {
-                    counter = 0;    // this happens when breakpoint_pos - DISTANCE_CUTOFF
+                    counter = 0;    // this happens when breakpoint_pos > user_inputs->breakpoint_distance
                 } else {
                     fprintf(stderr, "Error: chr id is %s and index i is %"PRIu32"\n", cnv_array->chromosome_id, i);
                     fprintf(stderr, "Error: the counter %"PRId16" should NOT be negative in breakpoint/cnv intersection\n", counter);
@@ -871,7 +871,7 @@ void checkBreakpointForEachCNV(CNV_Array *cnv_array, khash_t(m32) *anchor_breakp
 
                     // delete the breakpoint start in the live_bpt_start_hash
                     //
-                    iter = kh_get(m32, live_bpt_start_hash, cur_anchor_breakpoint - DISTANCE_CUTOFF);
+                    iter = kh_get(m32, live_bpt_start_hash, cur_anchor_breakpoint - user_inputs->breakpoint_distance);
                     kh_del(m32, live_bpt_start_hash, iter);
                 } else {
                     // find the anchor breakpoint using current breakpoint_start
@@ -1062,8 +1062,8 @@ void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index,
     // Because we group nearby breakpoint within 5 bps away together, so the search will add addition 10bp both side
     //
     char region[1500];
-    sprintf(region, "%s:%"PRIu32"-%"PRIu32"", cnv_array->chromosome_id, anchor_breakpoint-DISTANCE_CUTOFF, anchor_breakpoint+DISTANCE_CUTOFF);
-    //sprintf(region, "%s:%"PRIu32"-%"PRIu32"", cnv_array->chromosome_id, anchor_breakpoint-DISTANCE_CUTOFF-10, anchor_breakpoint+DISTANCE_CUTOFF+10);
+    sprintf(region, "%s:%"PRIu32"-%"PRIu32"", cnv_array->chromosome_id, anchor_breakpoint-user_inputs->breakpoint_distance, anchor_breakpoint+user_inputs->breakpoint_distance);
+    //sprintf(region, "%s:%"PRIu32"-%"PRIu32"", cnv_array->chromosome_id, anchor_breakpoint-user_inputs->breakpoint_distance-10, anchor_breakpoint+user_inputs->breakpoint_distance+10);
     hts_itr_t *hts_itr = sam_itr_querys(sfh_idx, header, region);
 
     if (hts_itr == NULL) {
@@ -1218,7 +1218,7 @@ void processPairedReadsAcrossABreakpointTlenInfo(CNV_Array *cnv_array) {
     }
 }
 
-void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
+void setLeftRightCNVBreakpoints(CNV_Array *cnv_array, User_Input *user_inputs) {
     // When using breakpoints to set starts (left-end) and ends (right-end) of CNVs, we need the following
     // 1). number of breakpoints associated with the current anchor breakpoint >= 2 (handled during the intersection)
     // 2). num_of_TLEN_ge_1000 >= 2 (handled during the intersection)
@@ -1269,7 +1269,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
             } else if (cur_start - prev_cnv_end < 900) {
                 left_distance_cutoff = cur_start - prev_cnv_end + 100;
             } else {
-                left_distance_cutoff = DISTANCE_CUTOFF;
+                left_distance_cutoff = user_inputs->breakpoint_distance;
             }
         }
 
@@ -1281,7 +1281,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
             } else if (cur_end - next_cnv_start < 900) {
                 right_distance_cutoff = cur_end - next_cnv_start + 100;
             } else {
-                right_distance_cutoff = DISTANCE_CUTOFF;
+                right_distance_cutoff = user_inputs->breakpoint_distance;
             }
         }
 
@@ -1291,7 +1291,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
         uint32_t imp_PR_length = cnv_array->cnvs[i].imp_PR_end - cnv_array->cnvs[i].imp_PR_start;
         //if (imp_PR_length > 5*cnv_length)
         if (imp_PR_length > 3*cnv_length || imp_PR_length*3 < cnv_length)
-            cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 = 0;
+            cnv_array->cnvs[i].num_of_imp_PR_TLEN_1000 = 0;
 
         // some of the CNVs don't have breakpoints associated them, so skip
         // the check has to be here as it is used to set the breakpoint
@@ -1345,7 +1345,7 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
             } else if (cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint > cur_end) {
                 left = false;
             } else {
-                /*if (cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 >= 2) {
+                /*if (cnv_array->cnvs[i].num_of_imp_PR_TLEN_1000 >= 2) {
                     // need to locate the intersected region with raw-bin or equal-bin
                     // (  -------------------------------- raw-bin
                     //       =============================== improperly paired reads
@@ -1353,13 +1353,13 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array) {
                     //
                     if (cur_start < cnv_array->cnvs[i].imp_PR_start && cnv_array->cnvs[i].imp_PR_start < cur_end) {
                         if (cnv_array->cnvs[i].imp_PR_start - cur_start < cur_end - cnv_array->cnvs[i].imp_PR_start \
-                                && cnv_array->cnvs[i].imp_PR_start - cur_start < DISTANCE_CUTOFF)
+                                && cnv_array->cnvs[i].imp_PR_start - cur_start < user_inputs->breakpoint_distance)
                             cur_start = cnv_array->cnvs[i].imp_PR_start;
                     }
 
                     if (cur_end > cnv_array->cnvs[i].imp_PR_end && cnv_array->cnvs[i].imp_PR_end > cur_start) {
                         if (cur_end - cnv_array->cnvs[i].imp_PR_end > cnv_array->cnvs[i].imp_PR_end - cur_start \
-                                && cur_end - cnv_array->cnvs[i].imp_PR_end < DISTANCE_CUTOFF)
+                                && cur_end - cnv_array->cnvs[i].imp_PR_end < user_inputs->breakpoint_distance)
                             cur_end = cnv_array->cnvs[i].imp_PR_end;
                     }
                 }*/
@@ -1506,7 +1506,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
         //
         cnv_array->cnvs[i].imp_PR_start = 0;
         cnv_array->cnvs[i].imp_PR_end   = 0;
-        cnv_array->cnvs[i].num_of_imp_RP_TLEN_1000 = 0;
+        cnv_array->cnvs[i].num_of_imp_PR_TLEN_1000 = 0;
     }
 
     // Here the capacity won't be equal to the count value as the latter one is filtered, 
@@ -1621,7 +1621,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
                             if ( (all_starts_ends[i] - imp_start)*3 < cnv_array->cnvs[cnv_index].length )
                                 continue;
 
-                            cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 += cur_TLEN;
+                            cnv_array->cnvs[cnv_index].num_of_imp_PR_TLEN_1000 += cur_TLEN;
 
                             if (cnv_array->cnvs[cnv_index].imp_PR_start == 0 ||
                                     cnv_array->cnvs[cnv_index].imp_PR_start > imp_start)
@@ -1660,7 +1660,7 @@ void checkImproperlyPairedReadsForEachCNV(CNV_Array *cnv_array, Not_Properly_Pai
                                 continue;
 
                             cur_TLEN = getValueFromKhash32(imp_PR_start_hash, imp_start);
-                            cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 += cur_TLEN;
+                            cnv_array->cnvs[cnv_index].num_of_imp_PR_TLEN_1000 += cur_TLEN;
 
                             // elongate the imp_paired_reads on both sides
                             //
@@ -1783,7 +1783,7 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
     uint32_t prev_left_breakpoint=0, prev_right_breakpoint=0;
     uint32_t prev_left_num_bpoint=0, prev_right_num_bpoint=0;
     uint32_t prev_left_num_geTLEN=0, prev_right_num_geTLEN=0;
-    uint32_t prev_num_of_imp_RP_TLEN_1000=0;
+    uint32_t prev_num_of_imp_PR_TLEN_1000=0;
     uint32_t j;
     for (j=0; j<cnv_array->size; j++) {
         int16_t left_idx  = cnv_array->cnvs[j].left_start_index;
@@ -1793,9 +1793,9 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
 
         uint32_t left_breakpoint=0, left_num_bpoint=0, left_num_geTLEN=0;
         uint32_t right_breakpoint=0, right_num_bpoint=0, right_num_geTLEN=0;
-        uint32_t num_of_imp_RP_TLEN_1000 = cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000;
+        uint32_t num_of_imp_PR_TLEN_1000 = cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000;
 
-        if (left_idx >= 0 || right_idx >= 0 || num_of_imp_RP_TLEN_1000 >= 2) {
+        if (left_idx >= 0 || right_idx >= 0 || num_of_imp_PR_TLEN_1000 >= 2) {
             if (cnv_array->cnvs[j].cnv_breakpoints != NULL) {
                 left_breakpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint : 0;
                 left_num_bpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_breakpoints : 0;
@@ -1816,7 +1816,7 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
         double qual = (cnv_array->cnvs[j].ave_coverage - equal_window_stats->average_coverage) / equal_window_stats->stdev;
 
         int supporting_evidences = 0;
-        if (cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 >= 2) {
+        if (cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000 >= 2) {
             supporting_evidences += 2;
 
             if (left_idx >= 0 || right_idx >= 0) { 
@@ -1851,7 +1851,7 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
                         cnv_array->cnvs[j].cnv_breakpoints[right_idx].num_of_breakpoints = prev_right_num_bpoint;
                     }
                 
-                    cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 = prev_num_of_imp_RP_TLEN_1000;
+                    cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000 = prev_num_of_imp_PR_TLEN_1000;
                     //fprintf(stderr, "first: %"PRIu32"\n", j);
                     voidCNVFromList(cnv_array, j-1, prev_left_idx, prev_right_idx);
                 } else { // not the same type
@@ -1892,7 +1892,7 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
         prev_right_num_bpoint = right_num_bpoint;
         prev_right_num_geTLEN = right_num_geTLEN;
 
-        prev_num_of_imp_RP_TLEN_1000 = num_of_imp_RP_TLEN_1000;
+        prev_num_of_imp_PR_TLEN_1000 = num_of_imp_PR_TLEN_1000;
         prev_supporting_evidences = supporting_evidences;
         prev_qual = qual;
     }
@@ -1911,7 +1911,7 @@ void voidCNVFromList(CNV_Array *cnv_array, uint32_t cnv_index, int16_t left_brea
         cnv_array->cnvs[cnv_index].right_end_index = -1;
     }
 
-    cnv_array->cnvs[cnv_index].num_of_imp_RP_TLEN_1000 = 0;
+    cnv_array->cnvs[cnv_index].num_of_imp_PR_TLEN_1000 = 0;
     cnv_array->cnvs[cnv_index].raw_bin_start = 0;
     cnv_array->cnvs[cnv_index].raw_bin_end = 0;
     cnv_array->cnvs[cnv_index].equal_bin_start = 0;
@@ -1950,7 +1950,7 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, User_Input *user_input
         uint32_t left_breakpoint=0, left_num_bpoint=0, left_num_geTLEN=0;
         uint32_t right_breakpoint=0, right_num_bpoint=0, right_num_geTLEN=0;
 
-        if (left_idx >= 0 || right_idx >= 0 || type == 3 || cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 >= 2) {
+        if (left_idx >= 0 || right_idx >= 0 || type == 3 || cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000 >= 2) {
             if (cnv_array->cnvs[j].cnv_breakpoints != NULL) {
                 left_breakpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].breakpoint : 0;
                 left_num_bpoint  = (left_idx >= 0)  ? cnv_array->cnvs[j].cnv_breakpoints[left_idx].num_of_breakpoints : 0;
@@ -1966,7 +1966,7 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, User_Input *user_input
                 // based need at least 2 support for all categories
                 //
                 int supporting_evidences = 0;
-                if (cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 >= 2) {
+                if (cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000 >= 2) {
                     supporting_evidences += 2;
 
                     if (left_idx >= 0 || right_idx >= 0) { 
@@ -2010,7 +2010,7 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, User_Input *user_input
 
             fprintf(fp,"%"PRIu32"\t%"PRIu8"\t%"PRIu8"\t", right_breakpoint, right_num_bpoint, right_num_geTLEN);
 
-            fprintf(fp, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t", cnv_array->cnvs[j].imp_PR_start, cnv_array->cnvs[j].imp_PR_end, cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000);
+            fprintf(fp, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t", cnv_array->cnvs[j].imp_PR_start, cnv_array->cnvs[j].imp_PR_end, cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000);
 
             fprintf(fp, "%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%.2f\t", cnv_array->cnvs[j].equal_bin_start, \
                     cnv_array->cnvs[j].equal_bin_end, cnv_array->cnvs[j].equal_bin_end - cnv_array->cnvs[j].equal_bin_start,\
@@ -2096,12 +2096,12 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
 
             int supporting_evidences = 0;
 
-            if (left_breakpoint > 0 || right_breakpoint > 0 || cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 > 0) {
+            if (left_breakpoint > 0 || right_breakpoint > 0 || cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000 > 0) {
                 if (left_num_bpoint >= 2) supporting_evidences++;
                 if (left_num_geTLEN >= 2) supporting_evidences++;
                 if (right_num_bpoint >= 2) supporting_evidences++;
                 if (right_num_geTLEN >= 2) supporting_evidences++;
-                if (cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000 >= 2) supporting_evidences += 2;
+                if (cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000 >= 2) supporting_evidences += 2;
 
                 // For DUP, there will have no left_num_geTLEN and right_num_geTLEN
                 // I will relax the checking for left_num_bpoint and right_num_bpoint
@@ -2145,7 +2145,7 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             }
 
             fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8";IMPPRLEN=%"PRIu8"\tGT\t%s\n", \
-                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, qual, FILTER, cnv_end, svLen, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000, GT);
+                    chrom_tracking->chromosome_ids[i], cnv_start, CNV, qual, FILTER, cnv_end, svLen, CNV, cnv_array->cnvs[j].ave_coverage, left_breakpoint, left_num_bpoint, left_num_geTLEN, right_breakpoint, right_num_bpoint, right_num_geTLEN, cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000, GT);
 
             // update the inner_CNV variable for CNV segmentation
             //
@@ -2163,7 +2163,7 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_right  = right_num_geTLEN;
             cnv_array->cnvs[j].inner_cnv.imp_PR_start = cnv_array->cnvs[j].imp_PR_start;
             cnv_array->cnvs[j].inner_cnv.imp_PR_end = cnv_array->cnvs[j].imp_PR_end;
-            cnv_array->cnvs[j].inner_cnv.num_larger_imp_RP_TLEN = cnv_array->cnvs[j].num_of_imp_RP_TLEN_1000;
+            cnv_array->cnvs[j].inner_cnv.num_larger_imp_PR_TLEN = cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000;
             cnv_array->cnvs[j].inner_cnv.evidence_count = supporting_evidences;
             if (supporting_evidences >= 2)
                 cnv_array->cnvs[j].inner_cnv.valid_cnv = true;

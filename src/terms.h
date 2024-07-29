@@ -46,7 +46,8 @@
 #define DIFF_COV_TO_MERGE 5
 #define SMALL_LENGTH_CUTOFF 50
 #define EQUAL_BIN_SIZE 20
-//#define DISTANCE_CUTOFF 300     // Qiaoyan: use 2 x seq-length = 2 x 150 = 300 on either size
+//#define BREAKPOINT_DISTANCE_CUTOFF 300     // Qiaoyan: use 2 x seq-length = 2 x 150 = 300 on either size
+//                                              it is now a user option
 #define DISTANCE_CUTOFF 1000     // Dragen uses 1000bp for the junction detection
 #define BREAKPOINT_DISTANCE_TO_GROUP 5      // group neighboring breakpoint within 5bp together
 
@@ -92,6 +93,7 @@ typedef struct {
     char * simple_segmented_vcf_file;   // Simple segmentated CNV output in TSV format for easy and quick review
     char * log2ratio_output_file;       // for log2ratio output file for segmentation of all chromosomes
     char * sample_name;
+    uint16_t breakpoint_distance;       // the distance to a breakpoint for a CNV, default 300
     int16_t min_cnv_length;             // minimal length to pass a CNV; default 1000
     int8_t min_map_quality;
     int8_t min_base_quality;
@@ -187,7 +189,7 @@ typedef struct {
     uint32_t num_larger_TLEN_right;
     uint32_t imp_PR_start;
     uint32_t imp_PR_end;
-    uint16_t num_larger_imp_RP_TLEN;
+    uint16_t num_larger_imp_PR_TLEN;
     uint8_t evidence_count; 
     uint8_t num_merged_CNVs;
     CNV_Breakpints *cnv_breakpoints;    // Used to store breakpoints associated with CNV merging per segment
@@ -223,7 +225,7 @@ typedef struct {
     //
     uint32_t imp_PR_start;
     uint32_t imp_PR_end;
-    uint16_t num_of_imp_RP_TLEN_1000;   // number of improperly paired-reads with TLEN >= 1000
+    uint16_t num_of_imp_PR_TLEN_1000;   // number of improperly paired-reads with TLEN >= 1000
 
     INNER_CNV inner_cnv;
 } CNV;

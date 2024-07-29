@@ -56,7 +56,7 @@ typedef struct {
     //
     uint32_t seg_imp_PR_start;
     uint32_t seg_imp_PR_end;
-    uint16_t seg_num_of_imp_RP_TLEN_1000;   // number of improperly paired-reads with TLEN >= 1000
+    uint16_t seg_num_of_imp_PR_TLEN_1000;   // number of improperly paired-reads with TLEN >= 1000
 
     char* excluded_regions;                 // it contains Ns-regions, segdup and tandom repeat >= 10kb
 } Segmented_CNV;
@@ -101,11 +101,13 @@ void segmentInnerCNVInit(Segmented_CNV *seg_cnv, uint32_t capacity);
 
 void segmentInnerCNVInit2(Segmented_CNV *seg_cnv, uint32_t index);
 
+void copyCNV(Segmented_CNV *seg_cnv, uint32_t seg_index, CNV *cnv, uint32_t cnv_index);
+
 void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t index);
 
 int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints);
 
-void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array);
+void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array, User_Input *user_inputs);
 
 void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, User_Input *user_inputs);
 

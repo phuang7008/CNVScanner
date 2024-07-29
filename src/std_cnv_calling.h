@@ -45,7 +45,7 @@ void storePairedReadsAcrossABreakpoint(CNV_Array *cnv_array, uint32_t cnv_index,
 
 void processPairedReadsAcrossABreakpointTlenInfo(CNV_Array *cnv_array);
 
-void setLeftRightCNVBreakpoints(CNV_Array *cnv_array);
+void setLeftRightCNVBreakpoints(CNV_Array *cnv_array, User_Input *user_inputs);
 
 // some CNVs are overlapping with each other
 // it is caused by the extension of breakpoint search

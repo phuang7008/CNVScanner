@@ -39,40 +39,41 @@ void usage() {
     printf("Note:   this is a multi-threading program. Each thread needs 4Gb of memory. So please allocate them accordingly!\n");
     printf("\tfor example: 3 threads would use 12Gb of memory, while 4 threads would need 16Gb of memory, etc.\n\n");
     printf("Mandatory:\n");
-    printf("--input_bam          -i  BAM/CRAM alignment file (multiple files are not allowed!).\n");
-    printf("                         It Is Mandatory\n");
-    printf("--output_dir         -o  output directory. It Is Mandatory\n");
-    printf("--sample_name        -N  the sample name to be processed. It Is Mandatory\n");
-    //printf("--mappability_file   -M  the genomic mappability file. It Is Mandatory\n");
+    printf("--input_bam           -i  BAM/CRAM alignment file (multiple files are not allowed!).\n");
+    printf("                          It Is Mandatory\n");
+    printf("--output_dir          -o  output directory. It Is Mandatory\n");
+    printf("--sample_name         -N  the sample name to be processed. It Is Mandatory\n");
+    printf("--breakpoint_distance -B  the distance checking to a breakpoint for a CNV. Default: 300\n");
+    printf("                          It is based on sequencing length: 2x150=300. The next checking is 3x150=450 or any other user choice\n");
     //printf("--gc_content_file    -G  the genomic GC%% file. It Is Mandatory\n");
-    printf("--equal_size_window  -w  the equal size window bed file. It Is Mandatory\n");
-    printf("--reference          -R  the file path of the reference sequence. \n");
-    printf("                         It is Mandatory for CRAM files\n\n");
+    printf("--equal_size_window   -w  the equal size window bed file. It Is Mandatory\n");
+    printf("--reference           -R  the file path of the reference sequence. \n");
+    printf("                          It is Mandatory for CRAM files\n\n");
 
     printf("The Followings Are Optional:\n");
-    printf("--min_base_qual      -b  minimal base quality\n");
-    printf("                         to filter out any bases with base quality less than b. Default 0\n");
-    printf("--min_map_qual       -m  minimal mapping quality\n");
-    printf("                         to filter out any reads with mapping quality less than m. Default 0\n");
-    printf("--excluded_regions   -e  file name that contains regions to be excluded in bed format\n");
-    printf("--percentage         -p  the percentage (fraction) of reads used for this analysis. Default 1.0 (ie, 100%%)\n");
-    printf("--chr_list           -r  file name that contains chromosomes and their regions \n");
-    printf("                         need to be processed in bed format. Default: Not Provided\n");
-    printf("--threads            -T  the number of threads \n");
-    printf("                         (Note: when used with HPC's msub, make sure that the number of\n"); 
-    printf("                         processors:ppn matches to number of threads). Default 2\n");
-    printf("--min_cnv_length     -S  the minimal length of CNV required. Default 1000\n");
-    printf("--mappability_cutoff -c  the minimal mappability used to filter out low mappability regions. Default 0.0\n");
-    printf("--ref_version        -V  the reference version used. Default hg38\n");
+    printf("--min_base_qual       -b  minimal base quality\n");
+    printf("                          to filter out any bases with base quality less than b. Default 0\n");
+    printf("--min_map_qual        -m  minimal mapping quality\n");
+    printf("                          to filter out any reads with mapping quality less than m. Default 0\n");
+    printf("--excluded_regions    -e  file name that contains regions to be excluded in bed format\n");
+    printf("--percentage          -p  the percentage (fraction) of reads used for this analysis. Default 1.0 (ie, 100%%)\n");
+    printf("--chr_list            -r  file name that contains chromosomes and their regions \n");
+    printf("                          need to be processed in bed format. Default: Not Provided\n");
+    printf("--threads             -T  the number of threads \n");
+    printf("                          (Note: when used with HPC's msub, make sure that the number of\n"); 
+    printf("                          processors:ppn matches to number of threads). Default 2\n");
+    printf("--min_cnv_length      -S  the minimal length of CNV required. Default 1000\n");
+    printf("--mappability_cutoff  -c  the minimal mappability used to filter out low mappability regions. Default 0.0\n");
+    printf("--ref_version         -V  the reference version used. Default hg38\n");
 
     printf("The Followings Are Flags\n");
-    printf("--duplicate          -d  Specify this flag only when you want to keep Duplicates reads.\n");
-    printf("                         Default: Remove Duplicate is ON\n");
-    printf("--supplemental       -s  Remove Supplementary alignments and DO NOT use them for statistics. Default: off\n");
-    printf("--overlap            -O  Turn off Remove Overlapping Bases to avoid double counting. Default: on\n");
-    printf("--wgs_depth          -W  Write/Dump the WGS base coverage depth into Coverage.fasta file \n");
-    printf("                         (both -w and -W needed). Default: off\n");
-    printf("--help               -h  Print this help/usage message\n");
+    printf("--duplicate           -d  Specify this flag only when you want to keep Duplicates reads.\n");
+    printf("                          Default: Remove Duplicate is ON\n");
+    printf("--supplemental        -s  Remove Supplementary alignments and DO NOT use them for statistics. Default: off\n");
+    printf("--overlap             -O  Turn off Remove Overlapping Bases to avoid double counting. Default: on\n");
+    printf("--wgs_depth           -W  Write/Dump the WGS base coverage depth into Coverage.fasta file \n");
+    printf("                          (both -w and -W needed). Default: off\n");
+    printf("--help                -h  Print this help/usage message\n");
 }
 
 // Get command line arguments in and check the sanity of user inputs 
@@ -99,7 +100,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             {"output_dir",          required_argument,  0,  'o'},
             {"reference",           required_argument,  0,  'R'},
             {"sample_name",         required_argument,  0,  'N'},
-            //{"mappability_file",    required_argument,  0,  'M'},
+            {"breakpoint_distance", required_argument,  0,  'B'},
             //{"gc_content_file",     required_argument,  0,  'G'},
             {"ref_version",         required_argument,  0,  'V'},
             {"percentage",          required_argument,  0,  'p'},
@@ -120,7 +121,7 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arg = getopt_long_only (argc, argv, "b:de:ghi:m:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
+        arg = getopt_long_only (argc, argv, "b:B:de:ghi:m:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
         //arg = getopt_long_only (argc, argv, "b:c:de:gG:hi:m:M:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
 
         /* Detect the end of the options. */
@@ -139,9 +140,9 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 }
                 user_inputs->min_base_quality = atoi(optarg);
                 break;
-            //case 'c':
-            //    user_inputs->mappability_cutoff = atof(optarg);
-            //    break;
+            case 'B':
+                user_inputs->breakpoint_distance = atoi(optarg);
+                break;
             case 'd': 
                 user_inputs->remove_duplicate = false;
                 break;
@@ -405,6 +406,7 @@ void outputUserInputOptions(User_Input *user_inputs) {
 
     fprintf(stderr, "\tThe minimum mapping quality is: %d\n", user_inputs->min_map_quality);
     fprintf(stderr, "\tThe minimum base quality is: %d\n", user_inputs->min_base_quality);
+    fprintf(stderr, "\tThe distance checking to a breakpoint of a CNV: %d\n", user_inputs->breakpoint_distance);
     fprintf(stderr, "\tThe number of thread used is: %d\n", user_inputs->num_of_threads);
     fprintf(stderr, "\tThe percentage of reads used for analysis is: %.1f%%\n", user_inputs->percentage*100);
 
@@ -463,6 +465,7 @@ User_Input * userInputInit() {
     user_inputs->num_of_threads   = 2;
     user_inputs->min_cnv_length   = 1000;
     user_inputs->mappability_cutoff  = 0.0;
+    user_inputs->breakpoint_distance = 300;
     user_inputs->Write_WGS_cov_fasta = false;
     user_inputs->excluding_overlapping_bases = true;
     user_inputs->remove_duplicate = true;
