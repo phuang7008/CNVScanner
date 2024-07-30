@@ -2161,6 +2161,7 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             cnv_array->cnvs[j].inner_cnv.right_breakpoint_count = right_num_bpoint;
             cnv_array->cnvs[j].inner_cnv.last_right_breakpoint_count = right_num_bpoint;
             cnv_array->cnvs[j].inner_cnv.num_larger_TLEN_right  = right_num_geTLEN;
+            cnv_array->cnvs[j].inner_cnv.last_num_larger_TLEN_right  = right_num_geTLEN;
             cnv_array->cnvs[j].inner_cnv.imp_PR_start = cnv_array->cnvs[j].imp_PR_start;
             cnv_array->cnvs[j].inner_cnv.imp_PR_end = cnv_array->cnvs[j].imp_PR_end;
             cnv_array->cnvs[j].inner_cnv.num_larger_imp_PR_TLEN = cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000;

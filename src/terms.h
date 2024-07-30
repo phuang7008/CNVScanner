@@ -185,6 +185,7 @@ typedef struct {
     uint32_t left_breakpoint_count;
     uint32_t right_breakpoint_count;
     uint32_t last_right_breakpoint_count;
+    uint32_t last_num_larger_TLEN_right;
     uint32_t num_larger_TLEN_left;
     uint32_t num_larger_TLEN_right;
     uint32_t imp_PR_start;

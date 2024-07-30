@@ -239,7 +239,7 @@ void processSegmentationData(CNV_Array **cnv_array, Segmented_CNV_Array **seg_cn
             setBreakpoinsAtSegmentEnds(seg_cnv_array[seg_cnv_array_idx]);
             fprintf(stderr, "After setBreakpoinsAtSegmentEnds \n");
 
-            mergeCNVsFromSameSegment(seg_cnv_array[seg_cnv_array_idx], cnv_array[cnv_array_idx], user_inputs);
+            mergeCNVsFromSameSegment(seg_cnv_array[seg_cnv_array_idx], cnv_array[cnv_array_idx], user_inputs, equal_window_stats);
             fprintf(stderr, "After merging\n");
 
             if (excluded_regions->data) free(excluded_regions->data);
@@ -1163,6 +1163,7 @@ void segmentInnerCNVInit2(Segmented_CNV *seg_cnv, uint32_t index) {
     seg_cnv->seg_inner_cnv[index].right_breakpoint = 0;
     seg_cnv->seg_inner_cnv[index].left_breakpoint_count = 0;
     seg_cnv->seg_inner_cnv[index].right_breakpoint_count = 0;
+    seg_cnv->seg_inner_cnv[index].last_num_larger_TLEN_right = 0;
     seg_cnv->seg_inner_cnv[index].last_right_breakpoint_count = 0;
     seg_cnv->seg_inner_cnv[index].num_larger_TLEN_left = 0;
     seg_cnv->seg_inner_cnv[index].num_larger_TLEN_right = 0;
@@ -1190,6 +1191,7 @@ void copyCNV(Segmented_CNV *seg_cnv, uint32_t seg_index, CNV *cnvs, uint32_t cnv
     seg_cnv->seg_inner_cnv[seg_index].last_right_breakpoint_count = cnvs[cnv_index].inner_cnv.last_right_breakpoint_count;
     seg_cnv->seg_inner_cnv[seg_index].num_larger_TLEN_left = cnvs[cnv_index].inner_cnv.num_larger_TLEN_left;
     seg_cnv->seg_inner_cnv[seg_index].num_larger_TLEN_right = cnvs[cnv_index].inner_cnv.num_larger_TLEN_right;
+    seg_cnv->seg_inner_cnv[seg_index].last_num_larger_TLEN_right = cnvs[cnv_index].inner_cnv.last_num_larger_TLEN_right;
     seg_cnv->seg_inner_cnv[seg_index].imp_PR_start = cnvs[cnv_index].inner_cnv.imp_PR_start;
     seg_cnv->seg_inner_cnv[seg_index].imp_PR_end = cnvs[cnv_index].inner_cnv.imp_PR_end;
     seg_cnv->seg_inner_cnv[seg_index].num_larger_imp_PR_TLEN = cnvs[cnv_index].inner_cnv.num_larger_imp_PR_TLEN;
@@ -1211,7 +1213,7 @@ void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t in
     }
 }
 
-void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array, User_Input *user_inputs) {
+void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array, User_Input *user_inputs, Simple_Stats *equal_window_stats) {
     uint32_t i;
     for (i=0; i<seg_cnv_array->size; ++i) {
         uint32_t seg_start = seg_cnv_array->seg_cnvs[i].segment.start;
@@ -1220,7 +1222,7 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
         //if (strcmp(seg_cnv_array->chromosome_id, "22") == 0)
         //    printf("stopped in mergeCNV for chr22 \n");
 
-        if (seg_start == 75324000 || seg_end == 20130000)
+        if (seg_start == 77093000 || seg_end == 20130000)
             printf("stopped in mergeCNV\n");
 
         // initialize the inner_cnv variable based on the cnv_index_size
@@ -1232,23 +1234,6 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
         //
         if (seg_cnv_array->seg_cnvs[i].seg_inner_cnv == NULL)
             continue;
-
-        // get left and right breakpoints of the segment if there is one
-        /*
-        uint32_t seg_left_breakpoint  = 0, seg_left_num_breakpoints  = 0;
-        uint32_t seg_right_breakpoint = 0, seg_right_num_breakpoints = 0;
-
-        int16_t seg_left_idx = seg_cnv_array->seg_cnvs[i].seg_left_start_index;     // signed value as default is -1
-        if (seg_left_idx >= 0) {
-            seg_left_breakpoint = seg_cnv_array->seg_cnvs[i].seg_breakpoints[seg_left_idx].breakpoint;
-            seg_left_num_breakpoints = seg_cnv_array->seg_cnvs[i].seg_breakpoints[seg_left_idx].num_of_breakpoints;
-        }
-
-        int16_t seg_right_idx = seg_cnv_array->seg_cnvs[i].seg_right_end_index;     // signed value as default is -1
-        if (seg_right_idx >= 0) {
-            seg_right_breakpoint = seg_cnv_array->seg_cnvs[i].seg_breakpoints[seg_right_idx].breakpoint;
-            seg_right_num_breakpoints = seg_cnv_array->seg_cnvs[i].seg_breakpoints[seg_right_idx].num_of_breakpoints;
-        }*/
 
         // Now process all enclosed CNVs one at a time
         //  =====================================================================  SLM segment
@@ -1271,17 +1256,6 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
             uint32_t cnv_idx   = seg_cnv_array->seg_cnvs[i].seg_cnv_indices[j];
             uint32_t cnv_start = cnv_array->cnvs[cnv_idx].inner_cnv.start;
             uint32_t cnv_end   = cnv_array->cnvs[cnv_idx].inner_cnv.end;
-            //uint32_t cnv_left_breakpoint = cnv_array->cnvs[cnv_idx].inner_cnv.left_breakpoint;
-            //uint32_t cnv_right_breakpoint = cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint;
-            //uint32_t cnv_left_num_breakpoint = cnv_array->cnvs[cnv_idx].inner_cnv.left_breakpoint_count;
-            //uint32_t cnv_right_num_breakpoint = cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint_count;
-            //uint32_t cnv_last_right_num_breakpoint = cnv_array->cnvs[cnv_idx].inner_cnv.last_right_breakpoint_count;
-            /*if (seg_start == 45466000) {
-                fprintf(stderr, "beginning: %d\t\%d\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", i, j, 
-                        cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint,
-                        cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint_count,
-                        cnv_right_breakpoint, cnv_right_num_breakpoint);
-            }*/
 
             //if (cnv_start == 20099245 || cnv_start == 18003430 || cnv_start == 17821157)
             //    printf("stop 11\n");
@@ -1306,69 +1280,12 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
             uint32_t seg_inner_cnv_index = seg_cnv_array->seg_cnvs[i].seg_inner_cnv_size;
 
             copyCNV(&seg_cnv_array->seg_cnvs[i], seg_inner_cnv_index, cnv_array->cnvs, cnv_idx);
-            
-            if (j > 0 && j < (seg_cnv_array->seg_cnvs[i].seg_cnv_index_size-1)) {
-                // the inner cnv's start and end already set by the breakpoint if there is one
-                // so there is no need to check the breakpoints here
-                //
-                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].start = cnv_start;
-                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].end   = cnv_end;
-                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].left_breakpoint = 
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.left_breakpoint;
-                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].left_breakpoint_count = 
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.left_breakpoint_count;
-                /*if (seg_start == 45466000) {
-                    fprintf(stderr, "2nd: %d\t%d\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", i, j,
-                            cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint,
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint, 
-                            cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint_count,
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count );
-                }*/
-                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint = 
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint;
-                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count = 
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint_count;
-                /*if (seg_start == 45466000) {
-                    fprintf(stderr, "3rd: %d\t%d\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", i, j,
-                            cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint,
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint,
-                            cnv_array->cnvs[cnv_idx].inner_cnv.right_breakpoint_count,
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count );
-                }*/
-                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].last_right_breakpoint_count = 
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.last_right_breakpoint_count;
-            }
-        
-            // Store other info
-            //
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].passed = 
-                                                                    cnv_array->cnvs[cnv_idx].inner_cnv.passed;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].qual =
-                                                                    cnv_array->cnvs[cnv_idx].inner_cnv.qual;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].ave_coverage =
-                                                                cnv_array->cnvs[cnv_idx].inner_cnv.ave_coverage;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].cnv_type =
-                                                                cnv_array->cnvs[cnv_idx].inner_cnv.cnv_type;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_TLEN_left =
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.num_larger_TLEN_left;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_TLEN_right =
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.num_larger_TLEN_right;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].imp_PR_start = 
-                                                                cnv_array->cnvs[cnv_idx].inner_cnv.imp_PR_start;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].imp_PR_end =
-                                                                cnv_array->cnvs[cnv_idx].inner_cnv.imp_PR_end;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_imp_PR_TLEN =
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.num_larger_imp_PR_TLEN;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].evidence_count =
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.evidence_count;
-            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].valid_cnv =
-                                                        cnv_array->cnvs[cnv_idx].inner_cnv.valid_cnv;
             seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_merged_CNVs = 1;
-
-            // only needs to do the merge if seg_cnv_array->seg_cnvs[i].size > 1 or j >= 1
+            
+            // only needs to do the merge if seg_cnv_array->seg_cnvs[i].size >= 1 and j >= 1
             //
             if (j >= 1) {
-                // if equal-bin size is 500, I will do the merge earlier if two CNVs are within 1000bp
+                // if equal-bin size is 1000, I will do the merge earlier if two CNVs are within 1000bp
                 // Therefore, any low-mappability regions with size < 1000 should be ignored.
                 // To calculate the average length of low-mappability regions with the length > 1000bp
                 // less GRCh37_lowmappabilityall.sorted.merged.bed | awk 'var=$3-$2 {print var}' | 
@@ -1393,33 +1310,41 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
                         // In this case, we will take half of the breakpoint count as evidence
                         //
                         if (evidences1 < 5 && evidences2 < 5) {
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].end = 
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].end = \
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].end;
 
                             /*if (seg_start == 45466000) {
                                 fprintf(stderr, "4th: %d\t%d\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", i, j, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count );
                             }*/
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint =
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint = \
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint;
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].last_right_breakpoint_count =
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].last_right_breakpoint_count = \
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].last_right_breakpoint_count;
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count +=
-                                (int)((float)seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count/2.0 + 0.5);
-                            /*if (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count > 500) {
-                                fprintf(stderr, "stop at %d\t%"PRIu32"\t%"PRIu32"\t%d\n", i, seg_start, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count, j);
-                            }*/
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_TLEN_right +=
-                                 (int)((float)seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_TLEN_right/2.0 +0.5);
 
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].left_breakpoint_count +=
-                                (int)((float)seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].left_breakpoint_count/2.0 + 0.5);
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_TLEN_left +=
-                                (int)((float)seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_TLEN_left/2.0 + 0.5);
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count += \
+                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count;
+                            fprintf(stderr, "Right at %d\t%"PRIu32"\t%"PRIu32"\t%d\n", i, seg_start, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count, j);
 
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].qual = 
-                                (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].qual + seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].qual) / 2;
-                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].ave_coverage = 
-                                (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].ave_coverage + seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].ave_coverage) / 2;
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].last_num_larger_TLEN_right = \
+                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].last_num_larger_TLEN_right;
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_TLEN_right += \
+                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_TLEN_right;
+
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].left_breakpoint_count = \
+                                (int)((float)seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].left_breakpoint_count/2.0 + 0.5) + seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].left_breakpoint_count;
+                            fprintf(stderr, "Left at %d\t%"PRIu32"\t%"PRIu32"\t%d\n", i, seg_start, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].left_breakpoint_count, j);
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_TLEN_left = \
+                                (int)((float)seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_TLEN_left/2.0 + 0.5) + seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_TLEN_left;
+
+                            // need to re-calculate the average coverage
+                            //
+                            uint32_t prev_length = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].end - seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].start;
+                            uint64_t prev_total_coverage = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].ave_coverage * prev_length;
+                            uint32_t curr_length = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].end - seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].start;
+                            uint64_t curr_total_coverage = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].ave_coverage * curr_length; 
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].ave_coverage = (float) (prev_total_coverage + curr_total_coverage) /(float) (prev_length + curr_length);
+
+                            seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].qual = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].ave_coverage / equal_window_stats->stdev;
 
                             if (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].valid_cnv 
                                     || seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].valid_cnv)
@@ -1427,11 +1352,11 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
 
                             if (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_imp_PR_TLEN >
                                     seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_imp_PR_TLEN) {
-                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].imp_PR_start =
+                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].imp_PR_start = \
                                      seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].imp_PR_start;
-                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].imp_PR_end =
+                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].imp_PR_end = \
                                      seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].imp_PR_end;
-                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_imp_PR_TLEN = 
+                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_imp_PR_TLEN = \
                                      seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_imp_PR_TLEN;
 
                                 // after the merge, delete the current one
@@ -1444,8 +1369,6 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
                             seg_cnv_array->seg_cnvs[i].seg_inner_cnv_size--;
                         }
                     }
-                } else {
-                    // different types
                 }
             }
 
@@ -1459,12 +1382,17 @@ int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints) {
 
     int evidences=0;
     if (inner_cnv->left_breakpoint > 0 && inner_cnv->left_breakpoint_count >= 2) evidences++;
-    if (inner_cnv->last_right_breakpoint_count > 0 && (inner_cnv->right_breakpoint_count != inner_cnv->last_right_breakpoint_count)) {
-        uint32_t tmp_count = inner_cnv->right_breakpoint_count;
-        tmp_count = inner_cnv->right_breakpoint_count - (int)((float)inner_cnv->last_right_breakpoint_count/2.0 + 0.5);
-        inner_cnv->right_breakpoint_count = tmp_count + inner_cnv->last_right_breakpoint_count;
-    }
     if (inner_cnv->right_breakpoint > 0 && inner_cnv->right_breakpoint_count >=2) evidences++;
+
+    if (inner_cnv->last_right_breakpoint_count > 0 && (inner_cnv->right_breakpoint_count != inner_cnv->last_right_breakpoint_count)) {
+        uint32_t mid_right_bpt_count = inner_cnv->right_breakpoint_count - inner_cnv->last_right_breakpoint_count;
+        inner_cnv->right_breakpoint_count = (int)((float)mid_right_bpt_count/2.0 + 0.5) + inner_cnv->last_right_breakpoint_count;
+    }
+
+    if (inner_cnv->last_num_larger_TLEN_right > 0 && (inner_cnv->num_larger_TLEN_right != inner_cnv->last_num_larger_TLEN_right)) { 
+        uint32_t mid_large_TLEN_count = inner_cnv->num_larger_TLEN_right - inner_cnv->last_num_larger_TLEN_right;
+        inner_cnv->num_larger_TLEN_right = (int)((float)mid_large_TLEN_count/2.0 + 0.5) + inner_cnv->last_num_larger_TLEN_right;
+    }
 
     *total_breakpoints = inner_cnv->left_breakpoint_count + inner_cnv->right_breakpoint_count;
     if (*total_breakpoints >= 25) evidences++;
@@ -1577,7 +1505,7 @@ void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Trac
                     fprintf(sfh, "%s\t%"PRIu32"\t%"PRIu32"\t%s\t%.2f\t.\t%"PRIu32"\n", chrom_tracking->chromosome_ids[i], cnv_start, cnv_end, CNV, qual2, (uint32_t) total_reads);
                 }
 
-                fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu8";BPTLTLEN=%"PRIu8";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu8";BPTRTLEN=%"PRIu8";IMPPRLEN=%"PRIu8";\tMergedCNVs=%d\tGT\t%s\n", \
+                fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu32";BPTLTLEN=%"PRIu32";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu32";BPTRTLEN=%"PRIu32";IMPPRLEN=%"PRIu16";\tMergedCNVs=%d\tGT\t%s\n", \
                         chrom_tracking->chromosome_ids[i],
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].start, CNV, qual, FILTER,
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].end, svLen, CNV,

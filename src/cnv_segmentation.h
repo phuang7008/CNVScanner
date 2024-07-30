@@ -107,7 +107,7 @@ void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t in
 
 int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints);
 
-void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array, User_Input *user_inputs);
+void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array, User_Input *user_inputs, Simple_Stats *equal_window_stats);
 
 void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, User_Input *user_inputs);
 
