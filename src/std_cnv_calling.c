@@ -1820,16 +1820,16 @@ void cleanupOverlappingCNVs(CNV_Array *cnv_array, Simple_Stats *equal_window_sta
             supporting_evidences += 2;
 
             if (left_idx >= 0 || right_idx >= 0) { 
-                if (left_num_bpoint >= 2) supporting_evidences++;
+                if (left_num_bpoint >= 3) supporting_evidences++;
                 if (left_num_geTLEN >= 2) supporting_evidences++;
-                if (right_num_bpoint >=2) supporting_evidences++;
+                if (right_num_bpoint >=3) supporting_evidences++;
                 if (right_num_geTLEN >=2) supporting_evidences++;
             }
 
-            if (cnv_array->cnvs[j].cnv_type == 'P') {
-                if (left_num_bpoint >= 20 || right_num_bpoint >= 20)
+            /*if (cnv_array->cnvs[j].cnv_type == 'P') {
+                if (left_num_bpoint >= 25 || right_num_bpoint >= 25)
                     supporting_evidences++;
-            }
+            }*/
         }
 
         if (j > 0 && prev_right_breakpoint > 0 && prev_left_breakpoint > 0) {
@@ -1970,21 +1970,21 @@ void outputCNVArray(CNV_Array *cnv_array, char *chrom_id, User_Input *user_input
                     supporting_evidences += 2;
 
                     if (left_idx >= 0 || right_idx >= 0) { 
-                        if (left_num_bpoint >= 2) supporting_evidences++;
+                        if (left_num_bpoint >= 3) supporting_evidences++;
                         if (left_num_geTLEN >= 2) supporting_evidences++;
-                        if (right_num_bpoint >=2) supporting_evidences++;
+                        if (right_num_bpoint >=3) supporting_evidences++;
                         if (right_num_geTLEN >=2) supporting_evidences++;
                     }
 
                     // For DUP, there will have no left_num_geTLEN and right_num_geTLEN
                     // I will relax the checking for left_num_bpoint and right_num_bpoint
                     // if left_num_bpoint or right_num_bpoint >= 15, I will PASS it
-                    // Note: the VCF output need 20, this is just for debugging
+                    // Note: the VCF output need 25, this is just for debugging
                     //
-                    if (cnv_array->cnvs[j].cnv_type == 'P') {
-                        if (left_num_bpoint >= 20 || right_num_bpoint >= 20)
-                            supporting_evidences++;
-                    }
+                    //if (cnv_array->cnvs[j].cnv_type == 'P') {
+                    //    if (left_num_bpoint >= 25 || right_num_bpoint >= 25)
+                    //        supporting_evidences++;
+                    //}
                 }
             }
 
@@ -2097,27 +2097,32 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             int supporting_evidences = 0;
 
             if (left_breakpoint > 0 || right_breakpoint > 0 || cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000 > 0) {
-                if (left_num_bpoint >= 2) supporting_evidences++;
+                if (left_num_bpoint >= 3) supporting_evidences++;
                 if (left_num_geTLEN >= 2) supporting_evidences++;
-                if (right_num_bpoint >= 2) supporting_evidences++;
+                if (right_num_bpoint >= 3) supporting_evidences++;
                 if (right_num_geTLEN >= 2) supporting_evidences++;
                 if (cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000 >= 2) supporting_evidences += 2;
 
                 // For DUP, there will have no left_num_geTLEN and right_num_geTLEN
                 // I will relax the checking for left_num_bpoint and right_num_bpoint
-                // if left_num_bpoint or right_num_bpoint >= 20, I will PASS it
+                // if left_num_bpoint or right_num_bpoint >= 25, I will PASS it
                 //
-                if (cnv_array->cnvs[j].cnv_type == 'P') {
-                    if (left_num_bpoint >= 20 || right_num_bpoint >= 20)
+                /*if (cnv_array->cnvs[j].cnv_type == 'P') {
+                    if (left_num_bpoint >= 25 || right_num_bpoint >= 25)
                         supporting_evidences++;
-                }
+                }*/
 
                 if (supporting_evidences == 1) {
                     strcpy(FILTER, "littleBreakpointAndImpSupport");
                     strcpy(GT, "./.");
                 }
             } else {
-                strcpy(FILTER, "noBreakpointAndImpSupport");;
+                strcpy(FILTER, "noBreakpointAndImpSupport");
+                strcpy(GT, "./.");
+            }
+
+            if (supporting_evidences == 0) {
+                strcpy(FILTER, "noBreakpointAndImpSupport");
                 strcpy(GT, "./.");
             }
 

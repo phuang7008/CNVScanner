@@ -611,6 +611,9 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
     fprintf(fh, "##INFO=<ID=BPTLTLEN,Number=1,Type=Integer,Description=\"Number of Reads with Insertion size >= 1000bp across the breakpoints at the end of left side of the CNV\">\n");
     fprintf(fh, "##INFO=<ID=BPTRTLEN,Number=1,Type=Integer,Description=\"Number of Reads with Insertion size >= 1000bp across the breakpoints at the end of right side of the CNV\">\n");
     fprintf(fh, "##INFO=<ID=IMPPRLEN,Number=1,Type=Integer,Description=\"Number of Improperly Paired Reads with Insertion size >= 1000bp\">\n");
+    fprintf(fh, "##INFO=<ID=MergedCNVs,Number=1,Type=Integer,Description=\"Number of neighboring CNVs merged within a segment\">\n");
+    fprintf(fh, "##INFO=<ID=ValidCNVForOneOfMergedCNVs,Number=1,Type=String,Description=\"For MergedCNVs where one of the CNVs PASSed evidence checking before merged with other CNVs\">\n");
+    fprintf(fh, "##INFO=<ID=EvidenceCount,Number=1,Type=Integer,Description=\"Number of evidences such as breakpoint count, IMPPRLEN etc. used to PASS this CNV\">\n");
     fprintf(fh, "##FILTER=<ID=noBreakpointAndImpSupport,Description=\"CNV without breakpoint and improperly paired reads support\">\n");
     fprintf(fh, "##FILTER=<ID=littleBreakpointAndImpSupport,Description=\"CNV has breakpoint support or improperly paired reads support, but the support is too little to be useful\">\n");
     fprintf(fh, "##FILTER=<ID=PASS,Description=\"CNV pass the filter\">\n");

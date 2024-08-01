@@ -253,7 +253,7 @@ void processSegmentationData(CNV_Array **cnv_array, Segmented_CNV_Array **seg_cn
       } // end single
     } // end parallel
 
-    generatedSegmentedCNVs(seg_cnv_array, chrom_tracking, equal_window_stats, stats_info, user_inputs);
+    generateSegmentedCNVs(seg_cnv_array, chrom_tracking, equal_window_stats, stats_info, user_inputs);
 }
 
 void findIntersectedCNVs(CNV_Array *cnv_array, Segmented_CNV_Array *seg_cnv_array, User_Input *user_inputs) {
@@ -1183,7 +1183,6 @@ void copyCNV(Segmented_CNV *seg_cnv, uint32_t seg_index, CNV *cnvs, uint32_t cnv
     seg_cnv->seg_inner_cnv[seg_index].qual = cnvs[cnv_index].inner_cnv.qual;;
     seg_cnv->seg_inner_cnv[seg_index].ave_coverage = cnvs[cnv_index].inner_cnv.ave_coverage;
     seg_cnv->seg_inner_cnv[seg_index].cnv_type = cnvs[cnv_index].inner_cnv.cnv_type;
-    seg_cnv->seg_inner_cnv[seg_index].valid_cnv = cnvs[cnv_index].inner_cnv.valid_cnv;
     seg_cnv->seg_inner_cnv[seg_index].left_breakpoint = cnvs[cnv_index].inner_cnv.left_breakpoint;
     seg_cnv->seg_inner_cnv[seg_index].right_breakpoint = cnvs[cnv_index].inner_cnv.right_breakpoint;
     seg_cnv->seg_inner_cnv[seg_index].left_breakpoint_count = cnvs[cnv_index].inner_cnv.left_breakpoint_count;
@@ -1198,6 +1197,10 @@ void copyCNV(Segmented_CNV *seg_cnv, uint32_t seg_index, CNV *cnvs, uint32_t cnv
     seg_cnv->seg_inner_cnv[seg_index].evidence_count = cnvs[cnv_index].inner_cnv.evidence_count;
     seg_cnv->seg_inner_cnv[seg_index].num_merged_CNVs = cnvs[cnv_index].inner_cnv.num_merged_CNVs;
 
+    // only reset this if it is true
+    //
+    if (cnvs[cnv_index].inner_cnv.valid_cnv)
+        seg_cnv->seg_inner_cnv[seg_index].valid_cnv = cnvs[cnv_index].inner_cnv.valid_cnv;
 }
 
 void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t index) {
@@ -1222,7 +1225,7 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
         //if (strcmp(seg_cnv_array->chromosome_id, "22") == 0)
         //    printf("stopped in mergeCNV for chr22 \n");
 
-        if (seg_start == 77093000 || seg_end == 20130000)
+        if (seg_start == 33838000 || seg_end == 20130000)
             printf("stopped in mergeCNV\n");
 
         // initialize the inner_cnv variable based on the cnv_index_size
@@ -1295,16 +1298,22 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
                 //   26361   26361  133305
                 // the ave length of low-mappability with size >= 1000 is: 111258008 / 26361 = 4220
                 //
+                // In addition, according to the PennCNV web, they suggested to merge adjacent CNVs if the gap between
+                // them are within 20% of total combined CNV length.
+                //
+                uint32_t gap_length = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].start - seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].end;
+                uint32_t total_combined_CNV_length = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].end - seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].start;
+                double gap_ratio = (double) gap_length / (double) total_combined_CNV_length;
+
                 if (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].cnv_type == \
                         seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].cnv_type) {
-                    if (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].start \
-                            - seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].end <= 4220) {
+                    if (gap_length <= 4220 || gap_ratio <= 0.2) {
                         // check to see if one of them are fully supported by the evidence.
                         // if so, don't merge
                         //
                         int total_breakpoints = 0;
-                        int evidences1 = obtainSupportingEvidences(&(seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index]), &total_breakpoints);
-                        int evidences2 = obtainSupportingEvidences(&(seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index]), &total_breakpoints);
+                        int evidences1 = obtainSupportingEvidences(&(seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index]), &total_breakpoints, 1);
+                        int evidences2 = obtainSupportingEvidences(&(seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index]), &total_breakpoints, 1);
                         // need to merge them 
                         // However, after merging, all the supporting evidences regarding breakpoint will be gone for the middle CNVs
                         // In this case, we will take half of the breakpoint count as evidence
@@ -1313,9 +1322,9 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
                             seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].end = \
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].end;
 
-                            /*if (seg_start == 45466000) {
+                        /*if (seg_start == 45466000) {
                                 fprintf(stderr, "4th: %d\t%d\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\t%"PRIu32"\n", i, j, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count );
-                            }*/
+                        }*/
                             seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint = \
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint;
                             seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].last_right_breakpoint_count = \
@@ -1323,7 +1332,7 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
 
                             seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count += \
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].right_breakpoint_count;
-                            fprintf(stderr, "Right at %d\t%"PRIu32"\t%"PRIu32"\t%d\n", i, seg_start, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count, j);
+                            //fprintf(stderr, "Right at %d\t%"PRIu32"\t%"PRIu32"\t%d\n", i, seg_start, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].right_breakpoint_count, j);
 
                             seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].last_num_larger_TLEN_right = \
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].last_num_larger_TLEN_right;
@@ -1332,7 +1341,7 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
 
                             seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].left_breakpoint_count = \
                                 (int)((float)seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].left_breakpoint_count/2.0 + 0.5) + seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].left_breakpoint_count;
-                            fprintf(stderr, "Left at %d\t%"PRIu32"\t%"PRIu32"\t%d\n", i, seg_start, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].left_breakpoint_count, j);
+                            //fprintf(stderr, "Left at %d\t%"PRIu32"\t%"PRIu32"\t%d\n", i, seg_start, seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].left_breakpoint_count, j);
                             seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_TLEN_left = \
                                 (int)((float)seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_TLEN_left/2.0 + 0.5) + seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_TLEN_left;
 
@@ -1351,9 +1360,9 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].valid_cnv = true;
 
                             if (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].num_larger_imp_PR_TLEN >
-                                    seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_imp_PR_TLEN) {
+                                seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_imp_PR_TLEN) {
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].imp_PR_start = \
-                                     seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].imp_PR_start;
+                                    seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].imp_PR_start;
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].imp_PR_end = \
                                      seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].imp_PR_end;
                                 seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].num_larger_imp_PR_TLEN = \
@@ -1378,24 +1387,24 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
     }
 }
 
-int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints) {
+int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints, int type) {
 
     int evidences=0;
-    if (inner_cnv->left_breakpoint > 0 && inner_cnv->left_breakpoint_count >= 2) evidences++;
-    if (inner_cnv->right_breakpoint > 0 && inner_cnv->right_breakpoint_count >=2) evidences++;
+    if (inner_cnv->left_breakpoint > 0 && inner_cnv->left_breakpoint_count >= 3) evidences++;
+    if (inner_cnv->right_breakpoint > 0 && inner_cnv->right_breakpoint_count >=3) evidences++;
 
-    if (inner_cnv->last_right_breakpoint_count > 0 && (inner_cnv->right_breakpoint_count != inner_cnv->last_right_breakpoint_count)) {
+    if (type == 2 && (inner_cnv->right_breakpoint_count != inner_cnv->last_right_breakpoint_count)) {
         uint32_t mid_right_bpt_count = inner_cnv->right_breakpoint_count - inner_cnv->last_right_breakpoint_count;
         inner_cnv->right_breakpoint_count = (int)((float)mid_right_bpt_count/2.0 + 0.5) + inner_cnv->last_right_breakpoint_count;
     }
 
-    if (inner_cnv->last_num_larger_TLEN_right > 0 && (inner_cnv->num_larger_TLEN_right != inner_cnv->last_num_larger_TLEN_right)) { 
+    if (type == 2 && (inner_cnv->num_larger_TLEN_right != inner_cnv->last_num_larger_TLEN_right)) { 
         uint32_t mid_large_TLEN_count = inner_cnv->num_larger_TLEN_right - inner_cnv->last_num_larger_TLEN_right;
         inner_cnv->num_larger_TLEN_right = (int)((float)mid_large_TLEN_count/2.0 + 0.5) + inner_cnv->last_num_larger_TLEN_right;
     }
 
     *total_breakpoints = inner_cnv->left_breakpoint_count + inner_cnv->right_breakpoint_count;
-    if (*total_breakpoints >= 25) evidences++;
+    //if (*total_breakpoints >= 25) evidences++;
 
     if (inner_cnv->num_larger_TLEN_left >= 2)  evidences++;
     if (inner_cnv->num_larger_TLEN_right >= 2) evidences++;
@@ -1409,7 +1418,7 @@ int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints) {
     return evidences;
 }
 
-void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, User_Input *user_inputs) {
+void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, User_Input *user_inputs) {
     FILE *fp = fopen(user_inputs->segmented_vcf_output_file, "w");
     FILE *sfh = fopen(user_inputs->simple_segmented_vcf_file, "w");
     fprintf(sfh, "chr\tstart\tend\ttype\tquality\tvar-reads\ttotal-reads\n");
@@ -1425,8 +1434,12 @@ void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Trac
             fprintf(fp, "\nSegment: %"PRIu32"\t%"PRIu32"\n", seg_cnv_array[i]->seg_cnvs[j].segment.start, seg_cnv_array[i]->seg_cnvs[j].segment.end);
 
             for (k=0; k<seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv_size; ++k) {
-                //if (!seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].valid_cnv)
-                //    continue;
+                char VALID_CNV[10];
+                strcpy(VALID_CNV, "No");
+
+                if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_merged_CNVs >=2
+                                    && seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].valid_cnv) 
+                    strcpy(VALID_CNV, "Yes");
 
                 char CNV[10];
                 (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "INS");
@@ -1445,22 +1458,12 @@ void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Trac
                 // need to re-access the evidence and set the FILTER accordingly
                 //
                 int total_breakpoints = 0;
-                int evidences = obtainSupportingEvidences(&(seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k]), &total_breakpoints);
-
-                /*if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].left_breakpoint_count >= 2) evidences++;
-                if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].right_breakpoint_count >=2) evidences++;
-                if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_TLEN_left >= 2)  evidences++;
-                if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_TLEN_right >= 2) evidences++;
-                if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN >= 10 ) {
-                    evidences += 2;
-                } else if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN >= 2) {
-                    evidences++;
-                }*/
+                int evidences = obtainSupportingEvidences(&(seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k]), &total_breakpoints, 2);
 
                 if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].left_breakpoint > 0 
                         && seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].right_breakpoint > 0 
                         && seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_merged_CNVs == 1
-                        && abs(qual) < 2.576 && evidences == 2 && total_breakpoints < 20) {
+                        && abs(qual) < 2.576 && evidences == 2 && total_breakpoints < 25) {
                     strcpy(FILTER, "qualLessThan99pctCI;littleBreakpointAndImpSupport");
                     strcpy(GT, "./.");
                 }
@@ -1505,7 +1508,7 @@ void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Trac
                     fprintf(sfh, "%s\t%"PRIu32"\t%"PRIu32"\t%s\t%.2f\t.\t%"PRIu32"\n", chrom_tracking->chromosome_ids[i], cnv_start, cnv_end, CNV, qual2, (uint32_t) total_reads);
                 }
 
-                fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu32";BPTLTLEN=%"PRIu32";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu32";BPTRTLEN=%"PRIu32";IMPPRLEN=%"PRIu16";\tMergedCNVs=%d\tGT\t%s\n", \
+                fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu32";BPTLTLEN=%"PRIu32";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu32";BPTRTLEN=%"PRIu32";IMPPRLEN=%"PRIu16";MergedCNVs=%d;EvidenceCount=%d;ValidCNVForOneOfMergedCNVs=%s\tGT\t%s\n", \
                         chrom_tracking->chromosome_ids[i],
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].start, CNV, qual, FILTER,
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].end, svLen, CNV,
@@ -1517,7 +1520,7 @@ void generatedSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Trac
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].right_breakpoint_count,
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_TLEN_right,
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN, 
-                        seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_merged_CNVs, GT);
+                        seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_merged_CNVs, evidences, VALID_CNV, GT);
 
             }
         }
