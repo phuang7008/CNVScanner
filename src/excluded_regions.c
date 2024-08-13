@@ -24,7 +24,7 @@
 #include <time.h>
 #include "utils.h"
 
-void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *stats_info, khash_t(khStrInt)* wanted_chromosome_hash, char* bedfile_name) {
+void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *stats_info, khash_t(khStrInt)* wanted_chromosome_hash, char* bedfile_name, char *ref_version) {
     // First, let's get the total number of lines(items or count) within the target file
     //
     bed_info->size = getLineCount(bedfile_name);
@@ -36,22 +36,24 @@ void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *st
     
     // load target file or Ns bed file again and store the information (starts, stops and chromosome ids)
     //
-    uint32_t total_size = loadBedFiles(user_inputs->reference_version, bedfile_name, bed_info, wanted_chromosome_hash, "");
+    uint32_t total_size = loadBedFiles(user_inputs->reference_version, bedfile_name, bed_info, wanted_chromosome_hash, ref_version);
     //printf("total size is %"PRIu32"\n", total_size);
 
     // Now we are going to generate target-buffer lookup table for all the loaded targets
     // we will store targets and buffers information based on chromosome ID
     //
-    generateBedBufferStats(bed_info, stats_info, wanted_chromosome_hash);
+    if (stats_info) {
+        generateBedBufferStats(bed_info, stats_info, wanted_chromosome_hash);
 
-    // Here we need to check if the bed file is merged and uniqued by comparing two different ways of addition of bases
-    //
-    if (total_size != stats_info->wgs_cov_stats->total_excluded_bases) {
-        printf("\nERROR: The excluded region bed file \n%s\n needs to be bedtools sorted, merged and uniqued!\n", bedfile_name);
-        printf("\ttotal size: %"PRIu32"\n", total_size);
-        printf("\ttotal excluded bases: %"PRIu32"\n", stats_info->wgs_cov_stats->total_excluded_bases);
-        //printf("\tThe chromosome ids listed in the Ns-region file MUST appear in the chromosome input file (--chr_list option)!\n");
-        exit(EXIT_FAILURE);
+        // Here we need to check if the bed file is merged and uniqued by comparing two different ways of addition of bases
+        //
+        if (total_size != stats_info->wgs_cov_stats->total_excluded_bases) {
+            printf("\nERROR: The excluded region bed file \n%s\n needs to be bedtools sorted, merged and uniqued!\n", bedfile_name);
+            printf("\ttotal size: %"PRIu32"\n", total_size);
+            printf("\ttotal excluded bases: %"PRIu32"\n", stats_info->wgs_cov_stats->total_excluded_bases);
+            //printf("\tThe chromosome ids listed in the Ns-region file MUST appear in the chromosome input file (--chr_list option)!\n");
+            exit(EXIT_FAILURE);
+        }
     }
 }
 

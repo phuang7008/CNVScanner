@@ -168,8 +168,8 @@ int main(int argc, char *argv[]) {
     if (user_inputs->excluded_region_file) {
         excluded_bed_info = calloc(1, sizeof(Bed_Info));
         processBedFiles(user_inputs, excluded_bed_info, stats_info,
-                wanted_chromosome_hash, user_inputs->excluded_region_file); 
-        fprintf(stderr, "The Ns base is %"PRIu32"\n", stats_info->wgs_cov_stats->total_excluded_bases);
+                wanted_chromosome_hash, user_inputs->excluded_region_file, user_inputs->reference_version); 
+        fprintf(stderr, "The excluded bases (such as Ns, segdup>=10k and tamden dup >=10k) are %"PRIu32"\n", stats_info->wgs_cov_stats->total_excluded_bases);
     }
 
     setupOutputReportFiles(user_inputs);
@@ -366,6 +366,36 @@ int main(int argc, char *argv[]) {
     //
     generateCNVs(equal_bin_cnv_array, equal_size_window_wrappers, binned_data_wrappers, anchor_breakpoints_hash_array, improperly_PR_array, chrom_tracking, the_stats, stats_info,  user_inputs, headers, sfh_idx, sfh);
 
+    // process low mappablity file
+    //
+    Bed_Info *low_mappability_bed_info=NULL;
+
+    if (user_inputs->low_mappability_file) {
+        low_mappability_bed_info = calloc(1, sizeof(Bed_Info));
+        processBedFiles(user_inputs, low_mappability_bed_info, NULL,
+                wanted_chromosome_hash, user_inputs->low_mappability_file, user_inputs->reference_version);
+    }
+
+    // process GC% less than 25% region file
+    //
+    Bed_Info *gc_lt25pct_bed_info=NULL;
+
+    if (user_inputs->gc_lt25pct_file) {
+        gc_lt25pct_bed_info = calloc(1, sizeof(Bed_Info));
+        processBedFiles(user_inputs, gc_lt25pct_bed_info, NULL,
+                wanted_chromosome_hash, user_inputs->gc_lt25pct_file, user_inputs->reference_version);
+    }
+
+    // process GC% greater than 85% region file
+    //
+    Bed_Info *gc_gt85pct_bed_info=NULL;
+
+    if (user_inputs->gc_gt85pct_file) {
+        gc_gt85pct_bed_info = calloc(1, sizeof(Bed_Info));
+        processBedFiles(user_inputs, gc_gt85pct_bed_info, NULL,
+                wanted_chromosome_hash, user_inputs->gc_gt85pct_file, user_inputs->reference_version);
+    }
+
     // Create segmentation storage
     //
     Segment_Array **segment_arrays = calloc(chrom_tracking->number_of_chromosomes, sizeof (Segment_Array*));
@@ -383,7 +413,7 @@ int main(int argc, char *argv[]) {
 
     // find final CNVs after segmentation
     //
-    processSegmentationData(equal_bin_cnv_array, seg_cnv_array, chrom_tracking, anchor_breakpoints_hash_array, user_inputs, the_stats, stats_info);
+    processSegmentationData(equal_bin_cnv_array, seg_cnv_array, chrom_tracking, anchor_breakpoints_hash_array, user_inputs, the_stats, stats_info, low_mappability_bed_info, gc_lt25pct_bed_info, gc_gt85pct_bed_info);
 
     fprintf(stderr, "After all processed. Now clean up everything\n");
 
@@ -415,6 +445,12 @@ int main(int argc, char *argv[]) {
 
     if (excluded_bed_info != NULL)
         cleanBedInfo(excluded_bed_info);
+
+    if (low_mappability_bed_info != NULL)
+        cleanBedInfo(low_mappability_bed_info);
+
+    if (gc_lt25pct_bed_info)
+        cleanBedInfo(gc_lt25pct_bed_info);
 
     //printf("step 9\n");
     chromosomeTrackingDestroy(chrom_tracking);

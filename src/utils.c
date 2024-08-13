@@ -616,6 +616,10 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
     fprintf(fh, "##INFO=<ID=EvidenceCount,Number=1,Type=Integer,Description=\"Number of evidences such as breakpoint count, IMPPRLEN etc. used to PASS this CNV\">\n");
     fprintf(fh, "##FILTER=<ID=noBreakpointAndImpSupport,Description=\"CNV without breakpoint and improperly paired reads support\">\n");
     fprintf(fh, "##FILTER=<ID=littleBreakpointAndImpSupport,Description=\"CNV has breakpoint support or improperly paired reads support, but the support is too little to be useful\">\n");
+    fprintf(fh, "##FILTER=<ID=lowMappability,Description=\"part of the CNV region has low mappability, cutoff 0.5 \">\n");
+    fprintf(fh, "##FILTER=<ID=gcContent_lt25pct,Description=\"part of the CNV has GC content less than 25%%; cutoff 0.5\">\n");
+    fprintf(fh, "##FILTER=<ID=gcContent_gt85pct,Description=\"part of the CNV has GC content greater than 85%%; cutoff 0.5\">\n");
+    fprintf(fh, "##FILTER=<ID=lowComplexityPct,Description=\"combined percentage of lowMappability, gcContent_lt25pct and gcContent_gt85pct; cutoff 0.5\">\n");
     fprintf(fh, "##FILTER=<ID=PASS,Description=\"CNV pass the filter\">\n");
     fprintf(fh, "##FILTER=<ID=qualLessThan99pctCI,Description=\"CNV has qual less than 99%% confident interval and insufficient breakpoint supports\">\n");
     fprintf(fh, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");

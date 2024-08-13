@@ -40,7 +40,7 @@ void generateBedBufferStats(Bed_Info * bed_info, Stats_Info *stats_info, khash_t
  * @param bed_info: the storage of bed coordinates and the size of the bed file
  * @param stats_info: a variable that contains various statistical information
  */
-void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *stats_info, khash_t(khStrInt)* wanted_chromosome_hash, char* bedfile_name);
+void processBedFiles(User_Input *user_inputs, Bed_Info *bed_info, Stats_Info *stats_info, khash_t(khStrInt)* wanted_chromosome_hash, char* bedfile_name, char* ref_version);
 
 void zeroAllExcludedRegions(Chromosome_Tracking *chrom_tracking, uint32_t chrom_index, Bed_Info *excluded_bed_info);
 

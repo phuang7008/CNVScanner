@@ -78,10 +78,11 @@ typedef struct {
 
     //misc
     char * reference_version;
-    char * mappability_file;            // input mappability file
+    char * low_mappability_file;        // input file for low mappability (GA4GH)
     char * mappability_outfile;         // output mappability file for debugging
     float  mappability_cutoff;          // the value used to filter out low mappability (default 0.0)
-    char * gc_content_file;             // input GC% scale file
+    char * gc_lt25pct_file;             // input file that contains regions with the GC% less than 25% (GA4GH)
+    char * gc_gt85pct_file;             // input file that contains regions with the GC% greater than 85% (GA4GH)
     char * gc_content_outfile;          // output GC% scale file for debugging
     char * map_gc_details_file;         // output map and gc calculation details
     char * window_details_file;         // output equal size window intersect details
@@ -196,6 +197,9 @@ typedef struct {
     CNV_Breakpints *cnv_breakpoints;    // Used to store breakpoints associated with CNV merging per segment
     uint16_t breakpoint_size;
     uint16_t breakpoint_capacity;
+    uint32_t low_mapp_length;
+    uint32_t gc_lt25pct_length;
+    uint32_t gc_gt85pct_length;
 } INNER_CNV;
 
 typedef struct {

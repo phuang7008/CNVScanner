@@ -81,7 +81,7 @@ void cnvSegmentation(Chromosome_Tracking *chrom_tracking, Segment_Array** segmen
 
 void storeSegmentsLocallyAndInit(Segment_Array** segment_array, Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking);
 
-void processSegmentationData(CNV_Array **cnv_array, Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, khash_t(m32) **anchor_breakpoints_hash_array, User_Input *user_inputs, Simple_Stats *equal_window_stats, Stats_Info *stats_info);
+void processSegmentationData(CNV_Array **cnv_array, Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, khash_t(m32) **anchor_breakpoints_hash_array, User_Input *user_inputs, Simple_Stats *equal_window_stats, Stats_Info *stats_info, Bed_Info *low_mappability_bed_info, Bed_Info *gc_lt25pct_bed_info, Bed_Info *gc_gt85pct_bed_info);
 
 void findIntersectedCNVs(CNV_Array *cnv_array, Segmented_CNV_Array *seg_cnv_array, User_Input *user_inputs);
 
@@ -108,6 +108,8 @@ void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t in
 int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints, int type);
 
 void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array, User_Input *user_inputs, Simple_Stats *equal_window_stats);
+
+void checkingFalsePositives(Segmented_CNV_Array *seg_cnv_array, char * chr_id, Bed_Info *low_complexity_bed_info, int type);
 
 void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, Simple_Stats *equal_window_stats, Stats_Info *stats_info, User_Input *user_inputs);
 

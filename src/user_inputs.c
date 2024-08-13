@@ -39,41 +39,43 @@ void usage() {
     printf("Note:   this is a multi-threading program. Each thread needs 4Gb of memory. So please allocate them accordingly!\n");
     printf("\tfor example: 3 threads would use 12Gb of memory, while 4 threads would need 16Gb of memory, etc.\n\n");
     printf("Mandatory:\n");
-    printf("--input_bam           -i  BAM/CRAM alignment file (multiple files are not allowed!).\n");
-    printf("                          It Is Mandatory\n");
-    printf("--output_dir          -o  output directory. It Is Mandatory\n");
-    printf("--sample_name         -N  the sample name to be processed. It Is Mandatory\n");
-    printf("--breakpoint_distance -B  the distance checking to a breakpoint for a CNV. Default: 300\n");
-    printf("                          It is based on sequencing length: 2x150=300. The next checking is 3x150=450 or any other user choice\n");
-    //printf("--gc_content_file    -G  the genomic GC%% file. It Is Mandatory\n");
-    printf("--equal_size_window   -w  the equal size window bed file. It Is Mandatory\n");
-    printf("--reference           -R  the file path of the reference sequence. \n");
-    printf("                          It is Mandatory for CRAM files\n\n");
+    printf("--input_bam            -i  BAM/CRAM alignment file (multiple files are not allowed!).\n");
+    printf("                           It Is Mandatory\n");
+    printf("--output_dir           -o  output directory. It Is Mandatory\n");
+    printf("--sample_name          -N  the sample name to be processed. It Is Mandatory\n");
+    printf("--breakpoint_distance  -B  the distance checking to a breakpoint for a CNV. Default: 300\n");
+    printf("                           It is based on sequencing length: 2x150=300. The next checking is 3x150=450 or any other user choice\n");
+    printf("--equal_size_window    -w  the equal size window bed file. It Is Mandatory\n");
+    printf("--reference            -R  the file path of the reference sequence. \n");
+    printf("                           It is Mandatory for CRAM files\n\n");
 
     printf("The Followings Are Optional:\n");
-    printf("--min_base_qual       -b  minimal base quality\n");
-    printf("                          to filter out any bases with base quality less than b. Default 0\n");
-    printf("--min_map_qual        -m  minimal mapping quality\n");
-    printf("                          to filter out any reads with mapping quality less than m. Default 0\n");
-    printf("--excluded_regions    -e  file name that contains regions to be excluded in bed format\n");
-    printf("--percentage          -p  the percentage (fraction) of reads used for this analysis. Default 1.0 (ie, 100%%)\n");
-    printf("--chr_list            -r  file name that contains chromosomes and their regions \n");
-    printf("                          need to be processed in bed format. Default: Not Provided\n");
-    printf("--threads             -T  the number of threads \n");
-    printf("                          (Note: when used with HPC's msub, make sure that the number of\n"); 
-    printf("                          processors:ppn matches to number of threads). Default 2\n");
-    printf("--min_cnv_length      -S  the minimal length of CNV required. Default 1000\n");
-    printf("--mappability_cutoff  -c  the minimal mappability used to filter out low mappability regions. Default 0.0\n");
-    printf("--ref_version         -V  the reference version used. Default hg38\n");
+    printf("--low_mappability_file -M  a file contains genomic regions with low mappability - sorted/merged from GA4GH.\n");
+    printf("--gc_lt25pct_file      -G  a file contains genomic regions with GC%% less than 25%% - sorted/merged from GA4GH.\n");
+    printf("--gc_gt85pct_file      -G  a file contains genomic regions with GC%% greater than 85%% - sorted/merged from GA4GH.\n");
+    printf("--min_base_qual        -b  minimal base quality\n");
+    printf("                           to filter out any bases with base quality less than b. Default 0\n");
+    printf("--min_map_qual         -m  minimal mapping quality\n");
+    printf("                           to filter out any reads with mapping quality less than m. Default 0\n");
+    printf("--excluded_regions     -e  file name that contains regions to be excluded in bed format\n");
+    printf("--percentage           -p  the percentage (fraction) of reads used for this analysis. Default 1.0 (ie, 100%%)\n");
+    printf("--chr_list             -r  file name that contains chromosomes and their regions \n");
+    printf("                           need to be processed in bed format. Default: Not Provided\n");
+    printf("--threads              -T  the number of threads \n");
+    printf("                           (Note: when used with HPC's msub, make sure that the number of\n"); 
+    printf("                           processors:ppn matches to number of threads). Default 2\n");
+    printf("--min_cnv_length       -S  the minimal length of CNV required. Default 1000\n");
+    printf("--mappability_cutoff   -c  the minimal mappability used to filter out low mappability regions. Default 0.0\n");
+    printf("--ref_version          -V  the reference version used. Default hg38\n");
 
     printf("The Followings Are Flags\n");
-    printf("--duplicate           -d  Specify this flag only when you want to keep Duplicates reads.\n");
-    printf("                          Default: Remove Duplicate is ON\n");
-    printf("--supplemental        -s  Remove Supplementary alignments and DO NOT use them for statistics. Default: off\n");
-    printf("--overlap             -O  Turn off Remove Overlapping Bases to avoid double counting. Default: on\n");
-    printf("--wgs_depth           -W  Write/Dump the WGS base coverage depth into Coverage.fasta file \n");
-    printf("                          (both -w and -W needed). Default: off\n");
-    printf("--help                -h  Print this help/usage message\n");
+    printf("--duplicate            -d  Specify this flag only when you want to keep Duplicates reads.\n");
+    printf("                           Default: Remove Duplicate is ON\n");
+    printf("--supplemental         -s  Remove Supplementary alignments and DO NOT use them for statistics. Default: off\n");
+    printf("--overlap              -O  Turn off Remove Overlapping Bases to avoid double counting. Default: on\n");
+    printf("--wgs_depth            -W  Write/Dump the WGS base coverage depth into Coverage.fasta file \n");
+    printf("                           (both -w and -W needed). Default: off\n");
+    printf("--help                 -h  Print this help/usage message\n");
 }
 
 // Get command line arguments in and check the sanity of user inputs 
@@ -93,35 +95,37 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             //{"verbose",  no_argument,  &verbose_flag,  9},
             //{"brief",    no_argument,  &verbose_flag,  0},
             /* These options don't set a flag. We distinguish them by their indices. */
-            {"chr_list",            required_argument,  0,  'r'},
-            {"input_bam",           required_argument,  0,  'i'},
-            {"min_base_qual",       required_argument,  0,  'b'},
-            {"min_map_qual",        required_argument,  0,  'm'},
-            {"output_dir",          required_argument,  0,  'o'},
-            {"reference",           required_argument,  0,  'R'},
-            {"sample_name",         required_argument,  0,  'N'},
-            {"breakpoint_distance", required_argument,  0,  'B'},
-            //{"gc_content_file",     required_argument,  0,  'G'},
-            {"ref_version",         required_argument,  0,  'V'},
-            {"percentage",          required_argument,  0,  'p'},
-            {"excluded_regions",    required_argument,  0,  'e'},
-            {"min_cnv_length",      required_argument,  0,  'S'},
-            {"equal_size_window",   required_argument,  0,  'w'},
+            {"chr_list",             required_argument,  0,  'r'},
+            {"input_bam",            required_argument,  0,  'i'},
+            {"min_base_qual",        required_argument,  0,  'b'},
+            {"min_map_qual",         required_argument,  0,  'm'},
+            {"output_dir",           required_argument,  0,  'o'},
+            {"reference",            required_argument,  0,  'R'},
+            {"sample_name",          required_argument,  0,  'N'},
+            {"breakpoint_distance",  required_argument,  0,  'B'},
+            {"low_mappability_file", required_argument,  0,  'M'},
+            {"gc_lt25pct_file",      required_argument,  0,  'L'},
+            {"gc_gt85pct_file",      required_argument,  0,  'G'},
+            {"ref_version",          required_argument,  0,  'V'},
+            {"percentage",           required_argument,  0,  'p'},
+            {"excluded_regions",     required_argument,  0,  'e'},
+            {"min_cnv_length",       required_argument,  0,  'S'},
+            {"equal_size_window",    required_argument,  0,  'w'},
             //{"mappability_cutoff",  required_argument,  0,  'c'},
-            {"threads",             required_argument,  0,  'T'},
-            {"duplicate",           no_argument,  0,  'd'},
-            {"help",                no_argument,  0,  'h'},
-            {"overlap",             no_argument,  0,  'O'},
-            {"supplemental",        no_argument,  0,  's'},
-            {"wgs_depth",           no_argument,  0,  'W'},
-            {"debug",               no_argument,  0,  'g'},
+            {"threads",              required_argument,  0,  'T'},
+            {"duplicate",            no_argument,  0,  'd'},
+            {"help",                 no_argument,  0,  'h'},
+            {"overlap",              no_argument,  0,  'O'},
+            {"supplemental",         no_argument,  0,  's'},
+            {"wgs_depth",            no_argument,  0,  'W'},
+            {"debug",                no_argument,  0,  'g'},
             {0,  0,  0,  0},
         };
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arg = getopt_long_only (argc, argv, "b:B:de:ghi:m:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
+        arg = getopt_long_only (argc, argv, "b:B:de:gG:hi:L:m:M:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
         //arg = getopt_long_only (argc, argv, "b:c:de:gG:hi:m:M:N:o:p:Or:R:s:S:T:V:w:W", long_options, &option_index);
 
         /* Detect the end of the options. */
@@ -154,14 +158,18 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
             case 'g':
                 user_inputs->debug_ON = true;
                 break;
-            //case 'G':
-            //    user_inputs->gc_content_file = calloc(strlen(optarg)+1, sizeof(char));
-            //    strcpy(user_inputs->gc_content_file, optarg);
-            //    break;
+            case 'G':
+                user_inputs->gc_gt85pct_file = calloc(strlen(optarg)+1, sizeof(char));
+                strcpy(user_inputs->gc_gt85pct_file, optarg);
+                break;
             case 'h': usage(); exit(EXIT_FAILURE);
             case 'i':
                 user_inputs->bam_file = (char *) malloc((strlen(optarg)+1) * sizeof(char));
                 strcpy(user_inputs->bam_file, optarg);
+                break;
+            case 'L':
+                user_inputs->gc_lt25pct_file = calloc(strlen(optarg)+1, sizeof(char));
+                strcpy(user_inputs->gc_lt25pct_file, optarg);
                 break;
             case 'm':
                 if (!isNumber(optarg)) {
@@ -170,10 +178,10 @@ void processUserOptions(User_Input *user_inputs, int argc, char *argv[]) {
                 }
                 user_inputs->min_map_quality = atoi(optarg);
                 break;
-            //case 'M':
-            //    user_inputs->mappability_file = calloc(strlen(optarg)+1, sizeof(char));
-            //    strcpy(user_inputs->mappability_file, optarg);
-            //    break;
+            case 'M':
+                user_inputs->low_mappability_file = calloc(strlen(optarg)+1, sizeof(char));
+                strcpy(user_inputs->low_mappability_file, optarg);
+                break;
             case 'N':
                 user_inputs->sample_name = calloc(strlen(optarg)+1, sizeof(char));
                 strcpy(user_inputs->sample_name, optarg);
@@ -434,11 +442,14 @@ void outputUserInputOptions(User_Input *user_inputs) {
         fprintf(stderr, "\tRemove supplementary alignments is OFF\n");
     }
 
-    //if (user_inputs->mappability_file)
-    //    fprintf(stderr, "\tThe mappability file used is %s\n", user_inputs->mappability_file);
+    if (user_inputs->low_mappability_file)
+        fprintf(stderr, "\tThe sorted and merged GA4GH low mappability file used is %s\n", user_inputs->low_mappability_file);
     
-    //if (user_inputs->gc_content_file)
-    //    fprintf(stderr, "\tThe GC content file used is %s\n", user_inputs->gc_content_file);
+    if (user_inputs->gc_lt25pct_file)
+        fprintf(stderr, "\tThe sorted and merged GA4GH GC%% less than 25%% file used is %s\n", user_inputs->gc_lt25pct_file);
+
+    if (user_inputs->gc_gt85pct_file)
+        fprintf(stderr, "\tThe sorted and merged GA4GH GC%% greater than 25%% file used is %s\n", user_inputs->gc_gt85pct_file);
 
     if (user_inputs->debug_ON) {
         fprintf(stderr, "\tThe developer debugging is ON\n");
@@ -476,15 +487,16 @@ User_Input * userInputInit() {
     user_inputs->sample_name = NULL;
     user_inputs->reference_file = NULL;
     user_inputs->merged_bin_file  = NULL;
-    user_inputs->gc_content_file  = NULL;
+    user_inputs->gc_lt25pct_file  = NULL;
+    user_inputs->gc_gt85pct_file  = NULL;
     user_inputs->vcf_output_file  = NULL;
-    user_inputs->mappability_file = NULL;
     user_inputs->mappability_outfile  = NULL;
     user_inputs->gc_content_outfile   = NULL;
     user_inputs->chromosome_bed_file  = NULL;
     user_inputs->map_gc_details_file  = NULL;
     user_inputs->window_details_file  = NULL;
     user_inputs->excluded_region_file = NULL;
+    user_inputs->low_mappability_file = NULL;
     user_inputs->log2ratio_output_file = NULL;
     user_inputs->simple_vcf_output_file = NULL;
     user_inputs->normalized_result_file = NULL;
@@ -545,14 +557,17 @@ void userInputDestroy(User_Input *user_inputs) {
     if (user_inputs->merged_bin_file)
         free(user_inputs->merged_bin_file);
 
-    //if (user_inputs->mappability_file)
-    //    free(user_inputs->mappability_file);
+    if (user_inputs->low_mappability_file)
+        free(user_inputs->low_mappability_file);
 
     if (user_inputs->mappability_outfile)
         free(user_inputs->mappability_outfile);
 
-    //if (user_inputs->gc_content_file)
-    //    free(user_inputs->gc_content_file);
+    if (user_inputs->gc_lt25pct_file)
+        free(user_inputs->gc_lt25pct_file);
+
+    if (user_inputs->gc_gt85pct_file)
+        free(user_inputs->gc_gt85pct_file);
 
     if (user_inputs->gc_content_outfile)
         free(user_inputs->gc_content_outfile);

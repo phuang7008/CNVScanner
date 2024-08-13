@@ -185,7 +185,7 @@ void storeSegmentsLocallyAndInit(Segment_Array** segment_array, Segmented_CNV_Ar
     }
 }
 
-void processSegmentationData(CNV_Array **cnv_array, Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, khash_t(m32) **anchor_breakpoints_hash_array, User_Input *user_inputs, Simple_Stats *equal_window_stats, Stats_Info *stats_info) {
+void processSegmentationData(CNV_Array **cnv_array, Segmented_CNV_Array **seg_cnv_array, Chromosome_Tracking *chrom_tracking, khash_t(m32) **anchor_breakpoints_hash_array, User_Input *user_inputs, Simple_Stats *equal_window_stats, Stats_Info *stats_info, Bed_Info *low_mappability_bed_info, Bed_Info *gc_lt25pct_bed_info, Bed_Info *gc_gt85pct_bed_info) {
 #pragma omp parallel num_threads(user_inputs->num_of_threads)
     {
 #pragma omp single
@@ -241,6 +241,17 @@ void processSegmentationData(CNV_Array **cnv_array, Segmented_CNV_Array **seg_cn
 
             mergeCNVsFromSameSegment(seg_cnv_array[seg_cnv_array_idx], cnv_array[cnv_array_idx], user_inputs, equal_window_stats);
             fprintf(stderr, "After merging\n");
+
+            // now checking the low mappability and GC% < 25%
+            //
+            if (low_mappability_bed_info)
+                checkingFalsePositives(seg_cnv_array[seg_cnv_array_idx], chrom_tracking->chromosome_ids[chr_index], low_mappability_bed_info, 1);
+
+            if (gc_lt25pct_bed_info)
+                checkingFalsePositives(seg_cnv_array[seg_cnv_array_idx], chrom_tracking->chromosome_ids[chr_index], gc_lt25pct_bed_info, 2);
+
+            if (gc_gt85pct_bed_info)
+                checkingFalsePositives(seg_cnv_array[seg_cnv_array_idx], chrom_tracking->chromosome_ids[chr_index], gc_gt85pct_bed_info, 3);
 
             if (excluded_regions->data) free(excluded_regions->data);
             if (excluded_regions->starts) free(excluded_regions->starts);
@@ -1172,6 +1183,8 @@ void segmentInnerCNVInit2(Segmented_CNV *seg_cnv, uint32_t index) {
     seg_cnv->seg_inner_cnv[index].num_larger_imp_PR_TLEN = 0;
     seg_cnv->seg_inner_cnv[index].evidence_count = 0;
     seg_cnv->seg_inner_cnv[index].num_merged_CNVs = 0;
+    seg_cnv->seg_inner_cnv[index].low_mapp_length = 0;
+    seg_cnv->seg_inner_cnv[index].gc_lt25pct_length = 0;
     
 }
 
@@ -1387,11 +1400,327 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
     }
 }
 
+// type: 1 for low mappability; 2 for GC% <= 25%
+//
+void checkingFalsePositives(Segmented_CNV_Array *seg_cnv_array, char * chr_id, Bed_Info *low_complexity_bed_info, int type) {
+    // get the total size need for all_starts_ends array
+    // since we process one chromosome at a time, we don't need to use the full size
+    //
+    int32_t i=0, j=0, counter=0, capacity = 0;
+    for (i=0; i<low_complexity_bed_info->size; i++) {
+        if (strcmp(low_complexity_bed_info->coords[i].chrom_id, chr_id) == 0) {
+            capacity += 2;
+        }
+    }
+
+    for (i=0; i<seg_cnv_array->size; i++)
+        capacity += seg_cnv_array->seg_cnvs[i].seg_inner_cnv_size * 2;
+
+    uint32_t *all_starts_ends = calloc(capacity, sizeof(uint32_t));
+
+    // store length info of a low_complexity_bed_info region
+    //
+    khash_t(m32) *lc_start_hash = kh_init(m32);
+    khash_t(m32) *lc_end_hash   = kh_init(m32);
+    //khash_t(m32) *lc_start_end_lookup = kh_init(m32);
+    //khash_t(m32) *lc_end_start_lookup = kh_init(m32);
+
+    for (i=0; i<low_complexity_bed_info->size; i++) {
+        if (strcmp(low_complexity_bed_info->coords[i].chrom_id, chr_id) == 0) {
+            //uint32_t length = low_complexity_bed_info->coords[i].end - low_complexity_bed_info->coords[i].start;
+            all_starts_ends[counter] = low_complexity_bed_info->coords[i].start; 
+            setValueToKhashBucket32(lc_start_hash, all_starts_ends[counter], low_complexity_bed_info->coords[i].end);
+            counter++;
+
+            all_starts_ends[counter] = low_complexity_bed_info->coords[i].end;
+            setValueToKhashBucket32(lc_end_hash, all_starts_ends[counter], low_complexity_bed_info->coords[i].start);
+            counter++;
+        }
+    }
+
+    // store segmented CNVs info
+    //
+    khash_t(m32) *cnv_start_i_hash = kh_init(m32);
+    khash_t(m32) *cnv_start_j_hash = kh_init(m32);
+    khash_t(m32) *cnv_end_i_hash   = kh_init(m32);
+    khash_t(m32) *cnv_end_j_hash   = kh_init(m32);
+    //khash_t(m32) *cnv_start_end_lookup = kh_init(m32);
+    //khash_t(m32) *cnv_end_start_lookup = kh_init(m32);
+
+    for (i=0; i<seg_cnv_array->size; i++) {
+        for (j=0; j<seg_cnv_array->seg_cnvs[i].seg_inner_cnv_size; j++) {
+            // + 1 is added to the start position so that it will be 1-based and also avoid 
+            // start/end the same for the neighbouring CNVs
+            // but need to remember add 1 when using ke_del for the start key
+            //
+            all_starts_ends[counter] = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[j].start+1; 
+            setValueToKhashBucket32(cnv_start_i_hash, all_starts_ends[counter], i);
+            setValueToKhashBucket32(cnv_start_j_hash, all_starts_ends[counter], j);
+            counter++;
+
+            all_starts_ends[counter] = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[j].end;
+            setValueToKhashBucket32(cnv_end_i_hash, all_starts_ends[counter], i);
+            setValueToKhashBucket32(cnv_end_j_hash, all_starts_ends[counter], j);
+            counter++;
+        }
+    }
+
+    if (counter != capacity)
+        fprintf(stderr, "The number doesn't match at the checkingFalsePositives\n");
+
+    // sorting
+    //
+    qsort(all_starts_ends, capacity, sizeof(uint32_t), compare);
+
+    // intersect
+    //
+    khash_t(m32) *live_lc_starts_hash = kh_init(m32);
+    khash_t(m32) *live_cnv_starts_i_hash = kh_init(m32);
+    khash_t(m32) *live_cnv_starts_j_hash = kh_init(m32);
+
+    khash_t(m32) *seen_lc_starts_hash = kh_init(m32);
+    khash_t(m32) *seen_cnv_starts_hash = kh_init(m32);
+
+    int32_t lc_start    = -1;             // need to use signed value as negative value might return
+    int32_t lc_end      = -1;             // need to use signed value as negative value might return
+    int32_t cnv_i_index = -1;             // need to use signed value as negative value might return
+    int32_t cnv_j_index = -1;             // need to use signed value as negative value might return
+    khiter_t iter;
+    counter = 0;
+
+    for (i=0; i<capacity; i++) {
+
+        if (all_starts_ends[i] == 29059774) 
+            printf("stopped A\n");
+
+        // if a key is present in both start and end position, we have to process start first
+        //
+        bool start_first = false;
+        if (checkm32KhashKey(lc_start_hash, all_starts_ends[i]) && checkm32KhashKey(lc_end_hash, all_starts_ends[i]) \
+                && !checkm32KhashKey(seen_lc_starts_hash, all_starts_ends[i]) )
+            start_first = true;
+
+        if (checkm32KhashKey(cnv_start_i_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_i_hash, all_starts_ends[i]) \
+                && !checkm32KhashKey(seen_cnv_starts_hash, all_starts_ends[i]) )
+            start_first = true;
+
+        if (checkm32KhashKey(lc_start_hash, all_starts_ends[i]) && checkm32KhashKey(cnv_end_i_hash, all_starts_ends[i]) 
+                && !checkm32KhashKey(seen_lc_starts_hash, all_starts_ends[i]) )
+            start_first = true;
+
+        if (checkm32KhashKey(cnv_start_i_hash, all_starts_ends[i]) && checkm32KhashKey(lc_end_hash, all_starts_ends[i]) \
+                && !checkm32KhashKey(seen_cnv_starts_hash, all_starts_ends[i]) )
+            start_first = true;
+
+        if (!start_first && (checkm32KhashKey(lc_end_hash, all_starts_ends[i]) ||
+                                    checkm32KhashKey(cnv_end_i_hash, all_starts_ends[i]))) {
+
+            // always decrease count if it is the end position
+            //
+            counter--;
+
+            if (checkm32KhashKey(cnv_end_i_hash, all_starts_ends[i])) {
+                  fprintf(stderr, "CNV end: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
+            } else if (checkm32KhashKey(lc_end_hash, all_starts_ends[i])) {
+                  fprintf(stderr, "low complexity end: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
+            }
+
+            // when current position is an end and counter >= 1, there is an intersect
+            // There might be multiple low complexity regions associated with this CNV; need store all of them
+            //
+            if (counter >= 1) {
+                uint32_t start = 0, end = 0;
+                if (checkm32KhashKey(lc_end_hash, all_starts_ends[i])) {   // it is the low complexity end
+                    lc_start = getValueFromKhash32(lc_end_hash, all_starts_ends[i]);
+
+                    // now loop through live_cnv_hash tables
+                    //
+                    for (iter=kh_begin(live_cnv_start_i_hash); iter!=kh_end(live_cnv_starts_i_hash); ++iter) {
+                        if (kh_exist(live_cnv_starts_i_hash, iter)) {
+                            cnv_i_index = kh_value(live_cnv_starts_i_hash, iter);
+
+                            cnv_j_index = getValueFromKhash32(live_cnv_starts_j_hash, kh_key(live_cnv_starts_i_hash, iter));
+
+                            // calculate the intersected length
+                            //
+                            if (lc_start >= seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].start) {
+                                start = lc_start;
+                            } else {
+                                start = seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].start;
+                            }
+
+                            if (all_starts_ends[i] < seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].end) {
+                                end = all_starts_ends[i];
+                            } else {
+                                end = seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].end;
+                            }
+
+                            if (end < start) {
+                                // now overlapping, just skip
+                                //
+                                continue;
+                                //fprintf(stderr, "Order is wrong start %"PRIu32" and end %"PRIu32"\n", start, end);
+                            }
+
+                            if (type == 1) {
+                                seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].low_mapp_length += end - start + 1;
+                            } else if (type == 2) {
+                                seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].gc_lt25pct_length += end -start + 1;
+                            } else {
+                                seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].gc_gt85pct_length += end -start + 1;
+                            }
+                        }
+                    }
+
+                    // delete the low complexity start entry. Can't use all_starts_ends[i] because it is the end position
+                    //
+                    iter = kh_get(m32, live_lc_starts_hash, lc_start);
+                    kh_del(m32, live_lc_starts_hash, iter);
+
+                } else {    // it is the CNV end
+                    cnv_i_index = getValueFromKhash32(cnv_end_i_hash, all_starts_ends[i]);
+                    cnv_j_index = getValueFromKhash32(cnv_end_j_hash, all_starts_ends[i]);
+
+                    // walk through live_lc_starts_hash
+                    //
+                    for (iter=kh_begin(live_lc_starts_hash); iter!=kh_end(live_lc_starts_hash); ++iter) {
+                        if (kh_exist(live_lc_starts_hash, iter)) {
+                            lc_end = kh_value(live_lc_starts_hash, iter);
+                            lc_start = kh_key(live_lc_starts_hash, iter);
+
+                            // calculate the intersected length
+                            //
+                            if (lc_start >= seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].start) {
+                                start = lc_start;
+                            } else {
+                                start = seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].start;
+                            }
+
+                            if (all_starts_ends[i] < seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].end) {
+                                end = all_starts_ends[i];
+                            } else {
+                                end = seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].end;
+                            }
+
+                            if (end < start) continue;
+
+                            if (type == 1) {
+                                seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].low_mapp_length += end - start + 1;
+                            } else if (type == 2) {
+                                seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].gc_lt25pct_length += end -start + 1;
+                            } else {
+                                seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].gc_gt85pct_length += end -start + 1;
+                            }
+                        }
+                    }
+
+                    // delete the live_cnv_starts at i and j; Dont use all_starts_ends[i] as it is the end position
+                    // as it is the end of current CNV, we don't need it any more. So delete it
+                    // because I added 1 for CNV start for 1-based bedfile, so need to adjust accordingly
+                    //
+                    iter = kh_get(m32, live_cnv_starts_i_hash, seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].start+1);
+                    kh_del(m32, live_cnv_starts_i_hash, iter);
+                    iter = kh_get(m32, live_cnv_starts_j_hash, seg_cnv_array->seg_cnvs[cnv_i_index].seg_inner_cnv[cnv_j_index].start+1);
+                    kh_del(m32, live_cnv_starts_j_hash, iter);
+                }
+            } else {
+                // clean-up live_lc_starts_hash and live_cnv_starts_i_hash and live_cnv_starts_j_hash
+                //
+                for (iter=kh_begin(live_lc_starts_hash); iter!=kh_end(live_lc_starts_hash); ++iter) {
+                    if (kh_exist(live_lc_starts_hash, iter))
+                        kh_del(m32, live_lc_starts_hash, iter);
+                }
+
+                for (iter=kh_begin(live_cnv_starts_i_hash); iter!=kh_end(live_cnv_starts_i_hash); ++iter) {
+                    if (kh_exist(live_cnv_starts_i_hash, iter))
+                        kh_del(m32, live_cnv_starts_i_hash, iter);
+                }
+
+                for (iter=kh_begin(live_cnv_starts_j_hash); iter!=kh_end(live_cnv_starts_j_hash); ++iter) {
+                    if (kh_exist(live_cnv_starts_j_hash, iter))
+                        kh_del(m32, live_cnv_starts_j_hash, iter);
+                }
+            }
+        } else {    // start position
+            counter++;
+
+            // get current low complexity start position in lc_length
+            //
+            if (checkm32KhashKey(lc_start_hash, all_starts_ends[i])) {
+                lc_end = getSignedValueFromKhash32(lc_start_hash, all_starts_ends[i]);
+
+                if (lc_end == -1) {
+                    fprintf(stderr, "Something went wrong with low complexity index at %"PRIu32"\n", all_starts_ends[i]);
+                    exit(EXIT_FAILURE);
+                }
+
+                setValueToKhashBucket32(live_lc_starts_hash, all_starts_ends[i], lc_end);
+                setValueToKhashBucket32(seen_lc_starts_hash, all_starts_ends[i], lc_end);
+
+                if (type == 1) {
+                    fprintf(stderr, "Low mappability start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
+                } else if (type == 2) {
+                    fprintf(stderr, "GC%% less than or equal to 25%% start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
+                } else {
+                    fprintf(stderr, "GC%% greater than or equal to 85%% start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
+                }
+            }
+
+            // get current cnv start position index
+            //
+            if (checkm32KhashKey(cnv_start_i_hash, all_starts_ends[i])) {
+                cnv_i_index = getSignedValueFromKhash32(cnv_start_i_hash, all_starts_ends[i]);
+                cnv_j_index = getSignedValueFromKhash32(cnv_start_j_hash, all_starts_ends[i]);
+
+                if (cnv_i_index == -1 || cnv_j_index == -1) {
+                    fprintf(stderr, "Something went wrong with seg index at %"PRIu32"\n", all_starts_ends[i]);
+                    exit(EXIT_FAILURE);
+                }
+
+                setValueToKhashBucket32(live_cnv_starts_i_hash, all_starts_ends[i], cnv_i_index);
+                setValueToKhashBucket32(live_cnv_starts_j_hash, all_starts_ends[i], cnv_j_index);
+                setValueToKhashBucket32(seen_cnv_starts_hash, all_starts_ends[i], cnv_i_index);
+
+                fprintf(stderr, "CNV start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
+            }
+                
+        }
+    }
+
+    // clean-up
+    //
+    if (all_starts_ends != NULL) {
+        free(all_starts_ends);
+        all_starts_ends = NULL;
+    }
+
+    kh_destroy(m32, lc_start_hash);
+    kh_destroy(m32, lc_end_hash);
+    kh_destroy(m32, cnv_start_i_hash);
+    kh_destroy(m32, cnv_start_j_hash);
+    kh_destroy(m32, cnv_end_i_hash);
+    kh_destroy(m32, cnv_end_j_hash);
+    kh_destroy(m32, live_lc_starts_hash);
+    kh_destroy(m32, live_cnv_starts_i_hash);
+    kh_destroy(m32, live_cnv_starts_j_hash);
+    kh_destroy(m32, seen_cnv_starts_hash);
+    kh_destroy(m32, seen_lc_starts_hash);
+}
+
 int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints, int type) {
 
     int evidences=0;
-    if (inner_cnv->left_breakpoint > 0 && inner_cnv->left_breakpoint_count >= 3) evidences++;
-    if (inner_cnv->right_breakpoint > 0 && inner_cnv->right_breakpoint_count >=3) evidences++;
+    if (inner_cnv->left_breakpoint > 0) {
+        if (inner_cnv->left_breakpoint_count >= 3 \
+                || (inner_cnv->left_breakpoint_count >= 2 && inner_cnv->num_larger_TLEN_left >= 2) ) 
+            evidences++;
+    }
+
+    if (inner_cnv->right_breakpoint > 0 ) {
+        if (inner_cnv->right_breakpoint_count >=3 \
+                || (inner_cnv->right_breakpoint_count >=2 && inner_cnv->num_larger_TLEN_right >=2) )
+            evidences++;
+    }
 
     if (type == 2 && (inner_cnv->right_breakpoint_count != inner_cnv->last_right_breakpoint_count)) {
         uint32_t mid_right_bpt_count = inner_cnv->right_breakpoint_count - inner_cnv->last_right_breakpoint_count;
@@ -1431,7 +1760,8 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
             //if ( seg_cnv_array[i]->seg_cnvs[j].segment.start == 107541000)
             //    printf("segment output stopped!\n");
 
-            fprintf(fp, "\nSegment: %"PRIu32"\t%"PRIu32"\n", seg_cnv_array[i]->seg_cnvs[j].segment.start, seg_cnv_array[i]->seg_cnvs[j].segment.end);
+            if (user_inputs->debug_ON)
+                fprintf(fp, "\nSegment: %"PRIu32"\t%"PRIu32"\n", seg_cnv_array[i]->seg_cnvs[j].segment.start, seg_cnv_array[i]->seg_cnvs[j].segment.end);
 
             for (k=0; k<seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv_size; ++k) {
                 char VALID_CNV[10];
@@ -1460,34 +1790,72 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                 int total_breakpoints = 0;
                 int evidences = obtainSupportingEvidences(&(seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k]), &total_breakpoints, 2);
 
-                if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].left_breakpoint > 0 
-                        && seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].right_breakpoint > 0 
-                        && seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_merged_CNVs == 1
-                        && abs(qual) < 2.576 && evidences == 2 && total_breakpoints < 25) {
+                // 2.576 is z-score for 99% confident interval cutoff
+                //
+                if (abs(qual) < 2.576 && ((evidences <= 2 && total_breakpoints < 25) || (evidences == 0 && strcmp(VALID_CNV, "Yes") == 0))) {
                     strcpy(FILTER, "qualLessThan99pctCI;littleBreakpointAndImpSupport");
                     strcpy(GT, "./.");
                 }
 
-                if (evidences == 1) {
+                if (evidences == 1 && strcmp(VALID_CNV, "No") == 0) {
                     strcpy(FILTER, "littleBreakpointAndImpSupport");
                     strcpy(GT, "./.");
                 }
 
-                if (evidences == 0) {
-                    strcpy(FILTER, "noBreakpointAndImpSupport");;
+                if (evidences == 0 && strcmp(VALID_CNV, "No") == 0) {
+                    strcpy(FILTER, "noBreakpointAndImpSupport");
                     strcpy(GT, "./.");
-                }
-
-                if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_merged_CNVs == 1 && qual < 2.576) {
-                    // 2.576 is z-score for 99% confident interval cutoff
-                    //
-
                 }
 
                 // must be signed
                 //
                 int32_t svLen = seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].end - seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].start;
                 if (svLen < user_inputs->min_cnv_length) continue;
+
+                // checking low mappability size and fraction before svLen set to negative for DEL
+                //
+                double lowMapRatio = (double)seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].low_mapp_length / (double) svLen;
+                if (lowMapRatio > 0.5 || (lowMapRatio == 0.5 && evidences <= 2)) {
+                    strcpy(FILTER, "lowMappability");
+                    strcpy(GT, "./1");
+                }
+
+                // checking GC% <= 25% size and fraction before svLen set to negative for DEL
+                //
+                double gc_lt25_pct_ratio = (double) seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].gc_lt25pct_length / (double) svLen;
+                if (gc_lt25_pct_ratio > 0.5 || (gc_lt25_pct_ratio == 0.5 && evidences <= 2)) {
+                    strcpy(FILTER, "gcContent_lt25pct");;
+                    strcpy(GT, "./1");
+                }
+
+                // checking GC% >= 85% size and fraction before svLen set to negative for DEL
+                //
+                double gc_gt85_pct_ratio = (double) seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].gc_gt85pct_length / (double) svLen;
+                if (gc_gt85_pct_ratio > 0.5 || (gc_gt85_pct_ratio == 0.5 && evidences <= 2)) {
+                    strcpy(FILTER, "gcContent_gt85pct");;
+                    strcpy(GT, "./1");
+                }
+
+                double combined_low_complexity_ratio = lowMapRatio + gc_lt25_pct_ratio + gc_gt85_pct_ratio;
+
+                if (lowMapRatio <= 0.5 && gc_lt25_pct_ratio <= 0.5 && gc_gt85_pct_ratio <= 0.5) {
+                    if (combined_low_complexity_ratio > 0.5 || (combined_low_complexity_ratio == 0.5 && evidences <= 2)) {
+                        strcpy(FILTER, "lowComplexityPct");
+                        strcpy(GT, "./1");
+                    }
+                }
+
+                // during HG002 concordance analysis, many FNs were rescued by the following condition
+                //
+                if (lowMapRatio > 0.5) {
+                    double haploid_cutoff = equal_window_stats->average_coverage - equal_window_stats->zScore;
+                    if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].ave_coverage * lowMapRatio < haploid_cutoff) {
+                        if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN >= 4 && evidences >= 3) {
+                            strcpy(FILTER, "PASS");
+                            strcpy(GT, "./1");
+                        }
+                    }
+                }
 
                 if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].cnv_type == 'L')
                     svLen *= -1;
@@ -1508,7 +1876,7 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                     fprintf(sfh, "%s\t%"PRIu32"\t%"PRIu32"\t%s\t%.2f\t.\t%"PRIu32"\n", chrom_tracking->chromosome_ids[i], cnv_start, cnv_end, CNV, qual2, (uint32_t) total_reads);
                 }
 
-                fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu32";BPTLTLEN=%"PRIu32";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu32";BPTRTLEN=%"PRIu32";IMPPRLEN=%"PRIu16";MergedCNVs=%d;EvidenceCount=%d;ValidCNVForOneOfMergedCNVs=%s\tGT\t%s\n", \
+                fprintf(fp, "%s\t%"PRIu32"\t.\tN\t%s\t%.2f\t%s\tEND=%"PRIu32";SVLEN=%"PRId32";SVTYPE=%s;AVGCOV=%.2f;BPTL=%"PRIu32";BPTLCOUNT=%"PRIu32";BPTLTLEN=%"PRIu32";BPTR=%"PRIu32";BPTRCOUNT=%"PRIu32";BPTRTLEN=%"PRIu32";IMPPRLEN=%"PRIu16";MergedCNVs=%d;EvidenceCount=%d;ValidCNVForOneOfMergedCNVs=%s;lowMappabilityRatio=%.2f;gcContent_lt25pct=%.2f;gcContent_gt85pct=%.2f\tGT\t%s\n", \
                         chrom_tracking->chromosome_ids[i],
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].start, CNV, qual, FILTER,
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].end, svLen, CNV,
@@ -1520,7 +1888,8 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].right_breakpoint_count,
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_TLEN_right,
                         seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN, 
-                        seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_merged_CNVs, evidences, VALID_CNV, GT);
+                        seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_merged_CNVs, evidences, 
+                        VALID_CNV, lowMapRatio, gc_lt25_pct_ratio, gc_gt85_pct_ratio, GT);
 
             }
         }

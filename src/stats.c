@@ -509,6 +509,10 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
                 || strcmp(chrom_tracking->chromosome_ids[i], "CHRX") == 0)
             nan_cutoff = 10;
 
+        if (strcmp(chrom_tracking->chromosome_ids[i], "Y") == 0 || strcmp(chrom_tracking->chromosome_ids[i], "chrY") == 0 
+                || strcmp(chrom_tracking->chromosome_ids[i], "CHRY") == 0)
+            nan_cutoff = 10;
+
         for (j=0; j<total_lines; j++) {
             for (k=new_start; k<binned_data_wrapper[i]->size; k++) {
                 // this is to prevent the 'na' in log2 ratio
