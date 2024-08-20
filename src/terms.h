@@ -180,7 +180,7 @@ typedef struct {
     double qual;
     double ave_coverage;
     char cnv_type;                  // L: for deletion, while P for Dup
-    bool valid_cnv;                 // if this is a valid cnv, if it is not, don't output
+    bool valid_cnv;                 // if this is a valid cnv (a passed CNV), if it is not, don't output
     uint32_t left_breakpoint;
     uint32_t right_breakpoint;
     uint32_t left_breakpoint_count;

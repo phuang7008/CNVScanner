@@ -404,19 +404,30 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
     cnv_array->cnvs[cnv_index].inner_cnv.start = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.end = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.passed = false;
+    cnv_array->cnvs[cnv_index].inner_cnv.qual = 0.0;
     cnv_array->cnvs[cnv_index].inner_cnv.ave_coverage = 0.0;
     cnv_array->cnvs[cnv_index].inner_cnv.cnv_type = ' ';
     cnv_array->cnvs[cnv_index].inner_cnv.valid_cnv = false;
+
     cnv_array->cnvs[cnv_index].inner_cnv.imp_PR_start = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.imp_PR_end = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.num_larger_imp_PR_TLEN = 0;
+
     cnv_array->cnvs[cnv_index].inner_cnv.left_breakpoint  = 0;
-    cnv_array->cnvs[cnv_index].inner_cnv.right_breakpoint = 0;  // the real left breakpoint should start at 1
     cnv_array->cnvs[cnv_index].inner_cnv.left_breakpoint_count  = 0;
-    cnv_array->cnvs[cnv_index].inner_cnv.right_breakpoint_count = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.num_larger_TLEN_left  = 0;
+
+    cnv_array->cnvs[cnv_index].inner_cnv.right_breakpoint = 0;  // the real left breakpoint should start at 1
+    cnv_array->cnvs[cnv_index].inner_cnv.right_breakpoint_count = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.num_larger_TLEN_right = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.last_right_breakpoint_count = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.last_num_larger_TLEN_right = 0;
+
     cnv_array->cnvs[cnv_index].inner_cnv.evidence_count = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.num_merged_CNVs = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.low_mapp_length = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.gc_lt25pct_length = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.gc_gt85pct_length = 0;
 }
 
 // The method will first check to see if the previous CNV should be merged with the current CNV 
@@ -1306,16 +1317,14 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array, User_Input *user_inputs) {
             /*printf("breakpoint: %"PRIu32"\tnum_of_breakpoints: %"PRIu8"\tnum_of_TLEN_ge_1000: %"PRIu8"\n", \
                     cnv_array->cnvs[i].cnv_breakpoints[j].breakpoint,
                     cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints, 
-                    cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000);
-            */
+                    cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000);*/
             
             // All anchor breakpoints associated with the current CNV should be ordered from the left most to the right most.
             // no need to check it here as this is checking during the intersect
-            /*
-            if ((cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints < 2) &&
-                    (cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000 < 2))
+            //
+            if (cnv_array->cnvs[i].cnv_type == 'L' && !(cnv_array->cnvs[i].cnv_breakpoints[j].num_of_breakpoints >= 2
+                    && cnv_array->cnvs[i].cnv_breakpoints[j].num_of_TLEN_ge_1000 >= 1))
                 continue;
-            */
 
             bool left=false;
 
@@ -2157,6 +2166,7 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             cnv_array->cnvs[j].inner_cnv.start = cnv_start;
             cnv_array->cnvs[j].inner_cnv.end   = cnv_end;
             cnv_array->cnvs[j].inner_cnv.qual  = qual;
+            cnv_array->cnvs[j].inner_cnv.ave_coverage = cnv_array->cnvs[j].ave_coverage;
             cnv_array->cnvs[j].inner_cnv.cnv_type = cnv_array->cnvs[j].cnv_type;
             cnv_array->cnvs[j].inner_cnv.ave_coverage = cnv_array->cnvs[j].ave_coverage;
             cnv_array->cnvs[j].inner_cnv.left_breakpoint = left_breakpoint;
@@ -2171,6 +2181,11 @@ void generateVCFresults(CNV_Array **equal_bin_cnv_array, Chromosome_Tracking *ch
             cnv_array->cnvs[j].inner_cnv.imp_PR_end = cnv_array->cnvs[j].imp_PR_end;
             cnv_array->cnvs[j].inner_cnv.num_larger_imp_PR_TLEN = cnv_array->cnvs[j].num_of_imp_PR_TLEN_1000;
             cnv_array->cnvs[j].inner_cnv.evidence_count = supporting_evidences;
+            if (strcmp(FILTER, "PASS") == 0) {
+                cnv_array->cnvs[cnv_index].inner_cnv.passed = true;
+            } else {
+                cnv_array->cnvs[cnv_index].inner_cnv.passed = false;
+            }
             if (supporting_evidences >= 2)
                 cnv_array->cnvs[j].inner_cnv.valid_cnv = true;
 

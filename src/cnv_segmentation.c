@@ -1519,11 +1519,11 @@ void checkingFalsePositives(Segmented_CNV_Array *seg_cnv_array, char * chr_id, B
             //
             counter--;
 
-            if (checkm32KhashKey(cnv_end_i_hash, all_starts_ends[i])) {
+            /*if (checkm32KhashKey(cnv_end_i_hash, all_starts_ends[i])) {
                   fprintf(stderr, "CNV end: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
             } else if (checkm32KhashKey(lc_end_hash, all_starts_ends[i])) {
                   fprintf(stderr, "low complexity end: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
-            }
+            }*/
 
             // when current position is an end and counter >= 1, there is an intersect
             // There might be multiple low complexity regions associated with this CNV; need store all of them
@@ -1657,13 +1657,13 @@ void checkingFalsePositives(Segmented_CNV_Array *seg_cnv_array, char * chr_id, B
                 setValueToKhashBucket32(live_lc_starts_hash, all_starts_ends[i], lc_end);
                 setValueToKhashBucket32(seen_lc_starts_hash, all_starts_ends[i], lc_end);
 
-                if (type == 1) {
+                /*if (type == 1) {
                     fprintf(stderr, "Low mappability start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
                 } else if (type == 2) {
                     fprintf(stderr, "GC%% less than or equal to 25%% start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
                 } else {
                     fprintf(stderr, "GC%% greater than or equal to 85%% start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
-                }
+                }*/
             }
 
             // get current cnv start position index
@@ -1681,7 +1681,7 @@ void checkingFalsePositives(Segmented_CNV_Array *seg_cnv_array, char * chr_id, B
                 setValueToKhashBucket32(live_cnv_starts_j_hash, all_starts_ends[i], cnv_j_index);
                 setValueToKhashBucket32(seen_cnv_starts_hash, all_starts_ends[i], cnv_i_index);
 
-                fprintf(stderr, "CNV start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
+                //fprintf(stderr, "CNV start: %"PRIu32" with index %"PRIu32"\n", all_starts_ends[i], counter);
             }
                 
         }
