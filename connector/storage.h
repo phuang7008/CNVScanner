@@ -24,7 +24,7 @@
 typedef struct {
     uint32_t start;
     uint32_t end;
-    double log2R_mean;
+    double log2ratio_mean;
     double ave_coverage;
 } Segment_Details;
 

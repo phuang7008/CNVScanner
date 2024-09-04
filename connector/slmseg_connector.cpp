@@ -46,7 +46,7 @@ void slmseg_call(char* chr, char* file_in, char* out_file_name, Segment_Array* s
 		        //fprintf(out_fhd, "%s\t%" PRIu32 "\t%" PRIu32 "\t%.2f\n",chr, prev_pos, data_pos.at(i), prev_data);
                 segment_array->segments[counter].start = prev_pos;
                 segment_array->segments[counter].end   = data_pos.at(i);
-                segment_array->segments[counter].log2R_mean    = prev_data;
+                segment_array->segments[counter].log2ratio_mean    = prev_data;
                 segment_array->segments[counter].ave_coverage  = exp2(prev_data);
                 counter++;
                 segment_array->size++;
@@ -74,7 +74,7 @@ void slmseg_call(char* chr, char* file_in, char* out_file_name, Segment_Array* s
     fprintf(out_fhd, "%s\t%" PRIu32 "\t%" PRIu32 "\t%.2f\n", segment_array->chrom_id, prev_pos, data_pos.at(data_seg.size()-1), prev_data);
     segment_array->segments[counter].start = prev_pos;
     segment_array->segments[counter].end   = data_pos.at(data_seg.size()-1);
-    segment_array->segments[counter].log2R_mean  = prev_data;
+    segment_array->segments[counter].log2ratio_mean  = prev_data;
     segment_array->segments[counter].ave_coverage  = exp2(prev_data);
     counter++;
     segment_array->size++;
