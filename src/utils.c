@@ -612,6 +612,7 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
     fprintf(fh, "##INFO=<ID=BPTRTLEN,Number=1,Type=Integer,Description=\"Number of Reads with Insertion size >= 1000bp across the breakpoints at the end of right side of the CNV\">\n");
     fprintf(fh, "##INFO=<ID=IMPPRLEN,Number=1,Type=Integer,Description=\"Number of Improperly Paired Reads with Insertion size >= 1000bp\">\n");
     fprintf(fh, "##INFO=<ID=MergedCNVs,Number=1,Type=Integer,Description=\"Number of neighboring CNVs merged within a segment\">\n");
+    fprintf(fh, "##INFO=<ID=log2ratio,Number=1,Type=Float,Description=\"The log2 ratio for a segment after segmentation\">\n");
     fprintf(fh, "##INFO=<ID=ValidCNVForOneOfMergedCNVs,Number=1,Type=String,Description=\"For MergedCNVs where one of the CNVs PASSed evidence checking before merged with other CNVs\">\n");
     fprintf(fh, "##INFO=<ID=EvidenceCount,Number=1,Type=Integer,Description=\"Number of evidences such as breakpoint count, IMPPRLEN etc. used to PASS this CNV\">\n");
     fprintf(fh, "##FILTER=<ID=noBreakpointAndImpSupport,Description=\"CNV without breakpoint and improperly paired reads support\">\n");
@@ -620,6 +621,7 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
     fprintf(fh, "##FILTER=<ID=gcContent_lt25pct,Description=\"part of the CNV has GC content less than 25%%; cutoff 0.5\">\n");
     fprintf(fh, "##FILTER=<ID=gcContent_gt85pct,Description=\"part of the CNV has GC content greater than 85%%; cutoff 0.5\">\n");
     fprintf(fh, "##FILTER=<ID=lowComplexityPct,Description=\"combined percentage of lowMappability, gcContent_lt25pct and gcContent_gt85pct; cutoff 0.5\">\n");
+    fprintf(fh, "##FILTER=<ID=failLog2ratio,Description=\"Fail the log2ratio in CNV fold checking at SLGSeg segmentation; fail ragne >= -0.5 AND <=0.5\">\n");
     fprintf(fh, "##FILTER=<ID=PASS,Description=\"CNV pass the filter\">\n");
     fprintf(fh, "##FILTER=<ID=qualLessThan99pctCI,Description=\"CNV has qual less than 99%% confident interval and insufficient breakpoint supports\">\n");
     fprintf(fh, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");

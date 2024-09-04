@@ -105,7 +105,7 @@ void copyCNV(Segmented_CNV *seg_cnv, uint32_t seg_index, CNV *cnv, uint32_t cnv_
 
 void dynamicMemAllocateInnerCNVbreakpoints(INNER_CNV *seg_inner_cnv, uint32_t index);
 
-int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints, int type);
+int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints, double log2ratio, int type);
 
 void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv_array, User_Input *user_inputs, Simple_Stats *equal_window_stats);
 

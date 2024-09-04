@@ -1287,8 +1287,8 @@ void setLeftRightCNVBreakpoints(CNV_Array *cnv_array, User_Input *user_inputs) {
             }
         }
 
-        if (cnv_array->cnvs[i].equal_bin_start == 15492447 || cnv_array->cnvs[i].equal_bin_end == 16293000)
-            printf("stop 6\n");
+        //if (cnv_array->cnvs[i].equal_bin_start == 15492447 || cnv_array->cnvs[i].equal_bin_end == 16293000)
+        //    printf("stop 6\n");
 
         // Get the CNV start and end here as we need them for the checking
         //
