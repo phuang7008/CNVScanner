@@ -35,7 +35,7 @@ bool EXCLUDED_FILE_PROVIDED = false;
 //
 void usage() {
     printf("Version %s\n\n", VERSION_ );
-    printf("Usage:  scandium -input_bam bam/cram -output_dir output_directory [options ...]\n");
+    printf("Usage:  cnvscanner -input_bam bam/cram -output_dir output_directory [options ...]\n");
     printf("Note:   this is a multi-threading program. Each thread needs 4Gb of memory. So please allocate them accordingly!\n");
     printf("\tfor example: 3 threads would use 12Gb of memory, while 4 threads would need 16Gb of memory, etc.\n\n");
     printf("Mandatory:\n");
@@ -51,7 +51,7 @@ void usage() {
 
     printf("The Followings Are Optional:\n");
     printf("--low_mappability_file -M  a file contains genomic regions with low mappability - sorted/merged from GA4GH.\n");
-    printf("--gc_lt25pct_file      -G  a file contains genomic regions with GC%% less than 25%% - sorted/merged from GA4GH.\n");
+    printf("--gc_lt25pct_file      -L  a file contains genomic regions with GC%% less than 25%% - sorted/merged from GA4GH.\n");
     printf("--gc_gt85pct_file      -G  a file contains genomic regions with GC%% greater than 85%% - sorted/merged from GA4GH.\n");
     printf("--min_base_qual        -b  minimal base quality\n");
     printf("                           to filter out any bases with base quality less than b. Default 0\n");

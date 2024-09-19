@@ -113,9 +113,9 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
     Equal_Window_Bin *merged_equal_bin_array = NULL;
 
     for (j=0; j<equal_size_window_wrapper->size; j++) {
-        //if ( equal_size_window_wrapper->data[j].start == 106852000) {
-        //    printf("stop\n");
-        //}
+        if ( equal_size_window_wrapper->data[j].start == 83071600) {
+            printf("stop\n");
+        }
         if (equal_size_window_wrapper->data[j].length == 0) {
             if (prev_flag == 0) {
                 continue;
@@ -222,7 +222,7 @@ void mergeNeighboringBinsBasedOnZscore(CNV_Array *cnv_array, Binned_Data_Wrapper
                         storeCurrentCNVtoArray(cnv_array, prev_start, prev_end, prev_len, \
                                                     coverage, merged_equal_bin_array, bin_counter, cnv_counter, prev_flag);
                         //extendBothEndsByOneBin(cnv_array, equal_size_window_wrapper, cnv_counter, bin_counter, j);
-                        cnv_counter += combineNeighboringCNVs(cnv_array, cnv_counter);
+                        cnv_counter += combineNeighboringCNVs(cnv_array, cnv_counter, user_inputs);
                         cnv_counter++;
                         if (cnv_counter + 3 >= cnv_array->capacity) {
                             cnv_array->capacity += PR_INIT_SIZE * 2;
@@ -423,6 +423,8 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
     cnv_array->cnvs[cnv_index].inner_cnv.last_right_breakpoint_count = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.last_num_larger_TLEN_right = 0;
 
+    cnv_array->cnvs[cnv_index].inner_cnv.breakpoint_size = 0;
+    cnv_array->cnvs[cnv_index].inner_cnv.breakpoint_capacity = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.evidence_count = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.num_merged_CNVs = 0;
     cnv_array->cnvs[cnv_index].inner_cnv.low_mapp_length = 0;
@@ -433,10 +435,10 @@ void storeCurrentCNVtoArray(CNV_Array *cnv_array, uint32_t start, uint32_t end, 
 // The method will first check to see if the previous CNV should be merged with the current CNV 
 // if their distance is <= 1000 bp away; if not, keep everything as is
 //
-int combineNeighboringCNVs(CNV_Array *cnv_array, uint32_t cnv_index) {
+int combineNeighboringCNVs(CNV_Array *cnv_array, uint32_t cnv_index, User_Input *user_inputs) {
     if (cnv_index > 0) {
-        if (cnv_array->cnvs[cnv_index].equal_bin_start <= cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 && 
-                cnv_array->cnvs[cnv_index-1].equal_bin_end + 1000 <= cnv_array->cnvs[cnv_index].equal_bin_end &&
+        if (cnv_array->cnvs[cnv_index].equal_bin_start <= cnv_array->cnvs[cnv_index-1].equal_bin_end + user_inputs->min_cnv_length && 
+                cnv_array->cnvs[cnv_index-1].equal_bin_end + user_inputs->min_cnv_length <= cnv_array->cnvs[cnv_index].equal_bin_end &&
                 cnv_array->cnvs[cnv_index-1].cnv_type == cnv_array->cnvs[cnv_index].cnv_type) {
             // merge with the previous one and re-calculate the coverage
             //

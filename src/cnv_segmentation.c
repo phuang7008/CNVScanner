@@ -1882,8 +1882,10 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                 }
 
                 if (log2ratio > -0.5 && log2ratio < 0.5 ) {
-                    strcpy(FILTER, "failLog2ratio");
-                    strcpy(GT, "./.");
+                    if (evidences < 3 || seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN < 3) {
+                        strcpy(FILTER, "failLog2ratio");
+                        strcpy(GT, "./.");
+                    }
                 }
 
                 if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].cnv_type == 'L')
