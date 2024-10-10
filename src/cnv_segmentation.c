@@ -1314,20 +1314,27 @@ void mergeCNVsFromSameSegment(Segmented_CNV_Array *seg_cnv_array, CNV_Array *cnv
                 //
                 // In addition, according to the PennCNV web, they suggested to merge adjacent CNVs if the gap between
                 // them are within 20% of total combined CNV length.
+                // using the same formula, I got the following
                 //
+                uint32_t gap_distance_cutoff = 4220;
+                if (user_inputs->min_cnv_length == 100) gap_distance_cutoff = 768;
+                if (user_inputs->min_cnv_length == 200) gap_distance_cutoff = 1178;
+                if (user_inputs->min_cnv_length == 100) gap_distance_cutoff = 1606;
+                if (user_inputs->min_cnv_length == 100) gap_distance_cutoff = 2326;
+
                 uint32_t gap_length = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].start - seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].end;
                 uint32_t total_combined_CNV_length = seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].end - seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].start;
                 double gap_ratio = (double) gap_length / (double) total_combined_CNV_length;
 
                 if (seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index].cnv_type == \
                         seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index].cnv_type) {
-                    if (gap_length <= 4220 || gap_ratio <= 0.2) {
+                    if (gap_length <= gap_distance_cutoff || gap_ratio <= 0.2) {
                         // check to see if one of them are fully supported by the evidence.
                         // if so, don't merge
                         //
                         int total_breakpoints = 0;
-                        int evidences1 = obtainSupportingEvidences(&(seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index]), &total_breakpoints, seg_cnv_array->seg_cnvs[i].segment.log2ratio_mean, 1);
-                        int evidences2 = obtainSupportingEvidences(&(seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index]), &total_breakpoints, seg_cnv_array->seg_cnvs[i].segment.log2ratio_mean, 1);
+                        int evidences1 = obtainSupportingEvidences(&(seg_cnv_array->seg_cnvs[i].seg_inner_cnv[prev_seg_inner_cnv_index]), &total_breakpoints, seg_cnv_array->seg_cnvs[i].segment.log2ratio_mean, equal_window_stats, 1);
+                        int evidences2 = obtainSupportingEvidences(&(seg_cnv_array->seg_cnvs[i].seg_inner_cnv[seg_inner_cnv_index]), &total_breakpoints, seg_cnv_array->seg_cnvs[i].segment.log2ratio_mean, equal_window_stats, 1);
 
                         // update the valid_cnv variable
                         //
@@ -1717,7 +1724,7 @@ void checkingFalsePositives(Segmented_CNV_Array *seg_cnv_array, char * chr_id, B
     kh_destroy(m32, seen_lc_starts_hash);
 }
 
-int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints, double log2ratio, int type) {
+int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints, double log2ratio, Simple_Stats *equal_window_stats, int type) {
 
     int evidences=0;
     if (inner_cnv->left_breakpoint > 0) {
@@ -1756,7 +1763,7 @@ int obtainSupportingEvidences(INNER_CNV* inner_cnv, int* total_breakpoints, doub
 
     // the following is needed for the merged ones as many merged ones will erase the breakpoint into
     //
-    if (log2ratio <= -0.5 || log2ratio >= 0.5)
+    if (log2ratio <= equal_window_stats->del_log2ratio || log2ratio >= equal_window_stats->dup_log2ratio)
         evidences++;
 
     if ( (log2ratio >= 0.99 && log2ratio <= 1.1) || (log2ratio >= -1.1 && log2ratio <= -0.99) )
@@ -1783,7 +1790,8 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
             if (user_inputs->debug_ON) {
                 fprintf(fp, "\nSegment: %"PRIu32"\t%"PRIu32"\n", seg_cnv_array[i]->seg_cnvs[j].segment.start, seg_cnv_array[i]->seg_cnvs[j].segment.end);
             } else {
-                if (log2ratio > -0.5 && log2ratio < 0.5 )
+                /*if (log2ratio > -0.5 && log2ratio < 0.5 )*/
+                if ( log2ratio > equal_window_stats->del_log2ratio && log2ratio < equal_window_stats->dup_log2ratio )
                     continue;
             }
 
@@ -1798,7 +1806,7 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                 char CNV[10];
                 (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].cnv_type == 'L') ? strcpy(CNV, "DEL") : strcpy(CNV, "INS");
 
-                char FILTER[50];
+                char FILTER[500];
                 strcpy(FILTER, "PASS");
 
                 char GT[10];
@@ -1812,7 +1820,9 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                 // need to re-access the evidence and set the FILTER accordingly
                 //
                 int total_breakpoints = 0;
-                int evidences = obtainSupportingEvidences(&(seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k]), &total_breakpoints, log2ratio, 2);
+                int evidences = obtainSupportingEvidences(&(seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k]), &total_breakpoints, log2ratio, equal_window_stats, 2);
+                if (strcmp(VALID_CNV, "Yes") == 0)
+                    evidences++;
 
                 // 2.576 is z-score for 99% confident interval cutoff
                 //
@@ -1840,7 +1850,12 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                 //
                 double lowMapRatio = (double)seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].low_mapp_length / (double) svLen;
                 if (lowMapRatio > 0.5 || (lowMapRatio == 0.5 && evidences <= 2)) {
-                    strcpy(FILTER, "lowMappability");
+                    if (strcmp(FILTER, "PASS") == 0) {
+                        strcpy(FILTER, "lowMappability");
+                    } else {
+                        strcat(FILTER, ";");
+                        strcat(FILTER, "lowMappability");
+                    }
                     strcpy(GT, "./.");
                 }
 
@@ -1848,7 +1863,12 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                 //
                 double gc_lt25_pct_ratio = (double) seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].gc_lt25pct_length / (double) svLen;
                 if (gc_lt25_pct_ratio > 0.5 || (gc_lt25_pct_ratio == 0.5 && evidences <= 2)) {
-                    strcpy(FILTER, "gcContent_lt25pct");;
+                    if (strcmp(FILTER, "PASS") == 0) {
+                        strcpy(FILTER, "gcContent_lt25pct");;
+                    } else {
+                        strcat(FILTER, ";");
+                        strcat(FILTER, "gcContent_lt25pct");;
+                    }
                     strcpy(GT, "./.");
                 }
 
@@ -1856,7 +1876,12 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                 //
                 double gc_gt85_pct_ratio = (double) seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].gc_gt85pct_length / (double) svLen;
                 if (gc_gt85_pct_ratio > 0.5 || (gc_gt85_pct_ratio == 0.5 && evidences <= 2)) {
-                    strcpy(FILTER, "gcContent_gt85pct");;
+                    if (strcmp(FILTER, "PASS") == 0) {
+                        strcpy(FILTER, "gcContent_gt85pct");;
+                    } else {
+                        strcat(FILTER, ";");
+                        strcat(FILTER, "gcContent_gt85pct");;
+                    }
                     strcpy(GT, "./.");
                 }
 
@@ -1864,7 +1889,12 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
 
                 if (lowMapRatio <= 0.5 && gc_lt25_pct_ratio <= 0.5 && gc_gt85_pct_ratio <= 0.5) {
                     if (combined_low_complexity_ratio > 0.5 || (combined_low_complexity_ratio == 0.5 && evidences <= 2)) {
-                        strcpy(FILTER, "lowComplexityPct");
+                        if (strcmp(FILTER, "PASS") == 0) {
+                            strcpy(FILTER, "lowComplexityPct");
+                        } else {
+                            strcat(FILTER, ";");
+                            strcat(FILTER, "lowComplexityPct");
+                        }
                         strcpy(GT, "./.");
                     }
                 }
@@ -1874,16 +1904,23 @@ void generateSegmentedCNVs(Segmented_CNV_Array **seg_cnv_array, Chromosome_Track
                 if (lowMapRatio > 0.5) {
                     double haploid_cutoff = equal_window_stats->average_coverage - equal_window_stats->zScore;
                     if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].ave_coverage * lowMapRatio < haploid_cutoff) {
-                        if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN >= 4 && evidences >= 3) {
+                        if (seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN >= 4 || evidences >= 4) {
                             strcpy(FILTER, "PASS");
                             strcpy(GT, "./1");
                         }
                     }
                 }
 
-                if (log2ratio > -0.5 && log2ratio < 0.5 ) {
-                    if (evidences < 3 || seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN < 3) {
-                        strcpy(FILTER, "failLog2ratio");
+                if ( log2ratio > equal_window_stats->del_log2ratio && log2ratio < equal_window_stats->dup_log2ratio ) {
+                    evidences--;
+                    //if (evidences < 3 || seg_cnv_array[i]->seg_cnvs[j].seg_inner_cnv[k].num_larger_imp_PR_TLEN < 3) 
+                    if (evidences < 3) {
+                        if (strcmp(FILTER, "PASS") == 0) {
+                            strcpy(FILTER, "failLog2ratio");
+                        } else {
+                            strcat(FILTER, ";");
+                            strcat(FILTER, "failLog2ratio");
+                        }
                         strcpy(GT, "./.");
                     }
                 }

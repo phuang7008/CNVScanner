@@ -594,9 +594,15 @@ void calculateLog2Ratio(Binned_Data_Wrapper **binned_data_wrapper, Simple_Stats 
     fprintf(stderr, "ave_log2ratio: %.4f\n", the_stats->ave_log2ratio);
     fprintf(stderr, "stdev_log2ratio: %.4f\n", the_stats->stdev_log2ratio);
     fprintf(stderr, "zScore_log2_ratio: %.4f\n", the_stats->zScore_log2_ratio);
+    */
+
+    the_stats->del_log2ratio = log2((the_stats->average_coverage - 2.576 * the_stats->stdev) / the_stats->median);
+    //the_stats->del_log2ratio = log2((the_stats->average_coverage - 3 * the_stats->stdev) / the_stats->median);
+    the_stats->dup_log2ratio = log2((the_stats->average_coverage + 2.576 * the_stats->stdev) / the_stats->median);
+    //the_stats->dup_log2ratio = log2((the_stats->average_coverage + 3 * the_stats->stdev) / the_stats->median);
+
     fprintf(stderr, "del_log2ratio: %.4f\n", the_stats->del_log2ratio);
     fprintf(stderr, "dup_log2ratio: %.4f\n", the_stats->dup_log2ratio);
-    */
 }
 
 // the following function is used to for double number array qsort()
