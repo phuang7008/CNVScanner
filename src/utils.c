@@ -613,6 +613,9 @@ void generateVCF_MetaData(User_Input *user_inputs, Chromosome_Tracking *chrom_tr
     fprintf(fh, "##INFO=<ID=IMPPRLEN,Number=1,Type=Integer,Description=\"Number of Improperly Paired Reads with Insertion size >= 1000bp\">\n");
     fprintf(fh, "##INFO=<ID=MergedCNVs,Number=1,Type=Integer,Description=\"Number of neighboring CNVs merged within a segment\">\n");
     fprintf(fh, "##INFO=<ID=log2ratio,Number=1,Type=Float,Description=\"The log2 ratio for a segment after segmentation\">\n");
+    fprintf(fh, "##INFO=<ID=lowMappabilityRatio,Number=1,Type=Float,Description=\"Calculated fraction of region with low mappability\">\n");
+    fprintf(fh, "##INFO=<ID=gcContent_lt25pct,Number=1,Type=Float,Description=\"Calculated fraction of region with GC content <= 25 percent\">\n");
+    fprintf(fh, "##INFO=<ID=gcContent_gt85pct,Number=1,Type=Float,Description=\"Calculated fraction of region with GC content >= 85 percent\">\n");
     fprintf(fh, "##INFO=<ID=ValidCNVForOneOfMergedCNVs,Number=1,Type=String,Description=\"For MergedCNVs where one of the CNVs PASSed evidence checking before merged with other CNVs\">\n");
     fprintf(fh, "##INFO=<ID=EvidenceCount,Number=1,Type=Integer,Description=\"Number of evidences such as breakpoint count, IMPPRLEN etc. used to PASS this CNV\">\n");
     fprintf(fh, "##FILTER=<ID=noBreakpointAndImpSupport,Description=\"CNV without breakpoint and improperly paired reads support\">\n");
