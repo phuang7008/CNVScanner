@@ -1,9 +1,11 @@
 <img src="images/BCM-HGSC-Logo.png" width=250>
 
+---
+
 ### Table of Contents
 
 - [Description](#description)
-- [Installation](#installation)
+- [Build CNVScanner](#build-cnvscanner)
 - [How To Use](#how-to-use)
 - [Contact Info](#Contact-Info)
 
@@ -11,109 +13,54 @@
 
 ## Description
 
-CNVScanner is a software program that was developed at Baylor College of Medicine Human Genome Sequencing Center. It is used to detect copy number variations (CNVs) including deletions (DELs) and duplications (DUPs) in both autosomal and sex chromosomes for individual samples using multiple strategies.
+CNVScanner is a stand-alone tool to detect copy number variations (CNVs) in both autosomal and sex chromosomes from short-read sequencing data using multiple strategies. The coverage depth is used to determine CNV type after mitigating potential sequencing artifacts using a binning tactic. CNVScanner generates putative CNVs by applying statistical significance tests to bins and combining neighboring bins with similar coverage. Paired-end read information adds an orthogonal layer of support, enhancing the confidence and accuracy of the detected CNVs. Additionally, split reads are crucial for precisely pinpointing the breakpoints of variations, contributing to more accurate mapping and characterization.
 
-[Back To The Top](README.md)
+CNVScanner has an accuracy, recall and F1 score surpassing 90% when evaluated against the NIST benchmark for deletion and tandem duplications of the HG002 dataset in high confidence regions. Moreover, our CNVScanner's proficiency extends to accurately identifying approximately two-thirds of the total CNV boundaries within 10 base pairs resolution when compared to those of the NIST benchmark truthset, with one-third correctly locating the exact boundary positions. Additionally, CNVScanner demonstrated an 87% (54/62) sensitivity when compared to published results for sample BAB3596 from Baylor Genetics (Liu, P., et al., DOI: 10.1016/j.cell.2017.01.037)
 
----
+CNVScanner performs  effectively on variants 1 kb and larger for a 30x genome, but this roughly scales with depth of coverage. 
 
-## Installation
+[Back To The Top](#Table-of-Contents)
 
-#### Requirements
+## Build CNVScanner
 
-Building CNVScanner requires a few programs and libraries to be present.
+See [INSTALL](INSTALL) for complete details. Please download the [release tarballs](https://github.com/phuang7008/CNVScanner/releases) of your choice and build CNVScanner using the following steps:
 
-Check to ensure the system provides the followings
+    wget https://github.com/phuang7008/Scandium/releases/download/CNVScanner_vXXX/CNVScanner-vXXX.tar.gz
+    tar zxvf CNVScanner-vXXX.tar.gz 
 
-    GNU make
-    Both C and C++ compiler (e.g. gcc/g++ or related modules)
-
-The build requires autotools scripts like,
-
-    autoheader
-    autoconf
-    autoreconf
-
-The following external libraries are needed for the CNVScanner installation
-
-    libbz2
-    libcrypto
-    libcurl
-    libdl
-    liblzma
-    libm
-    libpthread
-    librt
-    libssl
-    libz
-
-#### Building Configure
-
-Before the installation of CNVScanner, users need to first install 
-    [htslib](https://github.com/samtools/htslib)
-package
-
-CNVScanner has been tested against htslib from version 1.10 to 1.19.1, but Do Not use v1.12 as there is a bug in v1.12.
-
-Important Note:
-htslib must be installed inside cnvscanner directory. Please create a 'htslib' 
-sub-directory like cnvscanner/htslib if the 'htslib' sub-directory doesn't exist.
-The 'htslib' sub-directory name should not include any version numbers.
-
-Please follow the htslib 'INSTALL' instructions all the way to the final 
-step 'make install' such as
-
-    make prefix=<path to cnvscanner/htslib directory> install
-
-Once htslib is successfully installed, users can proceeds to build CNVScanner.
-Please download any release package you prefer and decompress the package
-
-    tar zxvf CNVScanner-release-version.tar.gz
-    cd CNVScanner-release-version
-
-Run the following to create a brand new configure for your system
-
+    build htslib (see htslib install instruction at the htslib website)
+    
     autoreconf -i
-
-Once users have generated the configure file, then do the following
-
     ./configure
     make
-    make install
+    make install or make prefix=<your dir choice> install'
 
-The './configure' generates Makefiles for the compilation.
-
-The 'make' compiles source code in both src/ and lib/
-and generates executables.
-
-The 'make install' command installs the compiled executables into the /usr/local
-directory. Users can change the installation location by adding --prefix=DIR
-option to the ./configure run or via 'make prefix=DIR install'.
-
-#### NOTES
-
-[Back To The Top](README.md)
+[Back To The Top](#Table-of-Contents)
 
 ## How To Use
 
-Here is an example how to run cnvscanner
+For CNVScanner v1 series, here is an example of the run command: 
 
-    cnvscanner -i input_bam -o output_dir -R reference -e exclude_region -V reference_version -r chromosome_list_to_be_processed -m 3 -T 2 -N sample_name -w genome_equal_window_bedfile -S minimal_CNV_length -B searching_distance_for_breakpoints -M lowmappability_bedfile -L GC_below_25%_bedfile -G GC_above_85%_bedfile
+    cnvscanner -i input_bam -o output_dir -R reference -e exclude_region -V reference_version -r chromosome_list_to_be_processed -m 3 -T 12 -N sample_name -w genome_equal_window_bedfile -S minimal_CNV_length -B searching_distance_for_breakpoints
+
+For CNVScanner v2 series, here is an example of the run command: 
+
+    cnvscanner -i input_bam -o output_dir -R reference -e exclude_region -V reference_version -r chromosome_list_to_be_processed -m 3 -T 12 -N sample_name -w genome_equal_window_bedfile -S minimal_CNV_length -B searching_distance_for_breakpoints -M lowmappability_bedfile -L GC_below_25%_bedfile -G GC_above_85%_bedfile
 
 the exclude_region: Ns regions; segdup >= 10,000bps; tandom repeats >= 10,000bps
 
 genome_equal_window_bedfile: can be generated using bedtools makewindows
 
-lowmappability_bedfile: can be downloaded from GA4GH
+lowmappability_bedfile: can be downloaded from GA4GH (needs to be sorted and merged)
 
-GC_below_25%_bedfile: can be downloaded from GA4GH
+GC_below_25%_bedfile: can be downloaded from GA4GH   (needs to be sorted and merged)
 
-GC_above_85%_bedfile: can be downloaded from GA4GH
+GC_above_85%_bedfile: can be downloaded from GA4GH   (needs to be sorted and merged)
 
-[Back To The Top](README.md)
+[Back To The Top](#Table-of-Contents)
 
 ## Contact Info
 
 If users encounter any issues, please contact pemhuang@gmail.com
 
-[Back To The Top](README.md)
+[Back To The Top](#Table-of-Contents)

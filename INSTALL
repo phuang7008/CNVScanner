@@ -1,0 +1,73 @@
+System Requirements
+===================
+HTSlib depends on the following libraries:
+
+    zlib       <http://zlib.net>
+    libbz2     <http://bzip.org/>
+    liblzma    <http://tukaani.org/xz/>
+    libcurl    <https://curl.haxx.se/>
+               (optional but strongly recommended, for network access)
+    libcrypto  <https://www.openssl.org/>
+               (optional, for Amazon S3 support; not needed on MacOS)
+    libdeflate <https://github.com/ebiggers/libdeflate>
+               (optional, but strongly recommended for faster gzip)
+
+CNVScanner depends on the following libraries
+    libdl    <https://packages.debian.org/sid/libc6-dev>
+    libm     <https://hpc.llnl.gov/software/mathematical-software/libm>
+    libpthread          <https://www.gnu.org/software/hurd/libpthread.html>
+
+The following programs are required:
+
+    GNU make
+    C compiler (e.g. gcc or clang)
+
+In addition, building the configure script requires:
+
+    autoheader
+    autoreconf
+    autoconf
+
+
+Building Configure
+==================
+Before the installation of CNVScanner, users need to first install htslib package.
+https://github.com/samtools/htslib
+
+CNVScanner has been tested against htslib version 1.10, 1.15, 1.17 and v1.19. 
+Note, please DO NOT use htslib v1.12 as it has bugs.
+
+Important Note:
+htslib must be installed inside CNVScanner directory. Please create a 'htslib' 
+sub-directory like wgs_cnv/htslib if the 'htslib' sub-directory doesn't exist.
+The 'htslib' sub-directory name should not include any version numbers.
+
+Please follow the htslib 'INSTALL' instructions all the way to the final 
+step 'make install' such as
+    make prefix=<path to wgs_cnv/htslib directory> install
+
+Once htslib is successfully installed, users can proceeds to build CNVScanner.
+Please download any release package you prefer and decompress the package
+    tar zxvf CNVScanner-release-version.tar.gz
+    cd CNVScanner-release-version
+
+Run the following to create a brand new configure for your system
+    autoreconf -i
+
+Once users have generated the configure file, then do the following
+    ./configure
+    make
+    make install
+
+The './configure' generates Makefiles for the compilation.
+
+The 'make' compiles source code in the connector/, lib/, src/ and slmseg/
+and generates executable.
+
+The 'make install' command installs the compiled executables into the /usr/local
+directory. Users can change the installation location by adding --prefix=DIR
+option to the ./configure run or via 'make prefix=DIR install'.
+
+Contact Info
+============
+If users encounter any issues, please contact pemhuang@gmail.com
