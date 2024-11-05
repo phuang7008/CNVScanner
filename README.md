@@ -39,11 +39,11 @@ See [INSTALL](INSTALL) for complete details. Please download the [release tarbal
 
 ## How To Use
 
-For CNVScanner v1 series, here is an example of the run command: 
+Before running CNVScanner, you need to set the path to the two CNVScanner libraries: slmseg and connector
 
-    cnvscanner -i input_bam -o output_dir -R reference -e exclude_region -V reference_version -r chromosome_list_to_be_processed -m 3 -T 12 -N sample_name -w genome_equal_window_bedfile -S minimal_CNV_length -B searching_distance_for_breakpoints
+    export LD_LIBRARY_PATH=path-to/slmseg:path-to/connector:$LD_LIBRARY_PATH;
 
-For CNVScanner v2 series, here is an example of the run command: 
+To run CNVScanner, here is an example of the run command: 
 
     cnvscanner -i input_bam -o output_dir -R reference -e exclude_region -V reference_version -r chromosome_list_to_be_processed -m 3 -T 12 -N sample_name -w genome_equal_window_bedfile -S minimal_CNV_length -B searching_distance_for_breakpoints -M lowmappability_bedfile -L GC_below_25%_bedfile -G GC_above_85%_bedfile
 
