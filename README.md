@@ -47,15 +47,28 @@ To run CNVScanner, here is an example of the run command:
 
     cnvscanner -i input_bam -o output_dir -R reference -e exclude_region -V reference_version -r chromosome_list_to_be_processed -m 3 -T 12 -N sample_name -w genome_equal_window_bedfile -S minimal_CNV_length -B searching_distance_for_breakpoints -M lowmappability_bedfile -L GC_below_25%_bedfile -G GC_above_85%_bedfile
 
-the exclude_region: Ns regions; segdup >= 10,000bps; tandom repeats >= 10,000bps
+Note: The databases/ folder contains pre-built bedfiles needed to run CNVScanner on human genomes. Files are available for both hg37 and hg38 genome builds. Be sure to select the correct version to match your dataset.
 
-genome_equal_window_bedfile: can be generated using bedtools makewindows
+- The human genome references can be downloaded from the following links:
 
-lowmappability_bedfile: can be downloaded from GA4GH (needs to be sorted and merged)
+    wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa .
+    wget https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/references/GRCh37/hs37d5.fa.gz .
 
-GC_below_25%_bedfile: can be downloaded from GA4GH   (needs to be sorted and merged)
+- the exclude_region: Ns regions; segdup >= 10,000bps; tandom repeats >= 10,000bps
 
-GC_above_85%_bedfile: can be downloaded from GA4GH   (needs to be sorted and merged)
+- genome_equal_window_bedfile: can be generated using bedtools makewindows. For example, to create equal-sized windows with bin size 1000 for the hg37 human genome, using bedtools (tested on version v2.30.0)
+
+    bedtools makewindows -g hg37.txt -w 1000 > hg37.1000.windows.bed
+
+- GA4GH version 3.3 stratification files can be downloaded from the following link:
+
+    https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.3/GRCh37@all/
+
+- lowmappability_bedfile: needs to be sorted and merged
+
+- GC_below_25percent_bedfile: created from combination of the following files: GRCh37_gc15_slop50.bed.gz, GRCh37_gc15to20_slop50.bed.gz, GRCh37_gc20to25_slop50.bed.gz; needs to be sorted and merged
+
+- GC_above_85percent_bedfile: needs to be sorted and merged
 
 [Back To The Top](#Table-of-Contents)
 
