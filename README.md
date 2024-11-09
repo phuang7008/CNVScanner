@@ -51,18 +51,18 @@ Note: The databases/ folder contains pre-built bedfiles needed to run CNVScanner
 
 - The human genome references can be downloaded from the following links:
 
-    wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa .
-    wget https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/references/GRCh37/hs37d5.fa.gz .
+        wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa .
+        wget https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/references/GRCh37/hs37d5.fa.gz .
 
 - the exclude_region: Ns regions; segdup >= 10,000bps; tandom repeats >= 10,000bps
 
 - genome_equal_window_bedfile: can be generated using bedtools makewindows. For example, to create equal-sized windows with bin size 1000 for the hg37 human genome, using bedtools (tested on version v2.30.0)
 
-    bedtools makewindows -g hg37.txt -w 1000 > hg37.1000.windows.bed
+        bedtools makewindows -g hg37.txt -w 1000 > hg37.1000.windows.bed
 
 - GA4GH version 3.3 stratification files can be downloaded from the following link:
 
-    https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.3/GRCh37@all/
+        https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.3/GRCh37@all/
 
 - lowmappability_bedfile: needs to be sorted and merged
 
