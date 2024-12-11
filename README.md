@@ -28,8 +28,24 @@ See [INSTALL](INSTALL) for complete details. Please download the [release tarbal
     wget https://github.com/phuang7008/Scandium/releases/download/CNVScanner_vXXX/CNVScanner-vXXX.tar.gz
     tar zxvf CNVScanner-vXXX.tar.gz 
 
-    build htslib (see htslib install instruction at the htslib website)
+To build htslib (please view htslib install instruction at the htslib website)
+
+To build the 'slmseg' library
     
+    cd slmseg
+    make
+
+If the compilation of 'slmseg' suite failed, please contact [slmseg authors](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-017-1734-5)
+
+To build the 'connector' library to connect slmseg library with CNVScanner
+
+    cd connector
+    make
+
+If the compilation of 'connector' library failed, please contact [Peter Huang](pemhuang@gmail.com)
+
+To build 'CNVScanner' executable, go the the top directory of your CNVScanner
+
     autoreconf -i
     ./configure
     make
@@ -47,7 +63,10 @@ To run CNVScanner, here is an example of the run command:
 
     cnvscanner -i input_bam -o output_dir -R reference -e exclude_region -V reference_version -r chromosome_list_to_be_processed -m 3 -T 12 -N sample_name -w genome_equal_window_bedfile -S minimal_CNV_length -B searching_distance_for_breakpoints -M lowmappability_bedfile -L GC_below_25%_bedfile -G GC_above_85%_bedfile
 
-Note: The resources/ folder contains pre-built bedfiles needed to run CNVScanner on human genomes. Files are available for both hg37 and hg38 genome builds. Be sure to select the correct version to match your dataset.
+### Note
+For version 1.0, there is no -B, -M, -L and -G options; and there is no need to export LD_LIBRARY_PATH
+
+The resources/ folder contains pre-built bedfiles needed to run CNVScanner on human genomes. Files are available for both hg37 and hg38 genome builds. Be sure to select the correct version to match your dataset.
 
 - The human genome references can be downloaded from the following links:
 

@@ -41,4 +41,3 @@ all:
 
 clean:
 	rm -rf *.o libslm.so
-

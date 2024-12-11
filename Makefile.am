@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = lib slmseg connector src
+SUBDIRS = lib src

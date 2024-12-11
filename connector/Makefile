@@ -9,8 +9,8 @@ RCPPFLAGS := 		$(shell $(R_HOME)/bin/R CMD config --cppflags)
 RLDFLAGS := 		$(shell $(R_HOME)/bin/R CMD config --ldflags)
 RBLAS := 			$(shell $(R_HOME)/bin/R CMD config BLAS_LIBS)
 RLAPACK := 			$(shell $(R_HOME)/bin/R CMD config LAPACK_LIBS)
-MY_INCLUDE := 		/stornext/snfs130/NGIRD/scratch/phuang/repo/wgs_cnv/slmseg
-MY_DIR :=			/stornext/snfs130/NGIRD/scratch/phuang/repo/wgs_cnv/connector
+MY_DIR :=			$(shell pwd)
+MY_INCLUDE := 		$(dir ${MY_DIR:/=})
 
 ## if you need to set an rpath to R itself, also uncomment
 RRPATH :=		-Wl,-rpath,$(R_HOME)/lib
@@ -38,7 +38,7 @@ SRC :=			slmseg_connector.cpp
 BIN :=			slmcc
 
 all:
-	$(CXX) -I$(MY_INCLUDE) -I$(MY_DIR) $(CPPFLAGS) $(CXXFLAGS) -Wall -O2 -g $(LDLIBS) -L$(MY_INCLUDE) -L$(MY_DIR) -lslm $(SRC) -fpic -shared -o libslmcc.so
+	$(CXX) -I$(MY_INCLUDE)slmseg -I$(MY_DIR) $(CPPFLAGS) $(CXXFLAGS) -Wall -O2 -g $(LDLIBS) -L$(MY_INCLUDE)slmseg -L$(MY_DIR) -lslm $(SRC) -fpic -shared -o libslmcc.so
 
 clean:
 	rm -rf *.o libslmcc.so
