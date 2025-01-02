@@ -1,0 +1,59 @@
+FROM python:3.7-slim-buster
+
+ARG CNVScanner_VER="1.0"
+ARG HTSLIB_VER="1.19.1"
+ARG SAMTOOLS_VER="1.19.2"
+ARG BCFTOOLS_VER="1.19"
+
+# Metadata
+LABEL container.base.image="python:3.7-slim-buster"
+LABEL software.name="CNVScanner with HTSlib/Samtools and python wrapper script to handle integration with AWS Batch and S3"
+LABEL software.version=${CNVScanner_VER}
+LABEL software.description="CNVScanner (in development)"
+LABEL software.website="NA"
+LABEL tags="Genomics"
+
+WORKDIR /scratch
+
+ENV CPPINCLUDES=/usr/include/x86_64-linux-gnu/
+
+# Install HTSlib/Samtools/Bcftools and necessary packages/dependencies
+RUN apt-get -y update && apt-get -y install --no-install-recommends \
+autoconf bzip2 gcc libbz2-dev liblzma-dev libncurses5-dev libncursesw5-dev libcurl4-openssl-dev make wget zlib1g-dev && \
+rm -rf /var/lib/apt/lists/* && \
+wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VER}/htslib-${HTSLIB_VER}.tar.bz2 && \
+tar -xvf htslib-${HTSLIB_VER}.tar.bz2 && mv /scratch/htslib-${HTSLIB_VER} /scratch/htslib && \
+cd htslib && autoconf && ./configure && make && make prefix=/scratch/htslib install && \
+cp -r /scratch/htslib /usr/local/ && \
+cd /scratch && \
+wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VER}/samtools-${SAMTOOLS_VER}.tar.bz2 && \
+tar --bzip2 -xf samtools-${SAMTOOLS_VER}.tar.bz2 && \
+cd samtools-${SAMTOOLS_VER} && \
+autoconf && ./configure && make && make install && \
+cd /scratch && \
+wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VER}/bcftools-${BCFTOOLS_VER}.tar.bz2 && \
+tar --bzip2 -xf bcftools-${BCFTOOLS_VER}.tar.bz2 && \
+cd bcftools-${BCFTOOLS_VER} && \
+autoconf && ./configure && make && make install
+
+# Install CNVScanner and necessary packages/dependencies
+COPY wgs_cnv /scratch/wgs_cnv
+
+RUN apt-get -y update && apt-get install -y automake && apt-get install -y tabix &&\
+  apt-get -y install --no-install-recommends libcurl4-openssl-dev libssl-dev && pip install awscli &&\
+  mv /scratch/htslib /scratch/wgs_cnv && cd /scratch/wgs_cnv && autoreconf -i && ./configure && make && \
+  make prefix=/scratch/wgs_cnv install && cp /scratch/wgs_cnv/bin/cnvscanner /usr/local/bin && \
+  rm -rf /scratch/* && apt-get clean
+
+# Install Python wrapper script and packages
+RUN mkdir -p /src/aws_tools && \
+touch /src/aws_tools/__init__.py && \
+pip install --upgrade --no-cache-dir pip && \
+pip install boto3
+
+COPY src/CNVScanner_aws.py /src
+COPY src/run_cnvscannerv1.0.sh /src
+COPY src/aws_tools/s3utils.py /src/aws_tools
+
+ENTRYPOINT ["/src/run_cnvscannerv1.0.sh"]
+CMD []
