@@ -1,0 +1,53 @@
+Bootstrap: docker
+
+From: python:3.7-slim-buster
+
+%arguments
+    CNVScanner_VER="1.0"
+    HTSLIB_VER="1.19.1"
+    SAMTOOLS_VER="1.19.2"
+
+%labels
+    Author Peiming (Peter) Huang, pemhuang@gmail.com
+    container.base.image="python:3.7-slim-buster"
+    software.name="CNVScanner with HTSlib/Samtools and python wrapper script to handle integration with AWS Batch and S3"
+    software.version={{CNVScanner_VER}
+    software.description="CNVScanner (in development)"
+    software.website="https://github.com/phuang7008/CNVScanner"
+    tags="Genomics; CNV"
+
+%post
+    mkdir -p /scratch/CNVScanner-{{CNVScanner_VER}}
+    cd /scratch
+
+# Install HTSlib/Samtools and necessary packages/dependencies
+%post
+    apt-get -y update
+    apt-get -y install --no-install-recommends autoconf automake bzip2 gcc libbz2-dev liblzma-dev libncurses5-dev libncursesw5-dev make wget zlib1g-dev tar
+    rm -rf /var/lib/apt/lists/*
+
+    wget https://github.com/samtools/htslib/releases/download/{{HTSLIB_VER}}/htslib-{{HTSLIB_VER}}.tar.bz2
+    tar -xjf htslib-{{HTSLIB_VER}}.tar.bz2
+    cd /scratch/htslib-{{HTSLIB_VER}} && autoconf && ./configure && make && make install 
+    mv /scratch/htslib-{{HTSLIB_VER}} /scratch/htslib
+    make prefix=/scratch/htslib install
+
+    cd /scratch
+    wget https://github.com/samtools/samtools/releases/download/{{SAMTOOLS_VER}}/samtools-{{SAMTOOLS_VER}}.tar.bz2
+    tar --bzip2 -xf samtools-{{SAMTOOLS_VER}}.tar.bz2
+    cd samtools-{{SAMTOOLS_VER}} && autoconf && ./configure && make && make install
+    #rm -rf /scratch/htslib-{{HTSLIB_VER}}.tar.bz2 /scratch/samtools-{{SAMTOOLS_VER}}.tar.bz2 && apt-get clean
+
+# Install CNVScanner and necessary packages/dependencies
+%post
+    apt-get -y update && apt-get -y install --no-install-recommends libcurl4-openssl-dev libssl-dev
+    cd /scratch 
+    wget https://github.com/phuang7008/CNVScanner/releases/download/CNVScanner-v{{CNVScanner_VER}}/CNVScanner-v{{CNVScanner_VER}}.tar.gz
+    tar zxf CNVScanner-v{{CNVScanner_VER}}.tar.gz --no-same-owner
+    autoreconf -i && ./configure && make && make install 
+    #rm -rf /scratch/* && apt-get clean
+
+
+%runscript
+    ["/usr/bin/cnvscanner"]
+    "[/bin/sh]
