@@ -1,0 +1,10 @@
+FilterSeg               [internal function]
+HSLM                    Heterogeneous segmentation
+JointSeg                [internal function]
+JointSegIn              [internal function]
+MukEst                  [internal function]
+ParamEstSeq             [internal function]
+SLM                     Homogeneous segmentation
+SLMSeg-package          Segmentation profiling library
+SegResults              [internal function]
+SortState               [internal function]
