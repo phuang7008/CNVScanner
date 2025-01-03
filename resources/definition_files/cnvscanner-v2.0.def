@@ -17,9 +17,8 @@ From: python:3.7-slim-buster
     tags="Genomics; CNV"
 
 %environment
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH/usr/local/lib
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
     export PATH=$PATH:/usr/share/R/share/R/
-    export INCLUDEPATH=$INCLUDEPATH:/scratch/slmseg:/scratch/connector
 
 %post
     mkdir -p /scratch/CNVScanner-{{CNVScanner_VER}}
@@ -58,7 +57,7 @@ From: python:3.7-slim-buster
     cd /scratch/slmseg && make && cp libslm.so /usr/local/lib
     cd /scratch/connector && make && cp libslmcc.so /usr/local/lib 
     cd /scratch && autoreconf -i && ./configure && make && make install 
-    #rm -rf /scratch/* && apt-get clean
+    rm -rf /scratch/* && apt-get clean
 
 %runscript
     ["/usr/bin/cnvscanner"]
